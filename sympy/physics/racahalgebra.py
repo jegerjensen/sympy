@@ -29,6 +29,47 @@ class ThreeJSymbol(Function):
     nargs = 6
     is_commutative=True
 
+    @classmethod
+    def eval(cls, j1, m1, j2, m2, J, M):
+        """
+        The 3j-symbol will be brought to canoncial form by its
+        many symmetries.
+
+        We define the canonical form as the form where:
+            1)   j1 <= j2  <= J
+            2)  m1 is written without minus sign,
+                or if m1==0, m2 is written without minus sign.
+
+
+        >>> from sympy.physics.racahalgebra import ThreeJSymbol
+        >>> from sympy import symbols
+        >>> k,l,m,n,K = symbols('klmnK')
+        >>> q,r,s,t,Q = symbols('qrstQ')
+        >>> ThreeJSymbol(l, r, m, s, k, q)
+        ThreeJSymbol(k, q, l, r, m, s)
+        """
+
+        # We search for even permuations first, to reduce the necessary phases
+        if j1 > J:
+            return ThreeJSymbol(j2,m2,J,M,j1,m1)
+
+        if j1 > j2:
+            phase=pow(S.NegativeOne,j1+j2+J)
+            return phase*ThreeJSymbol(j2,m2,j1,m1,J,M)
+
+        coeff, term = m1.as_coeff_terms()
+        if coeff is S.NegativeOne:
+            phase=pow(S.NegativeOne,j1+j2+J)
+            return phase*ThreeJSymbol(j1, -m1, j2, -m2, J, -M)
+        elif coeff is S.Zero:
+            coeff, term = m2.as_coeff_terms()
+            if coeff is S.NegativeOne:
+                phase=pow(S.NegativeOne,j1+j2+J)
+                return phase*ThreeJSymbol(j1, -m1, j2, -m2, J, -M)
+        else:
+            return
+
+
 class SixJSymbol(Function):
     """
     class to represent a 6j-symbol
@@ -46,20 +87,20 @@ class ClebschGordanCoefficient(Function):
 
     >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient,ThreeJSymbol
     >>> from sympy import symbols
-    >>> k,l,m,n,K = symbols('klmnK')
-    >>> q,r,s,t,Q = symbols('qrstQ')
+    >>> a,b,c,K = symbols('abcK')
+    >>> q,r,s,Q = symbols('qrsQ')
 
-    >>> ClebschGordanCoefficient(l, r, m, s, k, q)
-    ClebschGordanCoefficient(l, r, m, s, k, q)
-    >>> ClebschGordanCoefficient(l, r, m, s, k, q).doit()
-    (-1)**(l + q - m)*(1 + 2*k)**(1/2)*ThreeJSymbol(l, r, m, s, k, -q)
+    >>> ClebschGordanCoefficient(a, q, b, r, c, s)
+    ClebschGordanCoefficient(a, q, b, r, c, s)
+    >>> ClebschGordanCoefficient(a, q, b, r, c, s).doit()
+    (-1)**(a + s - b)*(1 + 2*c)**(1/2)*ThreeJSymbol(a, q, b, r, c, -s)
     """
     nargs = 6
     is_commutative=True
 
-    @classmethod
-    def eval(cls, j1, m1, j2, m2, J, M):
-        pass
+    # @classmethod
+    # def eval(cls, j1, m1, j2, m2, J, M):
+        # pass
 
     def doit(self,**hints):
         """
