@@ -15,32 +15,60 @@ from sympy.core.cache import cacheit
 
 
 __all__ = [
-        ThreeJsymbol,
-        ClebschGordanCoefficient,
-        SixJsymbol,
+        'ThreeJSymbol',
+        'ClebschGordanCoefficient',
+        'SixJSymbol',
+        'SphericalTensor',
+        'CompositeSphericalTensor',
         ]
 
-class ThreeJsymbol(Function):
+class ThreeJSymbol(Function):
     """
     class to represent a 3j-symbol
     """
     nargs = 6
     is_commutative=True
 
-class SixJsymbol(Function):
+class SixJSymbol(Function):
     """
-    class to represent a 3j-symbol
+    class to represent a 6j-symbol
     """
     nargs = 6
     is_commutative=True
 
 class ClebschGordanCoefficient(Function):
     """
-    class to represent a 3j-symbol
+    Class to represent a Clebsch-Gordan coefficient.
+
+    This class is just a convenience wrapper for ThreeJSymbol.  When objects of
+    type ClebschGordanCoefficient are evaluated with .doit(), they are
+    immediately rewritten to ThreeJSymbol.
+
+    >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient,ThreeJSymbol
+    >>> from sympy import symbols
+    >>> k,l,m,n,K = symbols('klmnK')
+    >>> q,r,s,t,Q = symbols('qrstQ')
+
+    >>> ClebschGordanCoefficient(l, r, m, s, k, q)
+    ClebschGordanCoefficient(l, r, m, s, k, q)
+    >>> ClebschGordanCoefficient(l, r, m, s, k, q).doit()
+    (-1)**(l + q - m)*(1 + 2*k)**(1/2)*ThreeJSymbol(l, r, m, s, k, -q)
     """
     nargs = 6
     is_commutative=True
 
+    @classmethod
+    def eval(cls, j1, m1, j2, m2, J, M):
+        pass
+
+    def doit(self,**hints):
+        """
+        Rewrites to a 3j-symbol, which is then evaluated.
+        """
+        if not hints.get('clebsh_gordan'):
+            j1, m1, j2, m2, J, M = self.args
+            return (pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
+                    *ThreeJSymbol(j1, m1, j2, m2, J, -M).doit(**hints))
 
 
 class SphericalTensor(Basic):
