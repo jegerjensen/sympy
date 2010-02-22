@@ -356,9 +356,11 @@ class CompositeSphericalTensor(SphericalTensor):
         self_as_direct_product = self.get_uncoupled_form()
         direct_product_ito_other = new_coupling.get_direct_product_ito_self()
 
-        # In direct product there is a sum over other.rank and
-        # other.projection, but for this transformation the coefficient
-        # <(12)3:J'M'|1(23);J M> implies that J'==J and M'==M.
+        # In the direct product there is a sum over other.rank and
+        # other.projection, but for a transformation of coupling scheme the
+        # coefficient <(..).:J'M'|.(..);J M> implies that J'==J and M'==M.
+        # We solve this by replacing the superfluous summation symbol with
+        # Kronecker deltas.
         sumJM = ASigma(new_coupling.rank,new_coupling.projection)
         dij = (Dij(self.rank,new_coupling.rank)*
                 Dij(self.projection,new_coupling.projection))
