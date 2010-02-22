@@ -95,7 +95,7 @@ class ClebschGordanCoefficient(Function):
     >>> A,B,C,D = symbols('ABCD')
 
     >>> ClebschGordanCoefficient(A, a, B, b, C, c)
-    ClebschGordanCoefficient(A, a, B, b, C, c)
+    (A, a, B, b|C, c)
     >>> ClebschGordanCoefficient(A, a, B, b, C, c).doit()
     (-1)**(A + c - B)*(1 + 2*C)**(1/2)*ThreeJSymbol(A, B, C, a, b, -c)
     """
@@ -115,6 +115,19 @@ class ClebschGordanCoefficient(Function):
             return (pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
                     *ThreeJSymbol(j1, j2, J, m1, m2, -M).doit(**hints))
 
+    def _sympystr_(self, *args):
+        """
+        >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
+        >>> from sympy import symbols
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
+
+        >>> ClebschGordanCoefficient(A,a,B,b,C,c)
+        (A, a, B, b|C, c)
+        """
+
+        return "(%s, %s, %s, %s|%s, %s)" % self.args
+
 
 class SphericalTensor(Basic):
     """
@@ -127,24 +140,28 @@ class SphericalTensor(Basic):
 
     """
 
-    def __new__(cls, rank, projection, tensor1=None, tensor2=None):
+    def __new__(cls, symbol, rank, projection, tensor1=None, tensor2=None):
         """
         Creates a new spherical tensor (ST) with the given rank and
         projection. If two spherical tensors are supplied as tensor1 and
         tensor2, we return a CompositeSphericalTensor instead.
         """
         if tensor1 and tensor2:
-            return CompositeSphericalTensor(rank, projection, tensor1, tensor2)
-        obj = Basic.__new__(cls,rank,projection)
+            return CompositeSphericalTensor(symbol, rank, projection, tensor1, tensor2)
+        obj = Basic.__new__(cls,symbol,rank,projection)
         return obj
 
     @property
     def rank(self):
-        return self.args[0]
+        return self.args[1]
 
     @property
     def projection(self):
-        return self.args[1]
+        return self.args[2]
+
+    @property
+    def symbol(self):
+        return self.args[0]
 
     def get_uncoupled_form(self):
         """
@@ -159,6 +176,19 @@ class SphericalTensor(Basic):
         to break the recursion.
         """
         return S.One
+
+    def _sympystr_(self, *args):
+        """
+        >>> from sympy.physics.racahalgebra import SphericalTensor
+        >>> from sympy import symbols
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
+
+        >>> SphericalTensor('t1',A,a)
+        t1(A, a)
+        """
+
+        return "%s(%s, %s)" % self.args
 
 
 class CompositeSphericalTensor(SphericalTensor):
@@ -177,7 +207,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
     """
 
-    def __new__(cls, rank, projection, tensor1, tensor2):
+    def __new__(cls, symbol, rank, projection, tensor1, tensor2):
         """
         Creates a new spherical tensor (ST) with the given rank and
         projection. If two spherical tensors are supplied as tensor1 and
@@ -191,16 +221,35 @@ class CompositeSphericalTensor(SphericalTensor):
         You may build up a composite tensor with any coupling scheme this way.
 
         """
-        obj = Basic.__new__(cls,rank,projection,tensor1,tensor2)
+        obj = Basic.__new__(cls,symbol,rank,projection,tensor1,tensor2)
         return obj
 
     @property
     def tensor1(self):
-        return self.args[2]
+        return self.args[3]
 
     @property
     def tensor2(self):
-        return self.args[3]
+        return self.args[4]
+
+    def _sympystr_(self, *args):
+        """
+        >>> from sympy.physics.racahalgebra import SphericalTensor, CompositeSphericalTensor
+        >>> from sympy import symbols
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
+
+        >>> t1 = SphericalTensor('t1',A,a)
+        >>> t2 = SphericalTensor('t2',B,b)
+        >>> CompositeSphericalTensor('T',C,c,t1,t2)
+        T[t1(A, a)*t2(B, b)](C, c)
+
+        """
+
+        tensor_product = "[%s*%s]" %(self.tensor1, self.tensor2)
+        rank_projection= "(%s, %s)" %(self.rank, self.projection)
+
+        return self.symbol+tensor_product+rank_projection
 
     def get_uncoupled_form(self, **kw_args):
         """
@@ -214,18 +263,18 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> a,b,c,d,e = symbols('abcde')
         >>> A,B,C,D,E = symbols('ABCDE')
 
-        >>> t1 = SphericalTensor(A,a)
-        >>> t2 = SphericalTensor(B,b)
-        >>> T = SphericalTensor(D,d,t1,t2)
+        >>> t1 = SphericalTensor('t1',A,a)
+        >>> t2 = SphericalTensor('t2',B,b)
+        >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.get_uncoupled_form()
-        ASigma(a, b)*ClebschGordanCoefficient(A, a, B, b, D, d)*SphericalTensor(A, a)*SphericalTensor(B, b)
+        ASigma(a, b)*(A, a, B, b|D, d)*t1(A, a)*t2(B, b)
 
         With three coupled tensors we get:
 
-        >>> t3 = SphericalTensor(C,c)
-        >>> S = SphericalTensor(E,e,T,t3)
+        >>> t3 = SphericalTensor('t3',C,c)
+        >>> S = SphericalTensor('S',E,e,T,t3)
         >>> S.get_uncoupled_form()
-        ASigma(a, b)*ASigma(c, d)*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)*SphericalTensor(A, a)*SphericalTensor(B, b)*SphericalTensor(C, c)
+        ASigma(a, b)*ASigma(c, d)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*t1(A, a)*t2(B, b)*t3(C, c)
 
         """
 
@@ -250,19 +299,26 @@ class CompositeSphericalTensor(SphericalTensor):
 
     def get_direct_product(self, **kw_args):
         """
-        Returns the direct product of all tensors expressed with the composite
-        tensors.
+        Returns the direct product of all constituent tensors expressed with
+        the composite tensors.
 
         >>> from sympy.physics.racahalgebra import SphericalTensor, CompositeSphericalTensor
         >>> from sympy import symbols
         >>> a,b,c,d,e = symbols('abcde')
         >>> A,B,C,D,E = symbols('ABCDE')
 
-        >>> t1 = SphericalTensor(A,a)
-        >>> t2 = SphericalTensor(B,b)
-        >>> T = SphericalTensor(D,d,t1,t2)
+        >>> t1 = SphericalTensor('t1',A,a)
+        >>> t2 = SphericalTensor('t2',B,b)
+        >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.get_direct_product()
-        ASigma(D, d)*ClebschGordanCoefficient(A, a, B, b, D, d)*CompositeSphericalTensor(D, d, SphericalTensor(A, a), SphericalTensor(B, b))
+        ASigma(D, d)*(A, a, B, b|D, d)*T[t1(A, a)*t2(B, b)](D, d)
+
+        With three coupled tensors we get:
+
+        >>> t3 = SphericalTensor('t3',C,c)
+        >>> S = SphericalTensor('S',E,e,T,t3)
+        X>> S.get_direct_product()
+        ASigma(D, d)*ASigma(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A, a)*t2(B, b)](D, d)*t3(C, c)](E, e)
 
         """
 
