@@ -30,7 +30,7 @@ class ThreeJSymbol(Function):
     is_commutative=True
 
     @classmethod
-    def eval(cls, j1, m1, j2, m2, J, M):
+    def eval(cls, j1, j2, J, m1, m2, M):
         """
         The 3j-symbol will be brought to canoncial form by its
         many symmetries.
@@ -43,29 +43,33 @@ class ThreeJSymbol(Function):
 
         >>> from sympy.physics.racahalgebra import ThreeJSymbol
         >>> from sympy import symbols
-        >>> k,l,m,n,K = symbols('klmnK')
-        >>> q,r,s,t,Q = symbols('qrstQ')
-        >>> ThreeJSymbol(l, r, m, s, k, q)
-        ThreeJSymbol(k, q, l, r, m, s)
+        >>> a,b,c = symbols('abc')
+        >>> A,B,C = symbols('ABC')
+        >>> ThreeJSymbol(C, A, B, c, a, b)
+        ThreeJSymbol(A, B, C, a, b, c)
         """
 
-        # We search for even permuations first, to reduce the necessary phases
+        # We search for even permuations first, to avoid phases if possible
         if j1 > J:
-            return ThreeJSymbol(j2,m2,J,M,j1,m1)
+            return ThreeJSymbol(j2,J,j1,m2,M,m1)
 
         if j1 > j2:
             phase=pow(S.NegativeOne,j1+j2+J)
-            return phase*ThreeJSymbol(j2,m2,j1,m1,J,M)
+            return phase*ThreeJSymbol(j2,j1,J,m2,m1,M)
+
+        if j2 > J:
+            phase=pow(S.NegativeOne,j1+j2+J)
+            return phase*ThreeJSymbol(j1,J,j2,m1,M,m2)
 
         coeff, term = m1.as_coeff_terms()
         if coeff is S.NegativeOne:
             phase=pow(S.NegativeOne,j1+j2+J)
-            return phase*ThreeJSymbol(j1, -m1, j2, -m2, J, -M)
+            return phase*ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
         elif coeff is S.Zero:
             coeff, term = m2.as_coeff_terms()
             if coeff is S.NegativeOne:
                 phase=pow(S.NegativeOne,j1+j2+J)
-                return phase*ThreeJSymbol(j1, -m1, j2, -m2, J, -M)
+                return phase*ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
         else:
             return
 
@@ -87,13 +91,13 @@ class ClebschGordanCoefficient(Function):
 
     >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient,ThreeJSymbol
     >>> from sympy import symbols
-    >>> a,b,c,K = symbols('abcK')
-    >>> q,r,s,Q = symbols('qrsQ')
+    >>> a,b,c,d = symbols('abcd')
+    >>> A,B,C,D = symbols('ABCD')
 
-    >>> ClebschGordanCoefficient(a, q, b, r, c, s)
-    ClebschGordanCoefficient(a, q, b, r, c, s)
-    >>> ClebschGordanCoefficient(a, q, b, r, c, s).doit()
-    (-1)**(a + s - b)*(1 + 2*c)**(1/2)*ThreeJSymbol(a, q, b, r, c, -s)
+    >>> ClebschGordanCoefficient(A, a, B, b, C, c)
+    ClebschGordanCoefficient(A, a, B, b, C, c)
+    >>> ClebschGordanCoefficient(A, a, B, b, C, c).doit()
+    (-1)**(A + c - B)*(1 + 2*C)**(1/2)*ThreeJSymbol(A, B, C, a, b, -c)
     """
     nargs = 6
     is_commutative=True
@@ -109,7 +113,7 @@ class ClebschGordanCoefficient(Function):
         if not hints.get('clebsh_gordan'):
             j1, m1, j2, m2, J, M = self.args
             return (pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
-                    *ThreeJSymbol(j1, m1, j2, m2, J, -M).doit(**hints))
+                    *ThreeJSymbol(j1, j2, J, m1, m2, -M).doit(**hints))
 
 
 class SphericalTensor(Basic):
@@ -198,18 +202,18 @@ class CompositeSphericalTensor(SphericalTensor):
 
         >>> from sympy.physics.racahalgebra import SphericalTensor, CompositeSphericalTensor
         >>> from sympy import symbols
-        >>> k,l,m,n,K = symbols('klmnK')
-        >>> q,r,s,t,Q = symbols('qrstQ')
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
 
-        >>> t1 = SphericalTensor(l,r)
-        >>> t2 = SphericalTensor(m,s)
-        >>> T = SphericalTensor(k,q,t1,t2)
+        >>> t1 = SphericalTensor(A,a)
+        >>> t2 = SphericalTensor(B,b)
+        >>> T = SphericalTensor(D,d,t1,t2)
         >>> T.get_uncoupled_form()
-        ClebschGordanCoefficient(l, r, m, s, k, q)*SphericalTensor(l, r)*SphericalTensor(m, s)
-        >>> t3 = SphericalTensor(n,t)
-        >>> S = SphericalTensor(K,Q,T,t3)
+        ClebschGordanCoefficient(A, a, B, b, D, d)*SphericalTensor(A, a)*SphericalTensor(B, b)
+        >>> t3 = SphericalTensor(C,c)
+        >>> S = SphericalTensor(E,e,T,t3)
         >>> S.get_uncoupled_form()
-        ClebschGordanCoefficient(k, q, n, t, K, Q)*ClebschGordanCoefficient(l, r, m, s, k, q)*SphericalTensor(l, r)*SphericalTensor(m, s)*SphericalTensor(n, t)
+        ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)*SphericalTensor(A, a)*SphericalTensor(B, b)*SphericalTensor(C, c)
 
         """
 
