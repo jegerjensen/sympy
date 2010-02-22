@@ -169,7 +169,7 @@ class SphericalTensor(Basic):
         """
         return self
 
-    def get_direct_product(self):
+    def get_direct_product(self,**kw_args):
         """
         Returns the direct product expressed by the composite tensor.
         It is not meaningful for non-composite tensors, we return unity
@@ -317,7 +317,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
-        X>> S.get_direct_product()
+        >>> S.get_direct_product()
         ASigma(D, d)*ASigma(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A, a)*t2(B, b)](D, d)*t3(C, c)](E, e)
 
         """
@@ -332,12 +332,14 @@ class CompositeSphericalTensor(SphericalTensor):
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
                     self.rank,self.projection)
-                * t1.get_direct_product()
-                * t2.get_direct_product()
-                * self
+                * t1.get_direct_product(nested=True)
+                * t2.get_direct_product(nested=True)
                 )
-        return ASigma(self.rank, self.projection)*expr
 
+        if kw_args.get('nested'):
+            return ASigma(self.rank, self.projection)*expr
+        else:
+            return ASigma(self.rank, self.projection)*expr*self
 
 
 
