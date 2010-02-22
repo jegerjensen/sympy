@@ -241,14 +241,14 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t2 = SphericalTensor('t2',B,b)
         >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.get_uncoupled_form()
-        ASigma(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
+        Sum(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
 
         With three coupled tensors we get:
 
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
         >>> S.get_uncoupled_form()
-        ASigma(a, b)*ASigma(c, d)*t1(A, a)*t2(B, b)*t3(C, c)*(A, a, B, b|D, d)*(D, d, C, c|E, e)
+        Sum(a, b)*Sum(c, d)*t1(A, a)*t2(B, b)*t3(C, c)*(A, a, B, b|D, d)*(D, d, C, c|E, e)
 
         """
 
@@ -287,14 +287,14 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t2 = SphericalTensor('t2',B,b)
         >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.get_direct_product_ito_self()
-        ASigma(D, d)*(A, a, B, b|D, d)*T[t1(A, a)*t2(B, b)](D, d)
+        Sum(D, d)*(A, a, B, b|D, d)*T[t1(A, a)*t2(B, b)](D, d)
 
         With three coupled tensors we get:
 
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
         >>> S.get_direct_product_ito_self()
-        ASigma(D, d)*ASigma(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A, a)*t2(B, b)](D, d)*t3(C, c)](E, e)
+        Sum(D, d)*Sum(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A, a)*t2(B, b)](D, d)*t3(C, c)](E, e)
 
         """
 
@@ -344,7 +344,7 @@ class CompositeSphericalTensor(SphericalTensor):
         This method tells you how S2 can be expressed in terms of S1:
 
         >>> S1.obtain_coupling_order(S2)
-        ASigma(E, e)*ASigma(a, b)*ASigma(c, d)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A, a)*T23[t2(B, b)*t3(C, c)](E, e)](G, g)*Dij(F, G)*Dij(f, g)
+        Sum(E, e)*Sum(a, b)*Sum(c, d)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A, a)*T23[t2(B, b)*t3(C, c)](E, e)](G, g)*Dij(F, G)*Dij(f, g)
 
         Note how F==G and f==g is expressed with the Kronecker delta, Dij.
         """
@@ -424,9 +424,13 @@ class ASigma(Basic):
         >>> from sympy import symbols
         >>> a,b = symbols('ab')
         >>> ASigma(b,a)
-        ASigma(a, b)
+        Sum(a, b)
         """
         indices = sorted(indices)
         obj = Basic.__new__(cls,*indices)
         return obj
+
+    def _sympystr_(self, p, *args):
+        l = [p.doprint(o) for o in self.args]
+        return "Sum" + "(%s)"%", ".join(l)
 
