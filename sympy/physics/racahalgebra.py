@@ -152,6 +152,15 @@ class SphericalTensor(Basic):
         """
         return self
 
+    def get_direct_product(self):
+        """
+        Returns the direct product expressed by the composite tensor.
+        It is not meaningful for non-composite tensors, we return unity
+        to break the recursion.
+        """
+        return S.One
+
+
 class CompositeSphericalTensor(SphericalTensor):
     """
     Represents a composite spherical tensor(CST), i.e. an object that
@@ -209,27 +218,91 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t2 = SphericalTensor(B,b)
         >>> T = SphericalTensor(D,d,t1,t2)
         >>> T.get_uncoupled_form()
-        ClebschGordanCoefficient(A, a, B, b, D, d)*SphericalTensor(A, a)*SphericalTensor(B, b)
+        ASigma(a, b)*ClebschGordanCoefficient(A, a, B, b, D, d)*SphericalTensor(A, a)*SphericalTensor(B, b)
+
+        With three coupled tensors we get:
+
         >>> t3 = SphericalTensor(C,c)
         >>> S = SphericalTensor(E,e,T,t3)
         >>> S.get_uncoupled_form()
-        ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)*SphericalTensor(A, a)*SphericalTensor(B, b)*SphericalTensor(C, c)
+        ASigma(a, b)*ASigma(c, d)*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)*SphericalTensor(A, a)*SphericalTensor(B, b)*SphericalTensor(C, c)
 
         """
 
         t1 = self.tensor1
         t2 = self.tensor2
         if kw_args.get('deep',False):
-            return ClebschGordanCoefficient(
+
+            expr = (ClebschGordanCoefficient(
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
                     self.rank,self.projection) * t1 * t2
+                    )
         else:
-            return (
-                    ClebschGordanCoefficient(
+            expr = (ClebschGordanCoefficient(
                         t1.rank,t1.projection,
                         t2.rank,t2.projection,
                         self.rank,self.projection)
                     * t1.get_uncoupled_form(**kw_args)
                     * t2.get_uncoupled_form(**kw_args)
+                    )
+        return ASigma(t1.projection, t2.projection)*expr
+
+    def get_direct_product(self, **kw_args):
+        """
+        Returns the direct product of all tensors expressed with the composite
+        tensors.
+
+        >>> from sympy.physics.racahalgebra import SphericalTensor, CompositeSphericalTensor
+        >>> from sympy import symbols
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
+
+        >>> t1 = SphericalTensor(A,a)
+        >>> t2 = SphericalTensor(B,b)
+        >>> T = SphericalTensor(D,d,t1,t2)
+        >>> T.get_direct_product()
+        ASigma(D, d)*ClebschGordanCoefficient(A, a, B, b, D, d)*CompositeSphericalTensor(D, d, SphericalTensor(A, a), SphericalTensor(B, b))
+
+        """
+
+        t1 = self.tensor1
+        t2 = self.tensor2
+        max_j = t1.rank + t2.rank
+        min_j = abs(t1.rank - t2.rank)
+        sum_J = (self.rank, min_j, max_j)
+        sum_M = (self.projection, -self.rank, self.rank)
+        expr = (ClebschGordanCoefficient(
+                    t1.rank,t1.projection,
+                    t2.rank,t2.projection,
+                    self.rank,self.projection)
+                * t1.get_direct_product()
+                * t2.get_direct_product()
+                * self
                 )
+        return ASigma(self.rank, self.projection)*expr
+
+
+
+
+
+class ASigma(Basic):
+    """
+    Summation symbol.  This object is purely symbolic, and is just used to
+    display summation indices.
+
+    """
+    is_commutative=True
+
+    def __new__(cls, *indices):
+        """
+        >>> from sympy.physics.racahalgebra import ASigma
+        >>> from sympy import symbols
+        >>> a,b = symbols('ab')
+        >>> ASigma(b,a)
+        ASigma(a, b)
+        """
+        indices = sorted(indices)
+        obj = Basic.__new__(cls,*indices)
+        return obj
+
