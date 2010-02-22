@@ -9,9 +9,8 @@ from sympy import (
     Number, Matrix, zeros, Pow, I, S,Symbol, latex, cache
 )
 
-from sympy.utilities import deprecated, iff
-
 from sympy.core.cache import cacheit
+from sympy.functions import Dij
 
 
 __all__ = [
@@ -19,7 +18,6 @@ __all__ = [
         'ClebschGordanCoefficient',
         'SixJSymbol',
         'SphericalTensor',
-        'CompositeSphericalTensor',
         ]
 
 class ThreeJSymbol(Function):
@@ -139,6 +137,7 @@ class SphericalTensor(Basic):
     -k <= q <= k
 
     """
+    is_commutative=True
 
     def __new__(cls, symbol, rank, projection, tensor1=None, tensor2=None):
         """
@@ -148,8 +147,8 @@ class SphericalTensor(Basic):
         """
         if tensor1 and tensor2:
             return CompositeSphericalTensor(symbol, rank, projection, tensor1, tensor2)
-        obj = Basic.__new__(cls,symbol,rank,projection)
-        return obj
+        else:
+            return AtomicSphericalTensor(symbol, rank, projection)
 
     @property
     def rank(self):
@@ -162,33 +161,6 @@ class SphericalTensor(Basic):
     @property
     def symbol(self):
         return self.args[0]
-
-    def get_uncoupled_form(self):
-        """
-        Returns the uncoupled, direct product form of a composite tensor.
-        """
-        return self
-
-    def get_direct_product(self,**kw_args):
-        """
-        Returns the direct product expressed by the composite tensor.
-        It is not meaningful for non-composite tensors, we return unity
-        to break the recursion.
-        """
-        return S.One
-
-    def _sympystr_(self, *args):
-        """
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy import symbols
-        >>> a,b,c,d,e = symbols('abcde')
-        >>> A,B,C,D,E = symbols('ABCDE')
-
-        >>> SphericalTensor('t1',A,a)
-        t1(A, a)
-        """
-
-        return "%s(%s, %s)" % self.args
 
 
 class CompositeSphericalTensor(SphericalTensor):
@@ -221,6 +193,7 @@ class CompositeSphericalTensor(SphericalTensor):
         You may build up a composite tensor with any coupling scheme this way.
 
         """
+        symbol=sympify(symbol)
         obj = Basic.__new__(cls,symbol,rank,projection,tensor1,tensor2)
         return obj
 
@@ -232,33 +205,34 @@ class CompositeSphericalTensor(SphericalTensor):
     def tensor2(self):
         return self.args[4]
 
-    def _sympystr_(self, *args):
+    def _sympystr_(self, p, *args):
         """
-        >>> from sympy.physics.racahalgebra import SphericalTensor, CompositeSphericalTensor
+        >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
         >>> a,b,c,d,e = symbols('abcde')
         >>> A,B,C,D,E = symbols('ABCDE')
 
         >>> t1 = SphericalTensor('t1',A,a)
         >>> t2 = SphericalTensor('t2',B,b)
-        >>> CompositeSphericalTensor('T',C,c,t1,t2)
+        >>> SphericalTensor('T',C,c,t1,t2)
         T[t1(A, a)*t2(B, b)](C, c)
 
         """
 
         tensor_product = "[%s*%s]" %(self.tensor1, self.tensor2)
         rank_projection= "(%s, %s)" %(self.rank, self.projection)
+        symbol = p.doprint(self.symbol)
 
-        return self.symbol+tensor_product+rank_projection
+        return symbol+tensor_product+rank_projection
 
     def get_uncoupled_form(self, **kw_args):
         """
-        Returns the uncoupled, direct product form of a composite tensor.
+        Returns this composite tensor in terms of the direct product of constituent tensors.
 
         If the keyword deep=True is supplied, the uncoupling is applied also to the
         two tensors that make up the composite tensor.
 
-        >>> from sympy.physics.racahalgebra import SphericalTensor, CompositeSphericalTensor
+        >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
         >>> a,b,c,d,e = symbols('abcde')
         >>> A,B,C,D,E = symbols('ABCDE')
@@ -267,14 +241,14 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t2 = SphericalTensor('t2',B,b)
         >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.get_uncoupled_form()
-        ASigma(a, b)*(A, a, B, b|D, d)*t1(A, a)*t2(B, b)
+        ASigma(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
 
         With three coupled tensors we get:
 
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
         >>> S.get_uncoupled_form()
-        ASigma(a, b)*ASigma(c, d)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*t1(A, a)*t2(B, b)*t3(C, c)
+        ASigma(a, b)*ASigma(c, d)*t1(A, a)*t2(B, b)*t3(C, c)*(A, a, B, b|D, d)*(D, d, C, c|E, e)
 
         """
 
@@ -297,12 +271,14 @@ class CompositeSphericalTensor(SphericalTensor):
                     )
         return ASigma(t1.projection, t2.projection)*expr
 
-    def get_direct_product(self, **kw_args):
+    def get_direct_product_ito_self(self, **kw_args):
         """
-        Returns the direct product of all constituent tensors expressed with
-        the composite tensors.
+        Returns the direct product of all constituent tensors in terms of (=ito) self.
 
-        >>> from sympy.physics.racahalgebra import SphericalTensor, CompositeSphericalTensor
+        The direct product can be expressed as a sum over composite tensors.
+        Note: the returned expression of this method is *not* equal to self.
+
+        >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
         >>> a,b,c,d,e = symbols('abcde')
         >>> A,B,C,D,E = symbols('ABCDE')
@@ -310,14 +286,14 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t1 = SphericalTensor('t1',A,a)
         >>> t2 = SphericalTensor('t2',B,b)
         >>> T = SphericalTensor('T',D,d,t1,t2)
-        >>> T.get_direct_product()
+        >>> T.get_direct_product_ito_self()
         ASigma(D, d)*(A, a, B, b|D, d)*T[t1(A, a)*t2(B, b)](D, d)
 
         With three coupled tensors we get:
 
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
-        >>> S.get_direct_product()
+        >>> S.get_direct_product_ito_self()
         ASigma(D, d)*ASigma(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A, a)*t2(B, b)](D, d)*t3(C, c)](E, e)
 
         """
@@ -332,8 +308,8 @@ class CompositeSphericalTensor(SphericalTensor):
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
                     self.rank,self.projection)
-                * t1.get_direct_product(nested=True)
-                * t2.get_direct_product(nested=True)
+                * t1.get_direct_product_ito_self(nested=True)
+                * t2.get_direct_product_ito_self(nested=True)
                 )
 
         if kw_args.get('nested'):
@@ -342,6 +318,96 @@ class CompositeSphericalTensor(SphericalTensor):
             return ASigma(self.rank, self.projection)*expr*self
 
 
+
+    def obtain_coupling_order(self,new_coupling):
+        """
+        Returns an expression that states how this Composite spherical tensor
+        can be rewritten to the supplied coupling order.
+
+        - ``new_coupling``: A composite spherical tensor with the desired
+          coupling order.  All non-composite tensors in ``self`` must be present in
+          ``new_coupling``.
+
+        >>> from sympy.physics.racahalgebra import SphericalTensor
+        >>> from sympy import symbols
+        >>> a,b,c,d,e,f,g,h = symbols('abcdefgh')
+        >>> A,B,C,D,E,F,G,H = symbols('ABCDEFGH')
+
+        >>> t1 = SphericalTensor('t1',A,a)
+        >>> t2 = SphericalTensor('t2',B,b)
+        >>> t3 = SphericalTensor('t3',C,c)
+        >>> T12 = SphericalTensor('T12',D,d,t1,t2)
+        >>> T23 = SphericalTensor('T23',E,e,t2,t3)
+        >>> S1= SphericalTensor('S1',F,f,T12,t3)
+        >>> S2= SphericalTensor('S2',G,g,t1,T23)
+
+        This method tells you how S2 can be expressed in terms of S1:
+
+        >>> S1.obtain_coupling_order(S2)
+        ASigma(E, e)*ASigma(a, b)*ASigma(c, d)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A, a)*T23[t2(B, b)*t3(C, c)](E, e)](G, g)*Dij(F, G)*Dij(f, g)
+
+        Note how F==G and f==g is expressed with the Kronecker delta, Dij.
+        """
+        my_tensors = self.atoms(AtomicSphericalTensor)
+        assert my_tensors == new_coupling.atoms(AtomicSphericalTensor)
+
+        # Use direct product as a link between coupling schemes
+        direct_product = Mul(*my_tensors)
+        self_as_direct_product = self.get_uncoupled_form()
+        direct_product_ito_other = new_coupling.get_direct_product_ito_self()
+
+        # In direct product there is a sum over other.rank and
+        # other.projection, but for this transformation the coefficient
+        # <(12)3:J'M'|1(23);J M> implies that J'==J and M'==M.
+        sumJM = ASigma(new_coupling.rank,new_coupling.projection)
+        dij = (Dij(self.rank,new_coupling.rank)*
+                Dij(self.projection,new_coupling.projection))
+        direct_product_ito_other = direct_product_ito_other.subs(sumJM, dij)
+
+        return self_as_direct_product.subs(direct_product,direct_product_ito_other)
+
+
+class AtomicSphericalTensor(SphericalTensor):
+    """
+    Represents a spherical tensor(ST) that is not constructed from other STs
+    """
+
+    def __new__(cls, symbol, rank, projection):
+        """
+        Creates a new spherical tensor (ST) with the given rank and
+        projection. If two spherical tensors are supplied as tensor1 and
+        tensor2, we return a CompositeSphericalTensor instead.
+        """
+        symbol=sympify(symbol)
+        obj = Basic.__new__(cls,symbol,rank,projection)
+        return obj
+
+    def get_uncoupled_form(self):
+        """
+        Returns the uncoupled, direct product form of a composite tensor.
+        """
+        return self
+
+    def get_direct_product_ito_self(self,**kw_args):
+        """
+        Returns the direct product expressed by the composite tensor.
+        It is not meaningful for non-composite tensors, we return unity
+        to break the recursion.
+        """
+        return S.One
+
+    def _sympystr_(self, *args):
+        """
+        >>> from sympy.physics.racahalgebra import SphericalTensor
+        >>> from sympy import symbols
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
+
+        >>> SphericalTensor('t1',A,a)
+        t1(A, a)
+        """
+
+        return "%s(%s, %s)" % self.args
 
 
 class ASigma(Basic):
