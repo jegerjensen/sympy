@@ -319,14 +319,14 @@ class CompositeSphericalTensor(SphericalTensor):
 
 
 
-    def obtain_coupling_order(self,new_coupling):
+    def get_ito_other_coupling_order(self,other_coupling):
         """
         Returns an expression that states how this Composite spherical tensor
-        can be rewritten to the supplied coupling order.
+        can be written in terms of the supplied composite spherical tensor.
 
-        - ``new_coupling``: A composite spherical tensor with the desired
+        - ``other_coupling``: A composite spherical tensor with the desired
           coupling order.  All non-composite tensors in ``self`` must be present in
-          ``new_coupling``.
+          ``other_coupling``.
 
         >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
@@ -343,27 +343,27 @@ class CompositeSphericalTensor(SphericalTensor):
 
         This method tells you how S2 can be expressed in terms of S1:
 
-        >>> S1.obtain_coupling_order(S2)
+        >>> S1.get_ito_other_coupling_order(S2)
         Sum(E, e)*Sum(a, b)*Sum(c, d)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A, a)*T23[t2(B, b)*t3(C, c)](E, e)](G, g)*Dij(F, G)*Dij(f, g)
 
         Note how F==G and f==g is expressed with the Kronecker delta, Dij.
         """
         my_tensors = self.atoms(AtomicSphericalTensor)
-        assert my_tensors == new_coupling.atoms(AtomicSphericalTensor)
+        assert my_tensors == other_coupling.atoms(AtomicSphericalTensor)
 
         # Use direct product as a link between coupling schemes
         direct_product = Mul(*my_tensors)
         self_as_direct_product = self.get_uncoupled_form()
-        direct_product_ito_other = new_coupling.get_direct_product_ito_self()
+        direct_product_ito_other = other_coupling.get_direct_product_ito_self()
 
         # In the direct product there is a sum over other.rank and
         # other.projection, but for a transformation of coupling scheme the
         # coefficient <(..).:J'M'|.(..);J M> implies that J'==J and M'==M.
         # We solve this by replacing the superfluous summation symbol with
         # Kronecker deltas.
-        sumJM = ASigma(new_coupling.rank,new_coupling.projection)
-        dij = (Dij(self.rank,new_coupling.rank)*
-                Dij(self.projection,new_coupling.projection))
+        sumJM = ASigma(other_coupling.rank,other_coupling.projection)
+        dij = (Dij(self.rank,other_coupling.rank)*
+                Dij(self.projection,other_coupling.projection))
         direct_product_ito_other = direct_product_ito_other.subs(sumJM, dij)
 
         return self_as_direct_product.subs(direct_product,direct_product_ito_other)
