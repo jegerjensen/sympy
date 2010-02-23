@@ -45,6 +45,13 @@ class ThreeJSymbol(Function):
         >>> A,B,C = symbols('ABC')
         >>> ThreeJSymbol(C, A, B, c, a, b)
         ThreeJSymbol(A, B, C, a, b, c)
+        >>> ThreeJSymbol(A, C, B, a, c, b)
+        (-1)**(A + B + C)*ThreeJSymbol(A, B, C, a, b, c)
+
+        If the phase is applied twice, we take care to remove it immediately:
+
+        >>> ThreeJSymbol(A, C, B, -a, c, b)
+        ThreeJSymbol(A, B, C, a, -b, -c)
         """
 
         # We search for even permuations first, to avoid phases if possible
@@ -53,23 +60,35 @@ class ThreeJSymbol(Function):
 
         if j1 > j2:
             phase=pow(S.NegativeOne,j1+j2+J)
-            return phase*ThreeJSymbol(j2,j1,J,m2,m1,M)
+            expr = ThreeJSymbol(j2,j1,J,m2,m1,M)
+            return cls._determine_phase(phase, expr)
 
         if j2 > J:
             phase=pow(S.NegativeOne,j1+j2+J)
-            return phase*ThreeJSymbol(j1,J,j2,m1,M,m2)
+            expr = ThreeJSymbol(j1,J,j2,m1,M,m2)
+            return cls._determine_phase(phase, expr)
+
+        if m1 is S.Zero:
+            coeff, term = m2.as_coeff_terms()
+            if coeff is S.NegativeOne:
+                phase=pow(S.NegativeOne,j1+j2+J)
+                expr = ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
+                return cls._determine_phase(phase, expr)
 
         coeff, term = m1.as_coeff_terms()
         if coeff is S.NegativeOne:
             phase=pow(S.NegativeOne,j1+j2+J)
-            return phase*ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
-        elif coeff is S.Zero:
-            coeff, term = m2.as_coeff_terms()
-            if coeff is S.NegativeOne:
-                phase=pow(S.NegativeOne,j1+j2+J)
-                return phase*ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
+            expr = ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
+            return cls._determine_phase(phase, expr)
+
+
+    @classmethod
+    def _determine_phase(cls, phase, tjs):
+        # The phase is known to be integer, so it cancels if it appears twice.
+        if tjs.has(phase):
+            return powsimp(pow(S.NegativeOne,-phase.exp)*tjs)
         else:
-            return
+            return phase*tjs
 
 
 class SixJSymbol(Function):
