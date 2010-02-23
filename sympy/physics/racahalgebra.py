@@ -11,6 +11,8 @@ from sympy import (
 
 from sympy.core.cache import cacheit
 from sympy.functions import Dij
+from sympy.assumptions import register_handler, remove_handler, Q, ask, Assume, refine
+from sympy.assumptions.handlers import AskHandler
 
 
 __all__ = [
@@ -19,6 +21,88 @@ __all__ = [
         'SixJSymbol',
         'SphericalTensor',
         ]
+
+def initialize_racah():
+
+    class AskHalfIntegerHandler(AskHandler):
+        pass
+
+    class ExtendedIntegerHandler(AskHandler):
+        """
+        Here we determine if Integer taking into account half-integer symbols.
+
+        Return
+            - True if expression is Integer
+            - False if expression is Half integer
+            - None if inconclusive
+        """
+
+        @staticmethod
+        def Mul(expr, assumptions):
+            """
+            FIXME: We only consider products of the form
+            'number*half_integer'.  For other constellations we
+            are inconclusive.
+
+            odd  * half_integer     -> ~integer
+            even * half_integer     -> integer
+            """
+
+            coeff, factor = expr.as_coeff_terms()
+            if len(factor) == 1:
+                factor = factor[0]
+                if ask(factor,'half_integer',assumptions):
+                    if ask(coeff, Q.odd, assumptions):
+                        return False
+                    if ask(coeff, Q.even, assumptions):
+                        return True
+
+    class ExtendedEvenHandler(AskHandler):
+        """
+        Here we determine even/odd taking into account half-integer symbols.
+
+        Return
+            - True if expression is even
+            - False if expression is odd
+            - None otherwise
+
+        (The Oddhandler is set up to return "not even".)
+        """
+
+        @staticmethod
+        def Mul(expr, assumptions):
+            """
+            FIXME: We only consider products of the form
+            'number*half_integer'.  For other constellations we
+            are inconclusive.
+
+            odd  * 2 * half_integer     -> odd
+            even * 2 * half_integer     -> even
+            """
+
+            coeff, factor = expr.as_coeff_terms()
+            if len(factor) == 1:
+                factor = factor[0]
+                if ask(factor,'half_integer',assumptions):
+                    if ask(coeff/2, Q.odd, assumptions):
+                        return False
+                    if ask(coeff/2, Q.even, assumptions):
+                        return True
+
+
+    register_handler('half_integer',AskHalfIntegerHandler)
+    register_handler(Q.even, ExtendedEvenHandler)
+    register_handler(Q.integer, ExtendedIntegerHandler)
+
+    x = Symbol('x')
+    assert ask(x,'half_integer', Assume(x,'half_integer')) == True
+    assert ask(x,'half_integer', Assume(x,'half_integer', False)) == False
+    assert ask(2*x,Q.even, Assume(x,'half_integer')) == False
+    assert ask(2*x,Q.odd, Assume(x,'half_integer')) == True
+
+
+
+initialize_racah()
 
 class ThreeJSymbol(Function):
     """
