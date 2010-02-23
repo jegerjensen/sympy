@@ -6,7 +6,7 @@ Module for working with spherical tensors.
 
 from sympy import (
     Basic, Function, var, Mul, sympify, Integer, Add, sqrt,
-    Number, Matrix, zeros, Pow, I, S,Symbol, latex, cache
+    Number, Matrix, zeros, Pow, I, S,Symbol, latex, cache, powsimp
 )
 
 from sympy.core.cache import cacheit
@@ -181,6 +181,80 @@ class SixJSymbol(Function):
     """
     nargs = 6
     is_commutative=True
+
+    @classmethod
+    def eval(cls, j1, j2, J12, j3, J, J23):
+        """
+        The 6j-symbol will be brought to canoncial form by its
+        many symmetries.
+
+        We define the canonical form as the form where an expansion in term
+        of 3j-symbols is already on canonical form.
+
+        FIXME: what else?
+
+
+        >>> from sympy.physics.racahalgebra import SixJSymbol
+        >>> from sympy import symbols
+        >>> a,b,c,d,e,f = symbols('abcdef')
+        >>> A,B,C,D,E,F = symbols('ABCDEF')
+        >>> sjs = SixJSymbol(A, B, E, D, C, F); sjs
+        SixJSymbol(A, B, E, D, C, F)
+
+        The 6j-symbol can be written in terms of 3j-symbols.  That expansion
+        will quickly become rather messy because many phases appear when
+        the 3j-symbols are written to canonical form
+
+        >>> sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f))
+        (-1)**(B + D + E + a + b + c + d + e + f + 2*A + 2*C + 2*F)*ThreeJSymbol(A, B, E, a, b, e)*ThreeJSymbol(A, C, F, a, -c, f)*ThreeJSymbol(B, D, F, b, d, -f)*ThreeJSymbol(C, D, E, c, -d, e)
+
+        In order to simplify the phase upfront, we introduce global
+        assumptions about the angular momenta in the expressions.  For
+        a fermionic system, we will have A,a,B,b,D,d as half-integers.
+        Combinations of those angular momenta, denoted E,e,F and f, are
+        integers, while the total C,c is again half integer.
+        This information can be entered as:
+
+        >>> from sympy import global_assumptions, Q, Assume
+        >>> global_assumptions.add( Assume(a, 'half_integer') )
+        >>> global_assumptions.add( Assume(b, 'half_integer') )
+        >>> global_assumptions.add( Assume(d, 'half_integer') )
+        >>> global_assumptions.add( Assume(A, 'half_integer') )
+        >>> global_assumptions.add( Assume(B, 'half_integer') )
+        >>> global_assumptions.add( Assume(D, 'half_integer') )
+        >>> global_assumptions.add( Assume(e, Q.integer) )
+        >>> global_assumptions.add( Assume(f, Q.integer) )
+        >>> global_assumptions.add( Assume(E, Q.integer) )
+        >>> global_assumptions.add( Assume(F, Q.integer) )
+        >>> global_assumptions.add( Assume(C, 'half_integer') )
+        >>> global_assumptions.add( Assume(c, 'half_integer') )
+
+        >>> sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f))
+        (-1)**(B + D + E + a + b + c + d + e + f)*ThreeJSymbol(A, B, E, a, b, e)*ThreeJSymbol(A, C, F, a, -c, f)*ThreeJSymbol(B, D, F, b, d, -f)*ThreeJSymbol(C, D, E, c, -d, e)
+
+
+        """
+        pass
+
+    def get_ito_ThreeJSymbols(self,projection_labels):
+        """
+        Returns the 6j-symbol expressed with 4 3j-symbols.
+
+        """
+
+        (j1, j2, J12, j3, J, J23) = self.args
+        (m1, m2, M12, m3, M, M23) = projection_labels
+
+        phase = pow(S.NegativeOne,j1+m1+j2+m2+j3+m3+J12+M12+J23+M23+J+M)
+        expr = (ThreeJSymbol(j1,j2,J12,m1,m2,M12)*
+                ThreeJSymbol(j1,J,J23,-m1,M,-M23)*
+                ThreeJSymbol(j3,j2,J23,-m3,-m2,M23)*
+                ThreeJSymbol(j3,J,J12,m3,-M,-M12))
+
+        expr =  powsimp(phase*expr)
+        return refine(expr)
+
+
 
 class ClebschGordanCoefficient(Function):
     """
