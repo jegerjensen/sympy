@@ -1008,6 +1008,7 @@ def test_key_extensibility():
     register_handler('my_key', MyAskHandler)
     assert ask(x, 'my_key') == True
     assert ask(x+1, 'my_key') == None
+    assert ask(x, 'my_key', Assume(x,'my_key')) == True
     remove_handler('my_key', MyAskHandler)
 
 def test_type_extensibility():
