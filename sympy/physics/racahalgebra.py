@@ -208,28 +208,65 @@ class SixJSymbol(Function):
     @classmethod
     def eval(cls, j1, j2, J12, j3, J, J23):
         """
-        The 6j-symbol will be brought to canoncial form by its
-        many symmetries.
+        The 6j-symbol will be brought to canoncial form by its symmetries.
+        (permute any two columns, or permute rows in any two columns.)
 
-        We define the canonical form as the form where an expansion in term
-        of 3j-symbols is already on canonical form.
+        We define the canonical form as the 6j-symbol that has
 
-        FIXME: what else?
+            1)  The largest element in position J
+            2a) The smallest element in position j1
+                                or
+            2b)  if j2 is smallest, we want the next smallest in position j1
 
+
+        Position J is often used for the total angular momentum, when a
+        6j-symbol is used to change coupling order of 3 angular momenta,
+        (Edmonds, Brink & Satchler).  This convention can be
+        enforced  by choosing a symbol for the total angular momentum that
+        is 'large' to the < operator, e.g. Z.
 
         >>> from sympy.physics.racahalgebra import SixJSymbol
         >>> from sympy import symbols
         >>> a,b,c,d,e,f = symbols('abcdef')
         >>> A,B,C,D,E,F = symbols('ABCDEF')
         >>> sjs = SixJSymbol(A, B, E, D, C, F); sjs
-        SixJSymbol(A, B, E, D, C, F)
+        SixJSymbol(A, E, B, D, F, C)
 
-        The 6j-symbol can be written in terms of 3j-symbols.  That expansion
-        will quickly become rather messy because many phases appear when
-        the 3j-symbols are written to canonical form
 
-        >>> sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f))
-        (-1)**(B + D + E + a + b + c + d + e + f + 2*A + 2*C + 2*F)*ThreeJSymbol(A, B, E, a, b, e)*ThreeJSymbol(A, C, F, a, -c, f)*ThreeJSymbol(B, D, F, b, d, -f)*ThreeJSymbol(C, D, E, c, -d, e)
+
+        """
+        args = [j1, j2, J12, j3, J, J23]
+        maxind = args.index(max(args))
+
+        # get maxJ in correct column
+        if maxind != 4 and maxind != 1:
+            maxcol = maxind %3
+            return SixJSymbol(*SixJSymbol._swap_col(1,maxcol,args))
+
+        minind = args.index(min((j1, J12, j3, J23)))
+
+        # get minJ in correct column
+        if minind != 0 and minind != 3:
+            return SixJSymbol(*SixJSymbol._swap_col(0,2,args))
+
+        # get both in correct row
+        elif minind == 3 and maxind == 1:
+            return SixJSymbol(*SixJSymbol._swap_row(0,1,args))
+
+        # move j1, keep J
+        elif minind == 3:
+            return SixJSymbol(*SixJSymbol._swap_row(0,2,args))
+
+        # keep j1, move J
+        elif maxind == 1:
+            return SixJSymbol(*SixJSymbol._swap_row(1,2,args))
+
+
+
+
+    def get_ito_ThreeJSymbols(self,projection_labels, **kw_args):
+        """
+        Returns the 6j-symbol expressed with 4 3j-symbols.
 
         In order to simplify the phase upfront, we introduce global
         assumptions about the angular momenta in the expressions.  For
@@ -237,6 +274,11 @@ class SixJSymbol(Function):
         Combinations of those angular momenta, denoted E,e,F and f, are
         integers, while the total C,c is again half integer.
         This information can be entered as:
+
+        >>> from sympy.physics.racahalgebra import SixJSymbol
+        >>> from sympy import symbols
+        >>> a,b,c,d,e,f = symbols('abcdef')
+        >>> A,B,C,D,E,F = symbols('ABCDEF')
 
         >>> from sympy import global_assumptions, Q, Assume
         >>> global_assumptions.add( Assume(a, 'half_integer') )
@@ -252,17 +294,9 @@ class SixJSymbol(Function):
         >>> global_assumptions.add( Assume(C, 'half_integer') )
         >>> global_assumptions.add( Assume(c, 'half_integer') )
 
+        >>> sjs = SixJSymbol(A, B, E, D, C, F);
         >>> sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f))
-        (-1)**(B + D + E + a + b + c + d + e + f)*ThreeJSymbol(A, B, E, a, b, e)*ThreeJSymbol(A, C, F, a, -c, f)*ThreeJSymbol(B, D, F, b, d, -f)*ThreeJSymbol(C, D, E, c, -d, e)
-
-
-        """
-        pass
-
-    def get_ito_ThreeJSymbols(self,projection_labels, **kw_args):
-        """
-        Returns the 6j-symbol expressed with 4 3j-symbols.
-
+        (-1)**(E + F - a - c - e)*Sum(e, f)*Sum(a, b, d)*ThreeJSymbol(A, B, E, a, -b, -e)*ThreeJSymbol(A, C, F, a, -c, f)*ThreeJSymbol(B, D, F, b, d, f)*ThreeJSymbol(C, D, E, c, d, -e)
         """
 
         (j1, j2, J12, j3, J, J23) = self.args
@@ -307,6 +341,28 @@ class SixJSymbol(Function):
         return summations*expr
 
 
+
+    @classmethod
+    def _swap_col(cls,i,j,arg_list):
+        rowlen = 3
+        new_args = list(arg_list)
+        new_args[i] = arg_list[j]
+        new_args[j] = arg_list[i]
+        new_args[i+rowlen] = arg_list[j+rowlen]
+        new_args[j+rowlen] = arg_list[i+rowlen]
+        return new_args
+
+
+
+    @classmethod
+    def _swap_row(cls,i,j,arg_list):
+        rowlen = 3
+        new_args = list(arg_list)
+        new_args[i] = arg_list[i+rowlen]
+        new_args[j] = arg_list[j+rowlen]
+        new_args[i+rowlen] = arg_list[i]
+        new_args[j+rowlen] = arg_list[j]
+        return new_args
 
 
 class ClebschGordanCoefficient(Function):
