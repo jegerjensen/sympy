@@ -174,6 +174,29 @@ class ThreeJSymbol(Function):
         else:
             return phase*tjs
 
+    @property
+    def projections(self):
+        """
+        The projection values must sum up to zero
+        """
+        return self.args[3:]
+
+    @property
+    def magnitudes(self):
+        """
+        The magnitude quantum numbers of angular momentum must obey a triangular inequality.
+        """
+        return self.args[:-3]
+
+    def get_as_ClebschGordanCoefficient(self):
+        """
+        Returns the equivalent C-G
+        """
+        j1,j2,J,m1,m2,M = self.args
+        factor = (-1)**(j1-j2-M)*Pow(sqrt(2*J+1),-1)
+        return factor * ClebschGordanCoefficient(j1,m1,j2,m2,J,-M)
+
+
 
 class SixJSymbol(Function):
     """
@@ -236,7 +259,7 @@ class SixJSymbol(Function):
         """
         pass
 
-    def get_ito_ThreeJSymbols(self,projection_labels):
+    def get_ito_ThreeJSymbols(self,projection_labels, **kw_args):
         """
         Returns the 6j-symbol expressed with 4 3j-symbols.
 
@@ -245,14 +268,44 @@ class SixJSymbol(Function):
         (j1, j2, J12, j3, J, J23) = self.args
         (m1, m2, M12, m3, M, M23) = projection_labels
 
-        phase = pow(S.NegativeOne,j1+m1+j2+m2+j3+m3+J12+M12+J23+M23+J+M)
-        expr = (ThreeJSymbol(j1,j2,J12,m1,m2,M12)*
-                ThreeJSymbol(j1,J,J23,-m1,M,-M23)*
-                ThreeJSymbol(j3,j2,J23,-m3,-m2,M23)*
-                ThreeJSymbol(j3,J,J12,m3,-M,-M12))
+        definition = kw_args.get('definition') or 'brink_satchler'
 
-        expr =  powsimp(phase*expr)
-        return refine(expr)
+        if definition == 'edmonds':
+            # phase = pow(S.NegativeOne,j1+m1+j2+m2+j3+m3+J12+M12+J23+M23+J+M)
+            phase = pow(S.NegativeOne,j1+m1+j2+j3+J12+M12+J23+J+M)
+            # phase = pow(S.NegativeOne,j1+j2+j3+m3+J12+J23+M23+J+M)
+            expr = (ThreeJSymbol(j1,j2,J12,m1,m2,M12)*
+                    ThreeJSymbol(j1,J,J23,-m1,M,-M23)*
+                    ThreeJSymbol(j3,j2,J23,-m3,-m2,M23)*
+                    ThreeJSymbol(j3,J,J12,m3,-M,-M12))
+
+
+
+        elif definition == 'brink_satchler':
+            phase = pow(S.NegativeOne,j1+J12+J-m1-M12-M)
+            expr = ( ThreeJSymbol(j1,J23,J, m1,M23,-M)*
+                    ThreeJSymbol(J,j3,J12,M, m3,-M12)*
+                    ThreeJSymbol(J12,j2,j1,M12,m2,-m1)*
+                    ThreeJSymbol(j2,j3,J23,m2,m3,M23))
+
+        elif definition == 'cgc':
+            phase= Pow(S.NegativeOne, j1+j2+j3+J)
+            hats = Pow(sqrt(2*J12+1)*sqrt(2*J23+1)*(2*J+1), -1)
+            cgc_list = (ClebschGordanCoefficient(j1,m1,j2,m2,J12,M12),
+                    ClebschGordanCoefficient(J12,M12,j3,m3,J,M),
+                    ClebschGordanCoefficient(j2,m2,j3,m3,J23,M23),
+                    ClebschGordanCoefficient(j1,m1,J23,M23,J,M))
+            tjs_list = [ cgc.get_as_ThreeJSymbol() for cgc in cgc_list ]
+            expr = phase*hats*Mul(*tjs_list)
+
+        expr =  refine(powsimp(phase*expr))
+
+        summations = ASigma(m1,m2,m3)*ASigma(M12,M23)
+
+
+
+        return summations*expr
+
 
 
 
@@ -260,18 +313,20 @@ class ClebschGordanCoefficient(Function):
     """
     Class to represent a Clebsch-Gordan coefficient.
 
-    This class is just a convenience wrapper for ThreeJSymbol.  When objects of
-    type ClebschGordanCoefficient are evaluated with .doit(), they are
-    immediately rewritten to ThreeJSymbol.
+    This class is mostly a convenience wrapper for ThreeJSymbol.  In contrast
+    to objects of type ThreeJSymbol, the C-G coeffs are not rewritten to
+    canonical form upon creation.  This may be convenient in the sense that the
+    objects on screen correspond to the input you provided.  For internal use,
+    all C-G coefficients are rewritten as tjs before calculations.
 
     >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient,ThreeJSymbol
     >>> from sympy import symbols
-    >>> a,b,c,d = symbols('abcd')
-    >>> A,B,C,D = symbols('ABCD')
+    >>> a,b,c = symbols('abc')
+    >>> A,B,C = symbols('ABC')
 
     >>> ClebschGordanCoefficient(A, a, B, b, C, c)
     (A, a, B, b|C, c)
-    >>> ClebschGordanCoefficient(A, a, B, b, C, c).doit()
+    >>> ClebschGordanCoefficient(A, a, B, b, C, c).get_as_ThreeJSymbol()
     (-1)**(A + c - B)*(1 + 2*C)**(1/2)*ThreeJSymbol(A, B, C, a, b, -c)
     """
     nargs = 6
@@ -281,14 +336,13 @@ class ClebschGordanCoefficient(Function):
     # def eval(cls, j1, m1, j2, m2, J, M):
         # pass
 
-    def doit(self,**hints):
+    def get_as_ThreeJSymbol(self):
         """
-        Rewrites to a 3j-symbol, which is then evaluated.
+        Rewrites to a 3j-symbol on canonical form
         """
-        if not hints.get('clebsh_gordan'):
-            j1, m1, j2, m2, J, M = self.args
-            return (pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
-                    *ThreeJSymbol(j1, j2, J, m1, m2, -M).doit(**hints))
+        j1, m1, j2, m2, J, M = self.args
+        return (Pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
+                *ThreeJSymbol(j1, j2, J, m1, m2, -M))
 
     def _sympystr_(self, *args):
         """
@@ -612,4 +666,18 @@ class ASigma(Basic):
     def _sympystr_(self, p, *args):
         l = [p.doprint(o) for o in self.args]
         return "Sum" + "(%s)"%", ".join(l)
+
+def convert_tjs2cgc(expr):
+    subslist = []
+    threejs = expr.atoms(ThreeJSymbol)
+    for tjs in threejs:
+        subslist.append((tjs,tjs.get_as_ClebschGordanCoefficient()))
+    return expr.subs(subslist)
+
+def convert_cgc2tjs(expr):
+    subslist = []
+    cgcoeffs= expr.atoms(ClebschGordanCoefficient)
+    for cgc in cgcoeffs:
+        subslist.append((cgc,cgc.get_as_ThreeJSymbol()))
+    return expr.subs(subslist)
 
