@@ -22,6 +22,9 @@ __all__ = [
         'SphericalTensor',
         ]
 
+class ThreeJSymbolsNotCompatibleWithSixJSymbol(Exception):
+    pass
+
 def initialize_racah():
 
     class AskHalfIntegerHandler(AskHandler):
@@ -784,6 +787,104 @@ class ASigma(Basic):
     def _sympystr_(self, p, *args):
         l = [p.doprint(o) for o in self.args]
         return "Sum" + "(%s)"%", ".join(l)
+
+def refine_tjs2sjs(expr):
+    """
+    Tries to rewrite four 3j-symbols to a 6j-symbol.
+    """
+
+
+
+    subsititute = False
+    for threejs in _iter_tjs_permutations(expr):
+
+        sjs = _identify_SixJSymbol(threejs)
+        # expand 6j-symbol i.t.o. 3j-symbols and try to match with original
+
+
+    return sjs
+
+    if subsititute:
+        return expr.subs(subsititute)
+    return expr
+
+def _iter_tjs_permutations(expr):
+    """
+    Iterates over possible candidates for  4*tjs -> sjs
+
+    FIXME!!  Must check:
+        - that there are 4 tjs containing only 6 J values
+        - that the selected 4 tjs are independent of any remaining tjs
+        - that there are summation symbols over the involved projections.
+    """
+    threejs = expr.atoms(ThreeJSymbol)
+    if len(threejs)<4: return None
+    return [threejs] #FIXME
+
+def _identify_SixJSymbol(threejs):
+    """
+    Identify and construct the 6j-symbol available for the 3j-symbols.
+
+    ``threejs`` is an iterable containing 4 objects of type ThreeJSymbol.
+    """
+
+    def _find_connections(J, threejs):
+        conn = set([])
+        for tjs in threejs:
+            if J in tjs.magnitudes:
+                conn.update(tjs.magnitudes)
+        return conn
+
+    def _next_to_min(set1):
+        min_el = min(set1)
+        set1.remove(min_el)
+        result = min(set1)
+        set1.add(min_el)
+        return result
+
+    keys_J = set([])
+    connections = dict([])
+    for tjs in threejs:
+        keys_J.update(tjs.magnitudes)
+
+    # j1 and J are given by canonical form of SixJSymbol
+    totJ  = maxJ = max(keys_J)
+    j1 = minJ = min(keys_J)
+    for j in maxJ, minJ:
+        connections[j] = _find_connections(j, threejs)
+
+    if not maxJ in connections[minJ]:
+        # this correspond to having minJ and maxJ in the same column
+        # we must use the next to minimal J as minJ in order to determine the 6j
+
+        del connections[minJ]
+        j1 = minJ = _next_to_min(keys_J)
+        connections[minJ] = _find_connections(minJ, threejs)
+
+        # check that sjs is actually possible
+        if not maxJ in connections[minJ]:
+            raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+
+    # Two elements in a column of the sjs never appear in the same 3j-symbol
+    j3 = keys_J - connections[  j1]; j3 = j3.pop()
+    j2 = keys_J - connections[totJ]; j2 = j2.pop()
+
+    # J12 is always in a 3j-symbol together with j1 and j2.  J23 ditto.
+    J12, J23 = None, None
+    for tjs in threejs:
+        magnitudes = tjs.magnitudes
+        if j1 in magnitudes and j2 in magnitudes:
+            if J12 is not None:
+                raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+            J12 = [ el for el in magnitudes if (el != j1 and el != j2)]
+            J12 = J12[0]
+        elif j2 in magnitudes and j3 in magnitudes:
+            if J23 is not None:
+                raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+            J23 = [ el for el in magnitudes if (el != j2 and el != j3)]
+            J23 = J23[0]
+
+    return  SixJSymbol(j1,j2,J12,j3,totJ,J23)
 
 def convert_tjs2cgc(expr):
     subslist = []
