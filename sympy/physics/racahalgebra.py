@@ -188,6 +188,68 @@ class ThreeJSymbol(Function):
         """
         return self.args[:-3]
 
+    def get_magnitude_projection_dict(self):
+        """
+        Returns a dict with magnitudes and projections stored as key, value pairs.
+        """
+        result = dict([])
+        for i in range(3):
+            J = self.magnitudes[i]
+            M = self.projections[i]
+            result[J] = M
+        return result
+
+
+    def get_projection(self,J):
+        """
+        Returns the projection associated with the angular momentum magnitude J.
+
+        >>> from sympy.physics.racahalgebra import ThreeJSymbol
+        >>> from sympy import symbols
+        >>> a,b,c = symbols('abc')
+        >>> A,B,C = symbols('ABC')
+        >>> ThreeJSymbol(A, B, C, a, b, 2*c).get_projection(C)
+        2*c
+        >>> ThreeJSymbol(A, B, C, a, b, 1+A-c).get_projection(C)
+        1 + A - c
+        >>> ThreeJSymbol(A, B, C, a, b, -c).get_projection(C)
+        -c
+        """
+        args = self.args
+        for i in range(3):
+            if J == args[i]:
+                return args[i+3]
+
+    def get_projection_symbol(self,J):
+        """
+        Returns the symbol associated with the angular momentum magnitude J.
+
+        Note: the symbol is returned without sign or coefficient, and for more
+        complicated expressions we return None.  This is in contrast to
+        .get_projection().
+
+        >>> from sympy.physics.racahalgebra import ThreeJSymbol
+        >>> from sympy import symbols
+        >>> a,b,c = symbols('abc')
+        >>> A,B,C = symbols('ABC')
+        >>> ThreeJSymbol(A, B, C, a, b, 2*c).get_projection_symbol(C)
+        c
+        >>> ThreeJSymbol(A, B, C, a, b, 1-c).get_projection_symbol(C)
+        >>> ThreeJSymbol(A, B, C, a, b, -c).get_projection_symbol(C)
+        c
+        """
+        args = self.args
+        for i in range(3):
+            if J == args[i]:
+                M = args[i+3]
+                if isinstance(M, Symbol):
+                    return M
+                elif isinstance(M, Mul):
+                    sign,M = M.as_coeff_terms()
+                    if len(M) == 1 and isinstance(M[0], Symbol):
+                        return M[0]
+        return None
+
     def get_as_ClebschGordanCoefficient(self):
         """
         Returns the equivalent C-G
