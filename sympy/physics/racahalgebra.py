@@ -791,22 +791,299 @@ class ASigma(Basic):
 def refine_tjs2sjs(expr):
     """
     Tries to rewrite four 3j-symbols to a 6j-symbol.
+
+    >>> from sympy.physics.racahalgebra import SixJSymbol, refine_tjs2sjs
+    >>> from sympy import global_assumptions, Q, Assume
+    >>> from sympy import symbols
+    >>> a,b,z,d,e,f = symbols('abzdef')
+    >>> A,B,Z,D,E,F = symbols('ABZDEF')
+    >>> global_assumptions.add( Assume(a, 'half_integer') )
+    >>> global_assumptions.add( Assume(b, 'half_integer') )
+    >>> global_assumptions.add( Assume(d, 'half_integer') )
+    >>> global_assumptions.add( Assume(A, 'half_integer') )
+    >>> global_assumptions.add( Assume(B, 'half_integer') )
+    >>> global_assumptions.add( Assume(D, 'half_integer') )
+    >>> global_assumptions.add( Assume(e, Q.integer) )
+    >>> global_assumptions.add( Assume(f, Q.integer) )
+    >>> global_assumptions.add( Assume(E, Q.integer) )
+    >>> global_assumptions.add( Assume(F, Q.integer) )
+    >>> global_assumptions.add( Assume(Z, 'half_integer') )
+    >>> global_assumptions.add( Assume(z, 'half_integer') )
+
+    >>> expr = SixJSymbol(A, B, E, D, Z, F).get_ito_ThreeJSymbols((a,b,e,d,z,f)); expr
+    (-1)**(A + E + Z - a - e - z)*Sum(a, b, d, e, f)*ThreeJSymbol(A, B, E, a, -b, -e)*ThreeJSymbol(A, F, Z, a, f, -z)*ThreeJSymbol(B, D, F, b, d, f)*ThreeJSymbol(D, E, Z, d, -e, z)
+    >>> refine_tjs2sjs(expr)
+    SixJSymbol(A, B, E, D, Z, F)
+
+    >>> expr = SixJSymbol(A, B, E, D, Z, F).get_ito_ThreeJSymbols((a,b,e,d,z,f), definition='edmonds')
+    >>> refine_tjs2sjs(expr)
+    SixJSymbol(A, B, E, D, Z, F)
     """
 
 
+    for threej_atoms in _iter_tjs_permutations(expr):
 
-    subsititute = False
-    for threejs in _iter_tjs_permutations(expr):
+        sjs = _identify_SixJSymbol(threej_atoms)
 
-        sjs = _identify_SixJSymbol(threejs)
         # expand 6j-symbol i.t.o. 3j-symbols and try to match with original
+        M_symbols = []
+        for J in sjs.args:
+            for tjs in threej_atoms:
+                M = tjs.get_projection_symbol(J)
+                if M:
+                    M_symbols.append(M)
+                    break
+        new_tjs_expr = sjs.get_ito_ThreeJSymbols(M_symbols)
 
+        # We might be lucky...
+        new_atoms = new_tjs_expr.atoms(ThreeJSymbol)
+        if new_atoms == threej_atoms:
+            return _substitute_tjs2sjs(threej_atoms, expr, sjs, new_tjs_expr)
 
-    return sjs
+        # ...else, we need to bring the 3js to same form by changing sign of
+        # summation indices (projection symbols that are summed over).
+        new_tjs = dict([])
+        projdict = dict([])
+        for tjs in new_atoms:
+            new_tjs[tjs.magnitudes] = tjs
+        for old in threej_atoms:
+            new = new_tjs[old.magnitudes]
+            projdict[new] =  _find_projections_to_invert(old, new)
 
-    if subsititute:
-        return expr.subs(subsititute)
+        # now we need to process the list of alternative projection inversions
+        phase_subs_dict = _get_phase_subslist_dict(projdict)
+
+        # which phase gives the simplest final expression?
+        expr = powsimp(expr)
+        original_phase = expr.args[0]
+        new_tjs_phase = new_tjs_expr.args[0]
+        if not isinstance(original_phase, Pow):
+            raise Exception("cannot understand phase %s" %original_phase)
+        if not isinstance(new_tjs_phase, Pow):
+            raise Exception("cannot understand phase %s" %new_tjs_phase)
+
+        residual_phase = refine(powsimp(original_phase/new_tjs_phase))
+
+        best = None
+        for phase in phase_subs_dict.keys():
+            test_phase = refine(powsimp(residual_phase/phase))
+            if test_phase == S.One or test_phase == S.NegativeOne:
+                best = test_phase
+                break
+            if best is None:
+                best = test_phase
+            else:
+                if len(test_phase.args) < len(best.args):
+                    best = test_phase
+
+        # sjs == tjs_phase * inversion_phase * (tjs)^4
+        #
+        # (tjs)^4 == sjs/(new_tjs_phase*inversion_phase)
+        #
+        # orig_phase * (tjs)^4 * rest ==
+        #               orig_phase /(new_tjs_phase*inversion_phase)* sjs * rest
+        M_symbols = M_symbols[:4]+M_symbols[5:];summation = ASigma(*M_symbols)
+        subslist = [ (original_phase, best), (summation,S.One) ]
+        subslist.extend([ (tjs,S.One) for tjs in threej_atoms ])
+        return expr.subs(subslist)*sjs
+
     return expr
+
+def _get_phase_subslist_dict(projection_dict):
+    """
+    Determines possible combinations of projection inversion and corresponding phase.
+
+    ``projection_dict`` must have tjs as keys, and projection lists (from
+    _find_projections_to_invert) as values.
+
+    With four 3j-symbols, and two possible inversions for each, we get
+    2**4 possible combinations.  A brutal approach may work for rewriting a 6j-
+    symbol, but will not scale very well to a 9j-symbol, so we need a better approach.
+
+    If there is any tjs with empty projection list, we know that we must either
+    invert none of those projections, or all of them.  This can provide a guide
+    when we step through the list of possible combinations.
+
+    But even without any empty projection list, the alternatives for each
+    symbol are exclusive.  So that when we step through the alternatives, we
+    make a choice sometimes, but often we will be guided by the choices we
+    made at earlier steps.
+
+    This is implemnted by recursion.
+    """
+
+    def _recurse_into_projections(projlist, will_invert=set([]), must_keep=set([])):
+
+        if will_invert & must_keep:
+            raise Exception("3j-Symbols are not compatible with 6j-symbol")
+
+        if not projlist:
+            # break recursion here
+            return will_invert, must_keep
+
+        this_step = projlist[0]
+        alt1 = this_step[0]
+        alt2 = this_step[1]
+
+        # Assume first that we cannot choose at this step
+        for p in alt1:
+            if p in will_invert:
+                will_invert.update(alt1)
+                must_keep.update(alt2)
+                return _recurse_into_projections(projlist[1:], will_invert, must_keep)
+            if p in must_keep:
+                will_invert.update(alt2)
+                must_keep.update(alt1)
+                return _recurse_into_projections(projlist[1:], will_invert, must_keep)
+
+        for p in alt2:
+            if p in will_invert:
+                will_invert.update(alt2)
+                must_keep.update(alt1)
+                return _recurse_into_projections(projlist[1:], will_invert, must_keep)
+            if p in must_keep:
+                will_invert.update(alt1)
+                must_keep.update(alt2)
+                return _recurse_into_projections(projlist[1:], will_invert, must_keep)
+
+        # If we reach here we have a choice, so we do both
+
+        to_invert = will_invert.copy()
+        to_keep = must_keep.copy()
+        to_invert.update(alt1)
+        to_keep.update(alt2)
+        try:
+            result1 = _recurse_into_projections(projlist[1:], to_invert, to_keep)
+        except ThreeJSymbolsNotCompatibleWithSixJSymbol:
+            result1 = None
+
+        to_invert = will_invert.copy()
+        to_keep = must_keep.copy()
+        to_invert.update(alt2)
+        to_keep.update(alt1)
+        try:
+            result2 = _recurse_into_projections(projlist[1:], to_invert, to_keep)
+        except ThreeJSymbolsNotCompatibleWithSixJSymbol:
+            if result1 == None: raise
+            result2 = None
+
+        # collect both alternatives
+        result = []
+        if isinstance(result1, list): result.extend(result1)
+        elif result1: result.append(result1)
+        if isinstance(result2, list): result.extend(result2)
+        elif result2: result.append(result2)
+
+        return result
+
+
+    # determine possible inversions
+    inversions = _recurse_into_projections(projection_dict.values())
+
+    # determine phases by doing the inversions
+    phase_inversion_dict = dict([])
+    tjs_expr = Mul(*projection_dict.keys())
+    for inv in inversions:
+        to_invert = inv[0]
+        subslist = [ (m, -m) for m in to_invert ]
+        tjs_expr = powsimp(tjs_expr.subs(subslist))
+        eliminate_tjs = [(tjs,S.One) for tjs in tjs_expr.atoms(ThreeJSymbol)]
+        phase = refine(tjs_expr.subs(eliminate_tjs))
+
+        phase_inversion_dict[phase] = subslist
+    return phase_inversion_dict
+
+
+def _substitute_tjs2sjs(threej_atoms, expression, sjs, sjs_ito_tjs):
+    """
+    Substitutes threej_atoms in expression with sjs.
+
+    ``sjs_ito_tjs`` -- the 6j-symbol expressed in terms of 3j-symbols
+    """
+    assert len(threej_atoms) == 4
+    subsdict = dict([])
+    for tjs in threej_atoms:
+        subsdict[tjs] = S.One
+    sjs_divided_with_phases = sjs/ (sjs_ito_tjs.subs(subsdict))
+
+    subsdict[tjs] = sjs_divided_with_phases
+    return powsimp(expression.subs(subsdict))
+
+
+def _find_projections_to_invert(start, goal):
+    """
+    Identify ways to harmonize two ThreeJSymbol objects.
+
+    Returns a list of projection symbols that can be inverted so that ``start``
+    will end up as a phase times ``goal``.
+
+    Since the 3j-symbol generates a canonical form immediately, there are always
+    two possible inversion alternatives. We return a list of lists of the form:
+        [ [a, b], [c] ]
+    The interpretation is that
+        (a and b) or c
+    could be inverted, and both alternatives produce a tjs idential to ``goal``.
+    Both alternatives work, but they differ by a phase.  The phase-generating
+    alternative is always the second element in the list.
+
+    Examples
+    ========
+
+    >>> from sympy.physics.racahalgebra import ThreeJSymbol, _find_projections_to_invert
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('abc')
+    >>> A,B,C = symbols('ABC')
+    >>> goal = ThreeJSymbol(A, B, C, a, b, c);
+    >>> start = ThreeJSymbol(A, B, C, a, b, -c);
+    >>> _find_projections_to_invert(start, goal)
+    [[c], [a, b]]
+
+    First alternative is without phase:
+
+    >>> start.subs(c, -c)
+    ThreeJSymbol(A, B, C, a, b, c)
+
+    The second generates a phase:
+
+    >>> start.subs([(a, -a), (b, -b)])
+    (-1)**(A + B + C)*ThreeJSymbol(A, B, C, a, b, c)
+    """
+    assert start.magnitudes == goal.magnitudes
+
+    # we cannot invert non-atomic projections reliably
+    M = tuple([ goal.get_projection_symbol(j) for j in goal.magnitudes ])
+    assert not [ e for e in M if e is None ]
+
+    identical = []
+    for i in range(3):
+        identical.append(start.projections[i]==goal.projections[i])
+
+    identical = tuple(identical)
+    alternatives = []
+
+    # (a -b -c)
+    if identical == (True, False, False):
+        alternatives.append([ M[1], M[2] ])
+        alternatives.append([ M[0] ])
+
+    # (a  b -c)
+    elif identical == (True, True, False):
+        alternatives.append([ M[2] ])
+        alternatives.append([ M[0], M[1] ])
+
+    # (a -b  c)
+    elif identical == (True, False, True):
+        alternatives.append([ M[1] ])
+        alternatives.append([ M[0], M[2] ])
+
+    # (a  b  c)
+    else:
+        alternatives.append([ ])
+        alternatives.append([ M[0], M[1], M[2] ])
+
+
+    return alternatives
+
 
 def _iter_tjs_permutations(expr):
     """
