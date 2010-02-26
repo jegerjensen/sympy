@@ -358,7 +358,7 @@ class SixJSymbol(Function):
 
         >>> sjs = SixJSymbol(A, B, E, D, C, F);
         >>> sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f))
-        (-1)**(E + F - a - c - e)*Sum(e, f)*Sum(a, b, d)*ThreeJSymbol(A, B, E, a, -b, -e)*ThreeJSymbol(A, C, F, a, -c, f)*ThreeJSymbol(B, D, F, b, d, f)*ThreeJSymbol(C, D, E, c, d, -e)
+        (-1)**(C + D + F - a - c - e)*Sum(a, b, d, e, f)*ThreeJSymbol(A, B, E, a, -e, -b)*ThreeJSymbol(A, C, F, a, f, -c)*ThreeJSymbol(B, D, F, e, -d, -c)*ThreeJSymbol(C, D, E, f, d, b)
         """
 
         (j1, j2, J12, j3, J, J23) = self.args
@@ -396,7 +396,7 @@ class SixJSymbol(Function):
 
         expr =  refine(powsimp(phase*expr))
 
-        summations = ASigma(m1,m2,m3)*ASigma(M12,M23)
+        summations = ASigma(m1,m2,m3,M12,M23)
 
 
 
