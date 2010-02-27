@@ -502,6 +502,11 @@ class SphericalTensor(Basic):
         projection. If two spherical tensors are supplied as tensor1 and
         tensor2, we return a CompositeSphericalTensor instead.
         """
+        if isinstance(symbol, str):
+            symbol = Symbol(symbol)  # sympify may return unexpected stuff from a string
+        else:
+            symbol = sympify(symbol)
+
         if tensor1 and tensor2:
             return CompositeSphericalTensor(symbol, rank, projection, tensor1, tensor2)
         else:
@@ -550,7 +555,6 @@ class CompositeSphericalTensor(SphericalTensor):
         You may build up a composite tensor with any coupling scheme this way.
 
         """
-        symbol=sympify(symbol)
         obj = Basic.__new__(cls,symbol,rank,projection,tensor1,tensor2)
         return obj
 
@@ -611,8 +615,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
         t1 = self.tensor1
         t2 = self.tensor2
-        if kw_args.get('deep',False):
-
+        if not kw_args.get('deep',True):
             expr = (ClebschGordanCoefficient(
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
@@ -737,11 +740,10 @@ class AtomicSphericalTensor(SphericalTensor):
         projection. If two spherical tensors are supplied as tensor1 and
         tensor2, we return a CompositeSphericalTensor instead.
         """
-        symbol=sympify(symbol)
         obj = Basic.__new__(cls,symbol,rank,projection)
         return obj
 
-    def get_uncoupled_form(self):
+    def get_uncoupled_form(self, **kw_args):
         """
         Returns the uncoupled, direct product form of a composite tensor.
         """
