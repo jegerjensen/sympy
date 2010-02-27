@@ -5,13 +5,15 @@ Module for working with spherical tensors.
 """
 
 from sympy import (
-    Basic, Function, var, Mul, sympify, Integer, Add, sqrt,
-    Number, Matrix, zeros, Pow, I, S,Symbol, latex, cache, powsimp
-)
+        Basic, Function, Mul, sympify, Integer, Add, sqrt, Pow, S, Symbol, latex,
+        cache, powsimp
+        )
 
 from sympy.core.cache import cacheit
 from sympy.functions import Dij
-from sympy.assumptions import register_handler, remove_handler, Q, ask, Assume, refine
+from sympy.assumptions import (
+        register_handler, remove_handler, Q, ask, Assume, refine
+        )
 from sympy.assumptions.handlers import AskHandler
 
 
@@ -101,12 +103,6 @@ def initialize_racah():
     register_handler('half_integer',AskHalfIntegerHandler)
     register_handler(Q.even, ExtendedEvenHandler)
     register_handler(Q.integer, ExtendedIntegerHandler)
-
-    x = Symbol('x')
-    assert ask(x,'half_integer', Assume(x,'half_integer')) == True
-    assert ask(x,'half_integer', Assume(x,'half_integer', False)) == False
-    assert ask(2*x,Q.even, Assume(x,'half_integer')) == False
-    assert ask(2*x,Q.odd, Assume(x,'half_integer')) == True
 
 
 
@@ -302,8 +298,6 @@ class SixJSymbol(Function):
         >>> sjs = SixJSymbol(A, B, E, D, C, F); sjs
         SixJSymbol(A, E, B, D, F, C)
 
-
-
         """
         args = [j1, j2, J12, j3, J, J23]
         maxind = args.index(max(args))
@@ -383,8 +377,6 @@ class SixJSymbol(Function):
                     ThreeJSymbol(j3,j2,J23,-m3,-m2,M23)*
                     ThreeJSymbol(j3,J,J12,m3,-M,-M12))
 
-
-
         elif definition == 'brink_satchler':
             phase = pow(S.NegativeOne,j1+J12+J-m1-M12-M)
             expr = ( ThreeJSymbol(j1,J23,J, m1,M23,-M)*
@@ -403,14 +395,8 @@ class SixJSymbol(Function):
             expr = phase*hats*Mul(*tjs_list)
 
         expr =  refine(powsimp(phase*expr))
-
-        summations = ASigma(m1,m2,m3,M12,M23)
-
-
-
+        summations = ASigma(m1,m2,m3,M12,M23) #FIXME: sum over M ?
         return summations*expr
-
-
 
     @classmethod
     def _swap_col(cls,i,j,arg_list):
@@ -421,8 +407,6 @@ class SixJSymbol(Function):
         new_args[i+rowlen] = arg_list[j+rowlen]
         new_args[j+rowlen] = arg_list[i+rowlen]
         return new_args
-
-
 
     @classmethod
     def _swap_row(cls,i,j,arg_list):
