@@ -162,13 +162,13 @@ class ThreeJSymbol(Function):
 
         if m1 is S.Zero:
             coeff, term = m2.as_coeff_terms()
-            if coeff is S.NegativeOne:
+            if coeff.is_negative:
                 phase=pow(S.NegativeOne,j1+j2+J)
                 expr = ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
                 return cls._determine_phase(phase, expr)
 
         coeff, term = m1.as_coeff_terms()
-        if coeff is S.NegativeOne:
+        if coeff.is_negative:
             phase=pow(S.NegativeOne,j1+j2+J)
             expr = ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
             return cls._determine_phase(phase, expr)
