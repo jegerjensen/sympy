@@ -178,7 +178,7 @@ class ThreeJSymbol(Function):
     def _determine_phase(cls, phase, tjs):
         # The phase is known to be integer, so it cancels if it appears twice.
         if tjs.has(phase):
-            return powsimp(pow(S.NegativeOne,-phase.exp)*tjs)
+            return tjs.subs(phase, S.One)
         else:
             return phase*tjs
 
