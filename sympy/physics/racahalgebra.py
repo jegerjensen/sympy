@@ -20,6 +20,11 @@ __all__ = [
         'ClebschGordanCoefficient',
         'SixJSymbol',
         'SphericalTensor',
+        'refine_tjs2sjs',
+        'convert_cgc2tjs',
+        'convert_tjs2cgc',
+        'combine_ASigmas',
+        'remove_summation_indices',
         ]
 
 class ThreeJSymbolsNotCompatibleWithSixJSymbol(Exception):
@@ -776,13 +781,54 @@ class ASigma(Basic):
         """
         >>> from sympy.physics.racahalgebra import ASigma
         >>> from sympy import symbols
-        >>> a,b = symbols('ab')
+        >>> a,b,c = symbols('abc')
         >>> ASigma(b,a)
         Sum(a, b)
         """
         indices = sorted(indices)
         obj = Basic.__new__(cls,*indices)
         return obj
+
+    def combine(self, other):
+        """
+        >>> from sympy.physics.racahalgebra import ASigma
+        >>> from sympy import symbols
+        >>> a,b,c = symbols('abc')
+        >>> ASigma(b,a).combine(ASigma(c))
+        Sum(a, b, c)
+        >>> ASigma(b,a).combine(ASigma(b, c))
+        Sum(a, b, c)
+        """
+        assert isinstance(other, ASigma)
+        args = set(self.args)
+        args.update(other.args)
+        return ASigma(*args)
+
+    def remove_indices(self, indices):
+        """
+        Returns the ASigma with the requested indices removed.
+
+        >>> from sympy.physics.racahalgebra import ASigma
+        >>> from sympy import symbols
+        >>> a,b,c = symbols('abc')
+        >>> ASigma(a,b,c).remove_indices([a,c])
+        Sum(b)
+        >>> ASigma(a,b,c).remove_indices([a,b,c])
+        1
+        >>> s = ASigma(a,b)
+        >>> t = s.remove_indices([c])
+        >>> s is t
+        True
+
+        """
+        newargs = set(self.args)
+        newargs -= set(indices)
+        if not newargs:
+            return S.One
+        elif len(newargs) < len(self.args):
+            return ASigma(*newargs)
+        else:
+            return self
 
     def _sympystr_(self, p, *args):
         l = [p.doprint(o) for o in self.args]
@@ -1162,6 +1208,47 @@ def _identify_SixJSymbol(threejs):
             J23 = J23[0]
 
     return  SixJSymbol(j1,j2,J12,j3,totJ,J23)
+
+def combine_ASigmas(expr):
+    """
+    Combines multiple ASigma factors to one ASigma
+
+    >>> from sympy.physics.racahalgebra import ASigma, combine_ASigmas
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('abc')
+    >>> expr = ASigma(b,a)*ASigma(c);
+    >>> combine_ASigmas(expr)
+    Sum(a, b, c)
+
+    """
+    if isinstance(expr, Add):
+        return Add(*[combine_ASigmas(term) for term in expr.args])
+    sigmas = expr.atoms(ASigma)
+    subslist = [ (s,S.One) for s in sigmas ]
+    new = sigmas.pop()
+    for s in sigmas:
+        new = new.combine(s)
+    return new*expr.subs(subslist)
+
+def remove_summation_indices(expr, *indices):
+    """
+    Locates all ASigma in ``expr`` and removes requested indices.
+
+    >>> from sympy.physics.racahalgebra import ASigma, remove_summation_indices
+    >>> from sympy import symbols, Function
+    >>> a,b,c = symbols('abc')
+    >>> f = Function('f')
+    >>> expr = ASigma(a,b)*f(a,b) + ASigma(a)*f(a,c)
+    >>> remove_summation_indices(expr, a,c)
+    Sum(b)*f(a, b) + f(a, c)
+
+    """
+    subslist = []
+    for sigma in expr.atoms(ASigma):
+        new = sigma.remove_indices(indices)
+        if not new is sigma:
+            subslist.append((sigma, new))
+    return expr.subs(subslist)
 
 def convert_tjs2cgc(expr):
     subslist = []
