@@ -262,6 +262,18 @@ class ThreeJSymbol(Function):
         factor = (-1)**(j1-j2-M)*Pow(sqrt(2*J+1),-1)
         return factor * ClebschGordanCoefficient(j1,m1,j2,m2,J,-M)
 
+    def get_triangular_inequalities(self):
+        """
+        Returns the triangular inequality implied by this 3j-symbol.
+
+        >>> from sympy.physics.racahalgebra import ThreeJSymbol
+        >>> from sympy import symbols
+        >>> A,B,C,a,b,c = symbols('ABCabc')
+        >>> ThreeJSymbol(A, B, C, a, b, c).get_triangular_inequalities()
+        set([TriangularInequality(A, B, C)])
+
+        """
+        return set([TriangularInequality(*self.magnitudes)])
 
 
 class SixJSymbol(Function):
@@ -417,6 +429,26 @@ class SixJSymbol(Function):
         new_args[i+rowlen] = arg_list[i]
         new_args[j+rowlen] = arg_list[j]
         return new_args
+
+    def get_triangular_inequalities(self):
+        """
+        Returns a set containing the triangular conditions implied by this 6j-symbol.
+
+        >>> from sympy.physics.racahalgebra import SixJSymbol
+        >>> from sympy import symbols
+        >>> A,B,C,D,E,F = symbols('ABCDEF')
+        >>> trineq = SixJSymbol(A, E, B, D, F, C).get_triangular_inequalities()
+        >>> sorted(trineq)
+        [TriangularInequality(A, B, E), TriangularInequality(A, C, F), TriangularInequality(B, D, F), TriangularInequality(C, D, E)]
+
+        """
+        j1, j2, j3, j4, j5, j6 = self.args
+        triag = set([])
+        triag.add( TriangularInequality(j1, j2, j3) )
+        triag.add( TriangularInequality(j1, j5, j6) )
+        triag.add( TriangularInequality(j4, j5, j3) )
+        triag.add( TriangularInequality(j4, j2, j6) )
+        return triag
 
 
 class ClebschGordanCoefficient(Function):
@@ -821,6 +853,45 @@ class ASigma(Basic):
     def _sympystr_(self, p, *args):
         l = [p.doprint(o) for o in self.args]
         return "Sum" + "(%s)"%", ".join(l)
+
+class TriangularInequality(Function):
+    nargs = 3
+
+    @classmethod
+    def eval(cls, j1,j2,j3):
+        """
+        Represents the triangular inequality between j1, j2 and j3
+
+        |j1-j2| <= j3 <= j1 + j2
+
+        If the relation holds, it holds for all permutations of j1, j2, j3.
+        The arguments are sorted such that j1 <= j2 <= j3 for a canonical form.
+
+        If the arguments are numbers, this function evaluates to 1 if
+        j1,j2,j3>=0 and the inequality is satisfied.  If any of these
+        conditions are violated we return 0.
+
+        >>> from sympy.physics.racahalgebra import TriangularInequality
+        >>> from sympy import symbols
+        >>> a,b,c = symbols('abc')
+        >>> TriangularInequality(c,b,a)
+        TriangularInequality(a, b, c)
+        >>> TriangularInequality(2,1,1)
+        1
+        >>> TriangularInequality(4,1,1)
+        0
+
+        """
+        if j1 > j2: return TriangularInequality(j2, j1, j3)
+        if j2 > j3: return TriangularInequality(j1, j3, j2)
+        if j1.is_Number and j2.is_Number and j3.is_Number:
+            if (abs(j1-j2) <= j3 <= j1+j2) and (j1>=0 and j2>=0 and j3>=0):
+                return S.One
+            return S.Zero
+
+
+
+
 
 def refine_tjs2sjs(expr):
     """
