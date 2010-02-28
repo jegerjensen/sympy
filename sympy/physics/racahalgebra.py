@@ -23,6 +23,7 @@ __all__ = [
         'SixJSymbol',
         'SphericalTensor',
         'refine_tjs2sjs',
+        'refine_phases',
         'convert_cgc2tjs',
         'convert_tjs2cgc',
         'combine_ASigmas',
@@ -30,6 +31,9 @@ __all__ = [
         ]
 
 class ThreeJSymbolsNotCompatibleWithSixJSymbol(Exception):
+    pass
+
+class UnableToComplyWithForbiddenAndMandatorySymbols(Exception):
     pass
 
 def initialize_racah():
@@ -931,6 +935,204 @@ class TriangularInequality(Function):
                 return S.One
             return S.Zero
 
+
+
+def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True):
+    """
+    Simplifies and standardizes expressions containing 3j and 6j symbols.
+
+    The racah algebra produces a lot of factors (-1)**(x + y + ...), a.k.a.
+    phases.  This function standardizes the expression by rewriting the phase
+    to an equivalent form, simplifying it if possible.
+
+    ``forbidden`` -- iterable containing symbols that cannot be in the phase
+    ``mandatory`` -- iterable containing symbols that must be in the phase
+
+    If there is a conflict, or if we the algorithm do not succedm, the
+    exception ``UnableToComplyWithForbiddenAndMandatorySymbols`` is raised.
+
+    To rewrite the expression, we use information from three sources:
+        - the information present in the expression
+        - information stored as global_assumptions
+        - assumptions supplied as an optional argument to this function.
+
+    Powers of (-1) can be simplified a lot if we have assumptions about symbols
+    being integers or half-integers.
+
+    Identities applied in this function
+    ===================================
+
+    1) The angular momenta involved in triangular equalities, will always sum
+    up to an integer, so if the symbols imply |A - B| <= C <= |A + B| we know
+    that
+
+        (-1)**(2*A + 2*B + 2*C) == 1.
+
+    2) The Projection quantum numbers in a 3j-symbol will always sum to 0, so
+    if a,b,c are projections in a 3j-symbol, we know that
+
+        (-1)**(a + b + c) == 1.
+
+    3) We also know that quantum mechanical angular momenta have projection
+    numbers that differ from the magnitude by an integer.  If A and a are
+    magnitude and projection respectively, we know that
+
+        (-1)**(2*A - 2*a) == 1.
+
+    >>> from sympy.physics.racahalgebra import SixJSymbol, ThreeJSymbol, refine_phases
+    >>> from sympy import symbols, global_assumptions
+    >>> a,b,c,d,e,f = symbols('abcdef')
+    >>> A,B,C,D,E,F = symbols('ABCDEF')
+    >>> global_assumptions.clear()
+
+    >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,c)
+    >>> refine_phases(expr, [a, b, c, A, B, C])
+    ThreeJSymbol(A, B, C, a, b, c)
+
+    >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,c)
+    >>> refine_phases(expr, [a,b,c], [A,B,C])
+    (-1)**(-2*A - 2*B - 2*C)*ThreeJSymbol(A, B, C, a, b, c)
+
+    >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,-c)
+    >>> refine_phases(expr, [a, b, c, A, B], [C])
+    (-1)**(2*C)*ThreeJSymbol(A, B, C, a, b, -c)
+
+    """
+    forbidden = set(forbidden)
+    mandatory = set(mandatory)
+    if forbidden & mandatory: raise UnableToComplyWithForbiddenAndMandatorySymbols
+
+    # fetch the phase
+    expr = refine(powsimp(expr), assumptions)
+    phase = S.One
+    for p in expr.atoms(Pow):
+        if p.base == S.NegativeOne:
+            phase = p
+            break
+    if phase is S.One:
+        phase, junk = expr.as_coeff_terms()
+        pow_atoms = set([])
+    else:
+        pow_atoms = phase.exp.atoms()
+
+    # determine what should be done
+    to_remove = forbidden & pow_atoms
+    to_insert = mandatory - pow_atoms
+    if not (to_remove or to_insert):
+        return expr
+    to_keep = mandatory & pow_atoms
+
+    # determine what can be done and setup identities as sympy expressions
+    projections = set([])
+    triags = set([])
+    jm_pairs = set([])
+    for njs in expr.atoms(AngularMomentumSymbol):
+        triags.update(njs.get_triangular_inequalities())
+        if isinstance(njs, ThreeJSymbol):
+            projections.add(Pow(-1,Add(*njs.projections)))
+            jm = njs.get_magnitude_projection_dict()
+            jm_list = [ Pow(S.NegativeOne,2*Add(j,m)) for j,m in jm.items() ]
+            jm_pairs.update(jm_list)
+
+            # These are not needed if we can rely on assumptions and refine_Pow():
+            # jm_list = [ Pow(S.NegativeOne,2*Add(j,-m)) for j,m in jm.items() ]
+            # jm_pairs.update(jm_list)
+
+    triags = set([Pow(S.NegativeOne,2*Add(*t.args)) for t in triags])
+
+
+    # FIXME:
+    # We should work dirctly with the Add obects in the exponent.  Carrying
+    # around Pow((-1),...) is unneccesary overhead.  Then we would work with
+    # addition modulo 2, and can probably apply something from group theory.
+
+
+    # organize information around the forbidden and mandatory symbols
+    #
+    # the dict known_identities have two kind of keys:
+    #   <symbol>: <relevant identities>
+    #  <identity: <count how many times the identity has been applied>
+    #
+    # the count is used to break the recursion, the symbol-identities relation
+    # should be used in an intelligent algorithm. (FIXME!)
+
+    known_identities =dict([])
+    for symbol in forbidden | mandatory:
+        known_identities[symbol] = []
+        for identity in projections:
+            if symbol in identity:
+                known_identities[symbol].append(identity)
+                known_identities[identity]=0
+
+        for identity in triags | jm_pairs:
+            if symbol in identity:
+                known_identities[symbol].append(identity)
+                known_identities[identity]=0
+
+    # FIXME: for the brutal approach we remove symbol keys
+    for symbol in forbidden | mandatory:
+        del known_identities[symbol]
+
+
+    simple_phase = _brutal_search_for_simple_phase(phase, known_identities,
+            forbidden, mandatory)
+
+    return refine(powsimp(expr/phase)*simple_phase)
+
+
+
+def _brutal_search_for_simple_phase(phase, known_identities,
+        forbidden, mandatory, recursion_limit = 1):
+    """
+    Tries all combinations of known_identities in order to rewrite the phase.
+
+    The goal is to obtain a phase without forbidden symbols, and with all
+    mandatory symbols.  We apply all identities at most once, and if the goal
+    is not acheived, we raise an exception.
+
+    Brutal approach  (FIXME)
+    """
+
+    if isinstance(phase, Pow):
+        current_symbols = phase.exp.atoms()
+    else:
+        current_symbols = set([])
+    missing = mandatory - current_symbols
+    to_remove = forbidden & current_symbols
+
+    # break recursion if we are done
+    if not (missing | to_remove):
+        return phase
+
+    # FIXME: this loop tries every combination twice
+    for identity in sorted(known_identities.keys()):
+        if known_identities[identity] >= recursion_limit:
+            break
+        known_identities[identity] +=1
+        try:
+            return _brutal_search_for_simple_phase(
+                    powsimp(phase*identity),
+                    known_identities,
+                    forbidden, mandatory,
+                    recursion_limit
+                    )
+        except UnableToComplyWithForbiddenAndMandatorySymbols:
+            pass
+        try:
+            return _brutal_search_for_simple_phase(
+                    powsimp(phase/identity),
+                    known_identities,
+                    forbidden, mandatory,
+                    recursion_limit
+                    )
+        except UnableToComplyWithForbiddenAndMandatorySymbols:
+            pass
+        known_identities[identity] -= 1
+
+
+    # if we come here, we have tried everything up to recursion_limit
+    # without success
+    raise UnableToComplyWithForbiddenAndMandatorySymbols
 
 
 
