@@ -104,11 +104,15 @@ def initialize_racah():
     register_handler(Q.even, ExtendedEvenHandler)
     register_handler(Q.integer, ExtendedIntegerHandler)
 
-
-
 initialize_racah()
 
-class ThreeJSymbol(Function):
+class AngularMomentumSymbol(Function):
+    """
+    Base class for 3j, 6j, and 9j symbols
+    """
+    pass
+
+class ThreeJSymbol(AngularMomentumSymbol):
     """
     class to represent a 3j-symbol
     """
@@ -276,7 +280,7 @@ class ThreeJSymbol(Function):
         return set([TriangularInequality(*self.magnitudes)])
 
 
-class SixJSymbol(Function):
+class SixJSymbol(AngularMomentumSymbol):
     """
     class to represent a 6j-symbol
     """
@@ -451,7 +455,7 @@ class SixJSymbol(Function):
         return triag
 
 
-class ClebschGordanCoefficient(Function):
+class ClebschGordanCoefficient(AngularMomentumSymbol):
     """
     Class to represent a Clebsch-Gordan coefficient.
 
