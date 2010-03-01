@@ -35,7 +35,25 @@ class ThreeJSymbolsNotCompatibleWithSixJSymbol(Exception):
 def initialize_racah():
 
     class AskHalfIntegerHandler(AskHandler):
-        pass
+        @staticmethod
+        def Add(expr, assumptions):
+            """
+            We only consider sums of the form 'half_integer + integer'
+            For other constellations we are inconclusive.
+
+            half_integer + integer      -> half_integer
+            half_integer + half_integer -> integer
+            else                        -> None
+            """
+            _result = False
+            for arg in expr.args:
+                if ask(arg, Q.integer, assumptions):
+                    pass
+                elif ask(arg, 'half_integer', assumptions):
+                    _result = not _result
+                else: break
+            else:
+                return _result
 
     class ExtendedIntegerHandler(AskHandler):
         """
@@ -66,6 +84,26 @@ def initialize_racah():
                         return False
                     if ask(coeff, Q.even, assumptions):
                         return True
+
+        @staticmethod
+        def Add(expr, assumptions):
+            """
+            We only consider sums of the form 'half_integer + half_integer'
+            For other constellations we are inconclusive.
+
+            half_integer + half_integer     -> integer
+            else                            -> None
+            """
+            _result = True
+            for arg in expr.args:
+                if ask(arg, Q.integer, assumptions):
+                    pass
+                elif ask(arg, 'half_integer', assumptions):
+                    _result = not _result
+                else: break
+            else:
+                return _result
+
 
     class ExtendedEvenHandler(AskHandler):
         """
