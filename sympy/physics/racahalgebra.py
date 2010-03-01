@@ -1241,7 +1241,16 @@ def refine_tjs2sjs(expr):
         #               orig_phase /(new_tjs_phase*inversion_phase)* sjs * rest
         M_symbols = M_symbols[:4]+M_symbols[5:];summation = ASigma(*M_symbols)
         subslist = [ (original_phase, best), (summation,S.One) ]
-        subslist.extend([ (tjs,S.One) for tjs in threej_atoms ])
+        expr = expr.subs(subslist)
+
+        # get rid of any projection symbols in the phase
+        try:
+            expr = refine_phases(expr, M_symbols)
+        except UnableToComplyWithForbiddenAndMandatorySymbols:
+            raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+
+        subslist = [ (tjs,S.One) for tjs in threej_atoms ]
+
         return expr.subs(subslist)*sjs
 
     return expr
@@ -1272,7 +1281,7 @@ def _get_phase_subslist_dict(projection_dict):
     def _recurse_into_projections(projlist, will_invert=set([]), must_keep=set([])):
 
         if will_invert & must_keep:
-            raise Exception("3j-Symbols are not compatible with 6j-symbol")
+            raise ThreeJSymbolsNotCompatibleWithSixJSymbol
 
         if not projlist:
             # break recursion here
