@@ -948,8 +948,8 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True):
     ``forbidden`` -- iterable containing symbols that cannot be in the phase
     ``mandatory`` -- iterable containing symbols that must be in the phase
 
-    If there is a conflict, or if we the algorithm do not succedm, the
-    exception ``UnableToComplyWithForbiddenAndMandatorySymbols`` is raised.
+    If there is a conflict, or if the algorithm do not succed, the exception
+    ``UnableToComplyWithForbiddenAndMandatorySymbols`` is raised.
 
     To rewrite the expression, we use information from three sources:
         - the information present in the expression
@@ -991,7 +991,7 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True):
 
     >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,c)
     >>> refine_phases(expr, [a,b,c], [A,B,C])
-    (-1)**(-2*A - 2*B - 2*C)*ThreeJSymbol(A, B, C, a, b, c)
+    (-1)**(2*A + 2*B + 2*C)*ThreeJSymbol(A, B, C, a, b, c)
 
     >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,-c)
     >>> refine_phases(expr, [a, b, c, A, B], [C])
