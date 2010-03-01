@@ -1325,11 +1325,14 @@ def combine_ASigmas(expr):
     if isinstance(expr, Add):
         return Add(*[combine_ASigmas(term) for term in expr.args])
     sigmas = expr.atoms(ASigma)
-    subslist = [ (s,S.One) for s in sigmas ]
-    new = sigmas.pop()
-    for s in sigmas:
-        new = new.combine(s)
-    return new*expr.subs(subslist)
+    if sigmas:
+        subslist = [ (s,S.One) for s in sigmas ]
+        new = sigmas.pop()
+        for s in sigmas:
+            new = new.combine(s)
+        return new*expr.subs(subslist)
+    else:
+        return expr
 
 def remove_summation_indices(expr, *indices):
     """
