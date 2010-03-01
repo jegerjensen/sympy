@@ -117,7 +117,7 @@ def test_CompositeSphericalTensor_methods():
     T = SphericalTensor('T',C, c, t1, t2)
     assert T.tensor1 == t1
     assert T.tensor2== t2
-    assert str(T) == 'T[t1(A, a)*t2(B, b)](C, c)'
+    assert str(T) == 'T[t1(A)*t2(B)](C, c)'
     assert T.get_uncoupled_form() == ASigma(a, b)*ClebschGordanCoefficient(A,a,B,b,C,c)*t1*t2
     assert T.get_direct_product_ito_self() == ASigma(C, c)*ClebschGordanCoefficient(A,a,B,b,C,c)*T
 

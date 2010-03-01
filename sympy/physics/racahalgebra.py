@@ -630,6 +630,15 @@ class CompositeSphericalTensor(SphericalTensor):
     def tensor2(self):
         return self.args[4]
 
+    def _str_drop_projection_(self, p, *args):
+        tup = ( self.tensor1._str_drop_projection_(p,*args) +
+                self.tensor2._str_drop_projection_(p,*args) )
+        tensor_product = "[%s(%s)*%s(%s)]" %tup
+        rank= "%s" %(self.rank,)
+        symbol = p.doprint(self.symbol)
+
+        return symbol+tensor_product,rank
+
     def _sympystr_(self, p, *args):
         """
         >>> from sympy.physics.racahalgebra import SphericalTensor
@@ -640,11 +649,13 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t1 = SphericalTensor('t1',A,a)
         >>> t2 = SphericalTensor('t2',B,b)
         >>> SphericalTensor('T',C,c,t1,t2)
-        T[t1(A, a)*t2(B, b)](C, c)
+        T[t1(A)*t2(B)](C, c)
 
         """
 
-        tensor_product = "[%s*%s]" %(self.tensor1, self.tensor2)
+        tup = ( self.tensor1._str_drop_projection_(p, *args) +
+                self.tensor2._str_drop_projection_(p, *args) )
+        tensor_product = "[%s(%s)*%s(%s)]" %tup
         rank_projection= "(%s, %s)" %(self.rank, self.projection)
         symbol = p.doprint(self.symbol)
 
@@ -711,14 +722,14 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t2 = SphericalTensor('t2',B,b)
         >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.get_direct_product_ito_self()
-        Sum(D, d)*(A, a, B, b|D, d)*T[t1(A, a)*t2(B, b)](D, d)
+        Sum(D, d)*(A, a, B, b|D, d)*T[t1(A)*t2(B)](D, d)
 
         With three coupled tensors we get:
 
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
         >>> S.get_direct_product_ito_self()
-        Sum(D, d)*Sum(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A, a)*t2(B, b)](D, d)*t3(C, c)](E, e)
+        Sum(D, d)*Sum(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A)*t2(B)](D)*t3(C)](E, e)
 
         """
 
@@ -768,7 +779,7 @@ class CompositeSphericalTensor(SphericalTensor):
         This method tells you how S2 can be expressed in terms of S1:
 
         >>> S1.get_ito_other_coupling_order(S2)
-        Sum(E, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A, a)*T23[t2(B, b)*t3(C, c)](E, e)](G, g)*Dij(F, G)*Dij(f, g)
+        Sum(E, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A)*T23[t2(B)*t3(C)](E)](G, g)*Dij(F, G)*Dij(f, g)
 
         Note how F==G and f==g is expressed with the Kronecker delta, Dij.
         """
@@ -836,6 +847,11 @@ class AtomicSphericalTensor(SphericalTensor):
 
         return "%s(%s, %s)" % self.args
 
+    def _str_drop_projection_(self, p, *args):
+        rank= "%s" %(self.rank,)
+        symbol = p.doprint(self.symbol)
+
+        return symbol,rank
 
 class ASigma(Basic):
     """
