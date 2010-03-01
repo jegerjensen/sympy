@@ -397,12 +397,12 @@ class SixJSymbol(AngularMomentumSymbol):
         integers, while the total C,c is again half integer.
         This information can be entered as:
 
+        >>> from sympy import global_assumptions, Q, Assume
         >>> from sympy.physics.racahalgebra import SixJSymbol
         >>> from sympy import symbols
         >>> a,b,c,d,e,f = symbols('abcdef')
         >>> A,B,C,D,E,F = symbols('ABCDEF')
 
-        >>> from sympy import global_assumptions, Q, Assume
         >>> global_assumptions.add( Assume(a, 'half_integer') )
         >>> global_assumptions.add( Assume(b, 'half_integer') )
         >>> global_assumptions.add( Assume(d, 'half_integer') )
@@ -419,6 +419,8 @@ class SixJSymbol(AngularMomentumSymbol):
         >>> sjs = SixJSymbol(A, B, E, D, C, F);
         >>> sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f))
         (-1)**(C + D + F - a - c - e)*Sum(a, b, d, e, f)*ThreeJSymbol(A, B, E, a, -e, -b)*ThreeJSymbol(A, C, F, a, f, -c)*ThreeJSymbol(B, D, F, e, -d, -c)*ThreeJSymbol(C, D, E, f, d, b)
+
+        >>> global_assumptions.clear()
         """
 
         (j1, j2, J12, j3, J, J23) = self.args
@@ -1167,6 +1169,12 @@ def refine_tjs2sjs(expr):
     >>> expr = SixJSymbol(A, B, E, D, Z, F).get_ito_ThreeJSymbols((a,b,e,d,z,f), definition='edmonds')
     >>> refine_tjs2sjs(expr)
     SixJSymbol(A, B, E, D, Z, F)
+
+    >>> global_assumptions.clear()
+
+
+
+    FIXME: need to call refine_phases() before returning.
     """
 
 
