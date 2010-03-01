@@ -10,6 +10,7 @@ from sympy.physics.racahalgebra import (
         SixJSymbol, ThreeJSymbol, ClebschGordanCoefficient, refine_tjs2sjs,
         convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor, CompositeSphericalTensor, AtomicSphericalTensor
         )
+from sympy.utilities import raises
 
 
 def test_half_integer_ask_handler():
@@ -80,6 +81,8 @@ def test_ASigma():
     a,b,c = symbols('abc')
     assert ASigma(b,c,a).args == (a,b,c)
     assert str(ASigma(a,b,c)) == 'Sum(a, b, c)'
+    assert ASigma(a,b) == ASigma(a,-b)
+    raises(ValueError, "ASigma(a,2*b*a)")
 
 def test_SphericalTensor_creation():
     a,b,c = symbols('abc')

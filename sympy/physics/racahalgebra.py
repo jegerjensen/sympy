@@ -853,8 +853,15 @@ class ASigma(Basic):
         >>> ASigma(b,a)
         Sum(a, b)
         """
-        indices = sorted(indices)
-        obj = Basic.__new__(cls,*indices)
+        unsigned = []
+        for i in indices:
+            c,t = i.as_coeff_terms()
+            if len(t)==1:
+                unsigned.append(t[0])
+            else:
+                raise ValueError("ASigma doesn't accept products of symbols: %s"%i)
+        unsigned.sort()
+        obj = Basic.__new__(cls,*unsigned)
         return obj
 
     def combine(self, other):
