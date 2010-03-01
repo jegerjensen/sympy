@@ -1105,7 +1105,7 @@ def _brutal_search_for_simple_phase(phase, known_identities,
         return phase
 
     # FIXME: this loop tries every combination twice
-    for identity in sorted(known_identities.keys()):
+    for identity in known_identities.keys():
         if known_identities[identity] >= recursion_limit:
             break
         known_identities[identity] +=1
