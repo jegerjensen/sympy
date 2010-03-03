@@ -10,6 +10,153 @@ from sympy.physics.secondquant import (
         Dagger, AntiSymmetricTensor
         )
 
+braket_assumptions = global_assumptions
+
+class WignerEckardDoesNotApply(Exception): pass
+
+class QuantumState(Basic): pass
+
+class QuantumOperator(Basic):
+    """
+    Base class for all objects representing a quantum operator.
+    """
+    is_commutative=False
+
+class SphericalTensorOperator(QuantumOperator, SphericalTensor):
+    """
+    An Operator that transforms like a spherical tensor
+
+    fulfills certain commutation relations with J_+- and J_z.
+    """
+    def __new__(cls, symbol, rank, projection):
+        return SphericalTensor.__new__(cls, symbol, rank, projection)
+
+
+class BosonState(QuantumState):
+    @property
+    def spin_assume(self):
+        """
+        >>> from sympy.physics.braket import BosonState
+        >>> BosonState('a').spin_assume
+        'integer'
+        """
+        return Q.integer
+
+class FermionState(QuantumState):
+    @property
+    def spin_assume(self):
+        """
+        >>> from sympy.physics.braket import FermionState
+        >>> FermionState('a').spin_assume
+        'half_integer'
+        """
+        return 'half_integer'
+
+class BraKet(QuantumState):
+
+    is_commutative = False
+
+    def _sympystr_(self, *args):
+        return self.left_braket+self._str_nobraket_(*args)+self.right_braket
+
+    def _str_nobraket_(self, *args):
+        str_args = []
+        for s in self.args:
+            try:
+                str_args.append(s._str_nobraket_(*args))
+            except AttributeError:
+                str_args.append(str(s))
+        return ", ".join([ str(s) for s in str_args])
+
+class Ket(BraKet):
+    left_braket = '|'
+    right_braket = '>'
+
+class Bra(BraKet):
+    left_braket = '<'
+    right_braket = '|'
+
+class QuantumState(Basic):
+    """
+    Base class for all objects representing a quantum state.
+
+    - single-particle or many-body
+    - coupled or uncoupled
+    - bra-ket or a function in continuous basis
+
+    etc.
+
+    The common ground is the ability to be modified by a QuantumOperator
+
+    """
+
+
+    @property
+    def symbol(self):
+        return self.args[0]
+
+    def get_operator_result(self, operator):
+        """
+        Calculates the resulting state as determined by the supplied operator.
+        """
+        assert isinstance(operator, QuantumOperator)
+        return self._eval_operator(operator)
+
+    def _eval_operator(self, operator):
+        raise NotImplemented
+
+
+
+class RegularQuantumState(QuantumState):
+    """
+    A quantum state that has the properties of ket-states
+
+    - Operators that act must be to the left of a RegularQuantumState.
+    - Any operators acting on a RegularQuantumState, acts unmodified.
+    """
+    pass
+
+class DualQuantumState(QuantumState):
+    """
+    A quantum state that has the properties of bra-states
+
+    - Operators that act must be to the right of a DualQuantumState.
+    - Any operators acting on a DualQuantumState, acts like its hermitian
+    conjugate.
+    """
+    pass
+
+class SphericalQuantumState(QuantumState, SphericalTensor):
+    """
+    Base class for a quantum state that is a spherical tensor.
+    """
+
+    @property
+    def as_tensor(self):
+        return self._eval_as_tensor()
+
+class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
+    """
+    A quantum state that has the properties of spherical tensors.
+
+    a state |jm> transforms like the spherical tensor T^j_m
+    """
+    def _eval_as_tensor(self):
+        return self
+
+class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
+    """
+    A quantum state that has the properties of spherical tensors.
+
+    a state <jm| transforms like the spherical tensor (-1)**(j-m) T^j_-m
+    """
+    def _eval_as_tensor(self):
+        j = self.rank
+        m = self.projection
+        return (-1)**(j-m)*self.subs(m, -m)
+
+
+
 class MatrixElement(Basic):
     """
     Base class for all matrix elements
@@ -43,6 +190,11 @@ class MatrixElement(Basic):
         return "<%s| %s |%s>" %self.args
 
     def __new__(cls,left, operator, right, **kw_args):
+
+        assert isinstance(left, DualQuantumState)
+        assert isinstance(operator, QuantumOperator)
+        assert isinstance(right, RegularQuantumState)
+
         f1,t1 = cls._is_tensor(left)
         f2,t2 = cls._is_tensor(operator)
         f3,t3 = cls._is_tensor(right)
