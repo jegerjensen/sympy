@@ -554,11 +554,6 @@ def get_spherical_tensor(symbol, rank, projection, tensor1=None, tensor2=None):
     tensor2, we return a CompositeSphericalTensor and if not, we return an
     AtomicSphericalTensor.
     """
-    if isinstance(symbol, str):
-        # sympify may return unexpected stuff from a string
-        symbol = Symbol(symbol)
-    else:
-        symbol = sympify(symbol)
 
     if tensor1 and tensor2:
         return CompositeSphericalTensor(
@@ -579,11 +574,17 @@ class SphericalTensor(Basic):
     """
     is_commutative=True
 
-    def __new__(cls, *args, **kw_args):
-        if cls == SphericalTensor:
-            return get_spherical_tensor(*args)
+    def __new__(cls, symbol, *args, **kw_args):
+        if isinstance(symbol, str):
+            # sympify may return unexpected stuff from a string
+            symbol = Symbol(symbol)
         else:
-            return Basic.__new__(cls, *args, **kw_args)
+            symbol = sympify(symbol)
+
+        if cls == SphericalTensor:
+            return get_spherical_tensor(symbol, *args)
+        else:
+            return Basic.__new__(cls, symbol, *args, **kw_args)
 
     @property
     def rank(self):
