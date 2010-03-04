@@ -598,6 +598,25 @@ class SphericalTensor(Basic):
     def symbol(self):
         return self.args[0]
 
+    def _sympystr_(self, *args):
+        """
+        >>> from sympy.physics.racahalgebra import SphericalTensor
+        >>> from sympy import symbols
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
+
+        >>> SphericalTensor('t1',A,a)
+        t1(A, a)
+        """
+
+        return "%s(%s, %s)" % self.args
+
+    def _str_drop_projection_(self, p, *args):
+        rank= "%s" %(self.rank,)
+        symbol = p.doprint(self.symbol)
+
+        return symbol,rank
+
 
 class CompositeSphericalTensor(SphericalTensor):
     """
@@ -843,25 +862,6 @@ class AtomicSphericalTensor(SphericalTensor):
         to break the recursion.
         """
         return S.One
-
-    def _sympystr_(self, *args):
-        """
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy import symbols
-        >>> a,b,c,d,e = symbols('abcde')
-        >>> A,B,C,D,E = symbols('ABCDE')
-
-        >>> SphericalTensor('t1',A,a)
-        t1(A, a)
-        """
-
-        return "%s(%s, %s)" % self.args
-
-    def _str_drop_projection_(self, p, *args):
-        rank= "%s" %(self.rank,)
-        symbol = p.doprint(self.symbol)
-
-        return symbol,rank
 
 class ASigma(Basic):
     """
