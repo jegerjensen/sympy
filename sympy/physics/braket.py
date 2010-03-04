@@ -7,7 +7,7 @@ from sympy.physics.racahalgebra import (
         combine_ASigmas, remove_summation_indices, ASigma,
         )
 from sympy.physics.secondquant import (
-        Dagger, AntiSymmetricTensor
+        Dagger, AntiSymmetricTensor, _sort_anticommuting_fermions
         )
 
 braket_assumptions = global_assumptions
@@ -62,6 +62,10 @@ class BosonState(QuantumState):
         """
         return Q.integer
 
+    @classmethod
+    def _sort_states(cls,states):
+        return sorted(states), S.Zero
+
 class FermionState(QuantumState):
     @property
     def spin_assume(self):
@@ -71,6 +75,10 @@ class FermionState(QuantumState):
         'half_integer'
         """
         return 'half_integer'
+
+    @classmethod
+    def _sort_states(cls,states):
+        return _sort_anticommuting_fermions(states)
 
 class BraKet(QuantumState):
 
@@ -177,6 +185,36 @@ class DualQuantumState(QuantumState):
     conjugate.
     """
     pass
+
+class DirectQuantumState(QuantumState):
+    """
+    Base class for general quantum states of fermions or bosons.
+
+    This is mainly a container for single particle states.  The states will be
+    ordered canonically, according to the method ._sort_states() which must be
+    defined.  This method is available if the subclass also inherits
+    FermionState or BosonState as appropriate.
+    """
+    def __new__(cls, *args, **kw_args):
+        """
+        Will order the states canonically
+
+        >>> from sympy.physics.braket import DirectQuantumState, FermionState, BosonState
+        >>> from sympy import symbols
+        >>> a,b,c,d = symbols('a b c d')
+        >>> class Fermions(DirectQuantumState, FermionState):
+        ...     pass
+        >>> Fermions(b,a,c,d)
+        -Fermions(a, b, c, d)
+        >>> class Bosons(DirectQuantumState, BosonState):
+        ...     pass
+        >>> Bosons(b,a,c,d)
+        Bosons(a, b, c, d)
+        """
+        new_args,sign = cls._sort_states(args)
+        obj = QuantumState.__new__(cls, *new_args, **kw_args)
+        return (-1)**sign*obj
+
 
 class SphericalQuantumState(QuantumState):
     """
@@ -470,8 +508,56 @@ class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
 SphFermKet._hermitian_conjugate = SphFermBra
 
 
+class FermKet(RegularQuantumState, DirectQuantumState, Ket, FermionState):
+    """
+    Holds a direct product ket state of fermions.
 
+    >>> from sympy.physics.braket import FermKet
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('a b c')
+    >>> FermKet(a)
+    |a>
+    >>> FermKet(a, b)
+    |a, b>
+    >>> FermKet(b, a)
+    -|a, b>
+    """
+    pass
 
+class FermBra(DualQuantumState, DirectQuantumState, Bra, FermionState):
+    """
+    Holds a dual direct product bra state of fermions.
+
+    >>> from sympy.physics.braket import FermBra
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('a b c')
+    >>> FermBra(a)
+    <a|
+    >>> FermBra(a, b)
+    <a, b|
+    >>> FermBra(b, a)
+    -<a, b|
+    """
+    _hermitian_conjugate = FermKet
+FermKet._hermitian_conjugate = FermBra
+
+def _get_matrix_element(left, operator, right, **kw_args):
+    """
+    Is responsible for spawning the correct matrix-class based on the
+    arguments
+    """
+    if (    isinstance(left,SphericalTensor) and
+            isinstance(operator, SphericalTensor) and
+            isinstance(right, SphericalTensor)
+            ):
+        if kw_args.get('reduced'):
+            return ReducedMatrixElement(left,operator, right, **kw_args)
+        else:
+            return ThreeTensorMatrixElement(left, operator, right, **kw_args)
+    else:
+        if kw_args.get('reduced'):
+            raise ValueError("Reduced matrix element needs three tensors")
+        return DirectMatrixElement(left, operator, right, **kw_args)
 
 
 class MatrixElement(Basic):
