@@ -473,12 +473,11 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
     pass
 
 
-
 class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
     """
     Represents a spherical fermion bra.
 
-    >>> from sympy.physics.braket import SphFermBra
+    >>> from sympy.physics.braket import SphFermBra, SphericalTensor, SphericalQuantumState
     >>> from sympy import symbols
     >>> a,b,c = symbols('a b c')
     >>> SphFermBra(a)
@@ -490,6 +489,10 @@ class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
     >>> A, B = SphFermBra('a'), SphFermBra('b')
     >>> C = SphFermBra('c',A,B); C
     <c(a, b)|
+    >>> isinstance(C, SphericalTensor)
+    False
+    >>> isinstance(C, SphericalQuantumState)
+    True
 
     Single particle states return tensors with symbol 't', coupled states 'T'
 
@@ -546,10 +549,13 @@ def _get_matrix_element(left, operator, right, **kw_args):
     Is responsible for spawning the correct matrix-class based on the
     arguments
     """
-    if (    isinstance(left,SphericalTensor) and
+
+    if (    isinstance(left,SphericalQuantumState) and
             isinstance(operator, SphericalTensor) and
-            isinstance(right, SphericalTensor)
+            isinstance(right, SphericalQuantumState)
             ):
+
+
         if kw_args.get('reduced'):
             return ReducedMatrixElement(left,operator, right, **kw_args)
         else:
@@ -562,35 +568,40 @@ def _get_matrix_element(left, operator, right, **kw_args):
 
 class MatrixElement(Basic):
     """
-    Base class for all matrix elements
+    Base class for all matrix elements.
 
-    Is responsible for spawning the correct subclass upon construction.
+    Responsible for spawning the correct subclass depending on the input
+    parameters.
 
-    >>> from sympy.physics.racahalgebra import SphericalTensor
-    >>> from sympy.physics.braket import MatrixElement
+    >>> from sympy.physics.braket import SphFermBra, SphFermKet, FermBra
+    >>> from sympy.physics.braket import MatrixElement, SphericalTensorOperator
+    >>> from sympy.physics.braket import ThreeTensorMatrixElement
+    >>> from sympy.physics.braket import ReducedMatrixElement
+    >>> from sympy.physics.braket import DirectMatrixElement
     >>> from sympy import symbols
-    >>> a,b,c,d,e,f,g,h = symbols('abcdefgh')
-    >>> A,B,C,D,E,F,G,H = symbols('ABCDEFGH')
+    >>> a,b,c,d,e,f,g,h,D = symbols('abcdefghD')
 
-    >>> t1 = SphericalTensor('t1',A,a)
-    >>> t2 = SphericalTensor('t2',B,b)
-    >>> t3 = SphericalTensor('t3',C,c)
-    >>> Op = SphericalTensor('Op',D,d)
-    >>> MatrixElement(t1,Op,t3)
-    <t1(A, a)| Op(D, d) |t3(C, c)>
-    >>> MatrixElement(t1,Op,t3).__class__
-    ThreeTensorMatrixElement
-    >>> ReducedMatrixElement(t1,Op,t3).get_direct_product_ito_self()
-    (C, c, D, d|A, a)*<t1(A)|| Op(D) ||t3(C)>
-    >>> MatrixElement(t1,Op,t3, reduced=True)
-    <t1(A)|| Op(D) ||t3(C)>
+    >>> bra_a = SphFermBra(a)
+    >>> ket_b = SphFermKet(b)
+    >>> Op = SphericalTensorOperator('Op',D,d)
+    >>> m = MatrixElement(bra_a,Op,ket_b); m
+    <a| Op(D, d) |b>
+    >>> isinstance(m, ThreeTensorMatrixElement)
+    True
 
-    >>> T = SphericalTensor('T',E,e,t1,t2)
-    >>> ReducedMatrixElement(T,Op,t3).get_direct_product_ito_self()
-    Sum(E, e)*(A, a, B, b|E, e)*(C, c, D, d|E, e)*<T[t1(A)*t2(B)](E)|| Op(D) ||t3(C)>
+    >>> m = MatrixElement(bra_a,Op,ket_b, reduced=True); m
+    <a|| Op(D) ||b>
+    >>> isinstance(m, ReducedMatrixElement)
+    True
+
+    >>> bra_ac = FermBra(bra_a, SphFermBra(c))
+    >>> m = MatrixElement(bra_ac,Op,ket_b); m
+    <a, c| Op(D, d) |b>
+    >>> isinstance(m, DirectMatrixElement)
+    True
     """
-    def _sympystr_(self,*args):
-        return "<%s| %s |%s>" %self.args
+
+    is_commutative=True
 
     def __new__(cls,left, operator, right, **kw_args):
 
@@ -598,25 +609,11 @@ class MatrixElement(Basic):
         assert isinstance(operator, QuantumOperator)
         assert isinstance(right, RegularQuantumState)
 
-        f1,t1 = cls._is_tensor(left)
-        f2,t2 = cls._is_tensor(operator)
-        f3,t3 = cls._is_tensor(right)
-        if f1 and f2 and f3:
-            if kw_args.get('reduced') is False:
-                return f1*f2*f3*ThreeTensorMatrixElement(t1, t2, t3)
-            else:
-                return f1*f2*f3*ReducedTensorMatrixElement(t1, t2, t3)
+        if cls is MatrixElement:
+            return _get_matrix_element(left, operator, right, **kw_args)
         else:
-            if kw_args.get('reduced'):
-                raise ValueError("Reduced matrix element needs three tensors")
-
-            if not (isinstance(left, tuple) and isinstance(right, tuple)):
-                c,t = left.as_coeff_terms(SphericalTensor)
-                if len(t) > 1: raise ValueError("")
-
-
-                raise ValueError("DirectMatrixElement takes two tuples")
-            return DirectMatrixElement(left, operator, right)
+            obj = Basic.__new__(cls, left, operator, right, **kw_args)
+            return obj
 
     @property
     def left(self):
@@ -630,27 +627,27 @@ class MatrixElement(Basic):
     def operator(self):
         return self.args[1]
 
-    @classmethod
-    def _is_tensor(cls, tensor):
-        if isinstance(tensor, SphericalTensor):
-            return S.One, tensor
-        if isinstance(tensor, Mul):
-            try:
-                return _as_coeff_tensor(tensor)
-            except ValueError:
-                pass
-        return False, False
+
+    def __str__(self,*args):
+        return "%s %s %s" %self.args[:4]
+
+    _sympystr_ = __str__
 
 
 class ReducedMatrixElement(MatrixElement):
     nargs = 3
 
-    def _sympystr_(self,p,*args):
-        tup = tuple(["%s(%s)"%e._str_drop_projection_(p,*args) for e in self.args])
-        return "<%s|| %s ||%s>" %tup
+    def __str__(self,p,*args):
+        return "%s| %s |%s" %(
+                p.doprint(self.left),
+                "%s(%s)"%self.operator._str_drop_projection_(p,*args),
+                p.doprint(self.right)
+                )
 
-    def __new__(cls,left, op, right):
-        obj = Basic.__new__(cls, left,op,right)
+    _sympystr_ = __str__
+
+    def __new__(cls,left, op, right, **kw_args):
+        obj = Basic.__new__(cls, left,op,right, **kw_args)
         return obj
 
     def get_direct_product_ito_self(self):
@@ -694,13 +691,31 @@ class ReducedMatrixElement(MatrixElement):
                 )
 
 
-class DirectMatrixElement(MatrixElement, AntiSymmetricTensor):
+class DirectMatrixElement(MatrixElement):
     """
     Holds matrix elements corresponding to the direct product of any number of tensors.
+
+
+    >>> from sympy.physics.braket import SphFermBra, SphFermKet
+    >>> from sympy.physics.braket import DirectMatrixElement, SphericalTensorOperator
+    >>> from sympy import symbols
+    >>> a,b,c,d,e,f,g,h,D = symbols('abcdefghD')
+
+    >>> bra_a = SphFermBra(a)
+    >>> ket_b = SphFermKet(b)
+    >>> Op = SphericalTensorOperator('Op',D,d)
+    >>> DirectMatrixElement(bra_a,Op,ket_b)
+    <a| Op(D, d) |b>
     """
     nargs=3
     def __new__(cls,left, op, right):
-        obj = AntiSymmetricTensor.__new__(op, left,right)
+        allowed = ( QuantumState,)
+        assert isinstance(left,allowed)
+        assert isinstance(op, QuantumOperator)
+        assert isinstance(right,allowed)
+
+        obj = MatrixElement.__new__(cls, left, op, right)
+
         return obj
 
     def use_wigner_eckardt(self, **kw_args):
