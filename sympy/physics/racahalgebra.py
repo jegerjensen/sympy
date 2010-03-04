@@ -547,6 +547,25 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
 
         return "(%s, %s, %s, %s|%s, %s)" % self.args
 
+def get_spherical_tensor(symbol, rank, projection, tensor1=None, tensor2=None):
+    """
+    Creates a new spherical tensor (ST) with the given rank and
+    projection. If two spherical tensors are supplied as tensor1 and
+    tensor2, we return a CompositeSphericalTensor and if not, we return an
+    AtomicSphericalTensor.
+    """
+    if isinstance(symbol, str):
+        # sympify may return unexpected stuff from a string
+        symbol = Symbol(symbol)
+    else:
+        symbol = sympify(symbol)
+
+    if tensor1 and tensor2:
+        return CompositeSphericalTensor(
+                symbol, rank, projection, tensor1, tensor2)
+    else:
+        return AtomicSphericalTensor(symbol, rank, projection)
+
 
 class SphericalTensor(Basic):
     """
@@ -560,21 +579,11 @@ class SphericalTensor(Basic):
     """
     is_commutative=True
 
-    def __new__(cls, symbol, rank, projection, tensor1=None, tensor2=None):
-        """
-        Creates a new spherical tensor (ST) with the given rank and
-        projection. If two spherical tensors are supplied as tensor1 and
-        tensor2, we return a CompositeSphericalTensor instead.
-        """
-        if isinstance(symbol, str):
-            symbol = Symbol(symbol)  # sympify may return unexpected stuff from a string
+    def __new__(cls, *args, **kw_args):
+        if cls == SphericalTensor:
+            return get_spherical_tensor(*args)
         else:
-            symbol = sympify(symbol)
-
-        if tensor1 and tensor2:
-            return CompositeSphericalTensor(symbol, rank, projection, tensor1, tensor2)
-        else:
-            return AtomicSphericalTensor(symbol, rank, projection)
+            return Basic.__new__(cls, *args, **kw_args)
 
     @property
     def rank(self):
