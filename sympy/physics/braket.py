@@ -76,7 +76,7 @@ class BraKet(QuantumState):
 
     is_commutative = False
 
-    def _sympystr_(self, *args):
+    def __str__(self, *args):
         return self.left_braket+self._str_nobraket_(*args)+self.right_braket
 
     def _str_nobraket_(self, *args):
@@ -87,6 +87,8 @@ class BraKet(QuantumState):
             except AttributeError:
                 str_args.append(str(s))
         return ", ".join([ str(s) for s in str_args])
+
+    _sympystr_ = __str__
 
 class Ket(BraKet):
     left_braket = '|'
@@ -169,14 +171,80 @@ class DualQuantumState(QuantumState):
     """
     pass
 
-class SphericalQuantumState(QuantumState, SphericalTensor):
+class SphericalQuantumState(QuantumState):
     """
-    Base class for a quantum state that is a spherical tensor.
+    Base class for a quantum state that transforms like a spherical tensor.
+
+    We access SphericalTensor through aggregation rather than inheritance, as
+    that will shield the tensor methods, preventing errors related to the
+    tensorial properties of dual states.
+
+    The constructor of spherical states could setup an instance variable
+    spherical tensor, which is returned whenever necessary. (from
+    _eval_as_tensor() for instance)
+
+    Spherical states are eigenfunctions of the J**2 and J_z operators.
+
+    They have well defined properties when operated on by a J_+ or J_-
+    operator.
     """
 
-    @property
-    def as_tensor(self):
-        return self._eval_as_tensor()
+    def __new__(cls, symbol, state1=None, state2=None):
+        """
+        Creates either a single particle spherical state or a
+        coupled state constructed from state1 and state2.
+
+        Given a symbol, 'i', this constructor creates two new symbols
+        j_i and m_i, and register the appropriate assumptions.
+
+        Coupled states have capital J, M letters denoting rank and projection.
+        """
+        if isinstance(symbol, str): symbol = Symbol(symbol)
+        else: symbol = sympify(symbol)
+
+        if state1 and state2:
+            obj = QuantumState.__new__(cls, symbol, state1, state2)
+            obj.state1 = state1
+            obj.state2 = state2
+            obj.is_coupled = True
+            obj._j = Symbol("J_"+str(symbol))
+            obj._m = Symbol("M_"+str(symbol))
+        else:
+            obj = QuantumState.__new__(cls, symbol)
+            obj.is_coupled = False
+            obj._j = Symbol("j_"+str(symbol))
+            obj._m = Symbol("m_"+str(symbol))
+
+        # register spin assumptions
+        if obj.is_coupled:
+            if ask(state1._j + state2._j,Q.integer):
+                spin_assume = Q.integer
+            elif ask(state1._j + state2._j,'half_integer'):
+                spin_assume = 'half_integer'
+            else:
+                raise ValueError("Couldn't determine spin assumptions")
+        else:
+            spin_assume = obj.spin_assume
+        braket_assumptions.add(Assume(obj._j,spin_assume))
+        braket_assumptions.add(Assume(obj._m,spin_assume))
+
+
+        return obj
+
+    def _str_nobraket_(self, *args):
+        """
+        Coupling must show in represetantion.
+        """
+        if self.is_coupled:
+            return "%s(%s, %s)"%(self.symbol,
+                    self.state1._str_nobraket_(),
+                    self.state2._str_nobraket_()
+                    )
+        else:
+            return str(self.symbol)
+
+    def as_coeff_tensor(self):
+        return self._eval_as_coeff_tensor()
 
 class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
     """
@@ -184,8 +252,13 @@ class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
 
     a state |jm> transforms like the spherical tensor T^j_m
     """
-    def _eval_as_tensor(self):
-        return self
+    def _eval_as_coeff_tensor(self):
+        if self.is_coupled:
+            c1, t1 = self.state1.as_coeff_tensor()
+            c2, t2 = self.state2.as_coeff_tensor()
+            return c1*c2, SphericalTensor('T', self._j, self._m, t1, t2)
+        else:
+            return S.One,SphericalTensor('t',self._j, self._m)
 
 class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
     """
@@ -193,10 +266,76 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
 
     a state <jm| transforms like the spherical tensor (-1)**(j-m) T^j_-m
     """
-    def _eval_as_tensor(self):
-        j = self.rank
-        m = self.projection
-        return (-1)**(j-m)*self.subs(m, -m)
+
+    def _eval_as_coeff_tensor(self):
+        j = self._j
+        m = self._m
+        if self.is_coupled:
+            c1, t1 = self.state1.as_coeff_tensor()
+            c2, t2 = self.state2.as_coeff_tensor()
+            return (-1)**(j-m)*c1*c2, SphericalTensor('T', j, -m, t1, t2)
+        else:
+            return (-1)**(j-m),SphericalTensor('t',j, -m)
+
+class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
+    """
+    Represents a spherical fermion ket.
+
+    >>> from sympy.physics.braket import SphFermKet
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('a b c')
+    >>> SphFermKet(a)
+    |a>
+    >>> SphFermKet(a)._j
+    j_a
+    >>> SphFermKet(a)._m
+    m_a
+    >>> A, B = SphFermKet('a'), SphFermKet('b')
+    >>> C = SphFermKet('c',A,B); C
+    |c(a, b)>
+
+    Single particle states return tensors with symbol 't', coupled states 'T'
+
+    >>> A.as_coeff_tensor()
+    (1, t(j_a, m_a))
+    >>> C.as_coeff_tensor()
+    (1, T[t(j_a)*t(j_b)](J_c, M_c))
+
+    """
+    pass
+
+
+
+class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
+    """
+    Represents a spherical fermion bra.
+
+    >>> from sympy.physics.braket import SphFermBra
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('a b c')
+    >>> SphFermBra(a)
+    <a|
+    >>> SphFermBra(a)._j
+    j_a
+    >>> SphFermBra(a)._m
+    m_a
+    >>> A, B = SphFermBra('a'), SphFermBra('b')
+    >>> C = SphFermBra('c',A,B); C
+    <c(a, b)|
+
+    Single particle states return tensors with symbol 't', coupled states 'T'
+
+    >>> A.as_coeff_tensor()
+    ((-1)**(j_a - m_a), t(j_a, -m_a))
+    >>> C.as_coeff_tensor()
+    ((-1)**(j_a - m_a)*(-1)**(j_b - m_b)*(-1)**(J_c - M_c), T[t(j_a)*t(j_b)](J_c, -M_c))
+
+    """
+    _hermitian_conjugate = SphFermKet
+SphFermKet._hermitian_conjugate = SphFermBra
+
+
+
 
 
 
