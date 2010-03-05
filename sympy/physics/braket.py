@@ -243,8 +243,56 @@ class SphericalQuantumState(QuantumState):
         else:
             return str(self.symbol)
 
-    def as_coeff_tensor(self):
-        return self._eval_as_coeff_tensor()
+    def as_coeff_tensor(self, **kw_args):
+        """
+        Returns the coefficient and tensor corresponding to this state.
+
+        If this state is composed of other spherical states, and the keyword
+        deep=True is supplied, we return the full decoupling of the state.
+
+        >>> from sympy.physics.braket import SphFermKet, SphFermBra
+        >>> a = SphFermKet('a')
+        >>> a.as_coeff_tensor()
+        (1, t(j_a, m_a))
+
+        The rotation properties of a dual state implies that the corresponding
+        tensor expression is different:
+
+        >>> b = SphFermBra('b')
+        >>> b.as_coeff_tensor()
+        ((-1)**(j_b - m_b), t(j_b, -m_b))
+
+        Constructing a two-particle ket state 'ab', we may ask for the tensor
+        properties of ab:
+
+        >>> ab = SphFermKet('ab',a,b); ab
+        |ab(a, b)>
+        >>> ab.as_coeff_tensor()
+        (1, T(J_ab, M_ab))
+
+        Note that the returned tensor is *not* a composite tensor, even if
+        |ab> do correspond to a composite tensor.  This is done because the
+        coeff in the above result is related to |ab>, but by definition
+        completely ignorant of the internal tensors 'a' and 'b'.  In this
+        example, the tensor of the dual state <b| have a phase (-1)**(j_b -
+        m_b) that is essential to its rotational properties.  The user should
+        not be mislead to believe that a subsequent decomposition of a
+        composite tensor T[t(a)*t(b)] would be correct.
+
+        To get the full tensor decomposition, you can supply the keyword
+        deep=True:
+
+        >>> full = ab.as_coeff_tensor(deep=True)
+        >>> full[0]
+        (-1)**(j_b - m_b)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, M_ab)
+        >>> full[1]
+        t(j_a, m_a)*t(j_b, -m_b)
+
+        Here we see that the dual state <b| is represented properly as
+        (-1)**(j_b-m_b)*T(j_b,-m_b).
+
+        """
+        return self._eval_as_coeff_tensor(**kw_args)
 
 class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
     """
@@ -252,13 +300,17 @@ class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
 
     a state |jm> transforms like the spherical tensor T^j_m
     """
-    def _eval_as_coeff_tensor(self):
-        if self.is_coupled:
-            c1, t1 = self.state1.as_coeff_tensor()
-            c2, t2 = self.state2.as_coeff_tensor()
-            return c1*c2, SphericalTensor('T', self._j, self._m, t1, t2)
+    def _eval_as_coeff_tensor(self, **kw_args):
+        if self.is_coupled and kw_args.get('deep'):
+                c1, t1 = self.state1.as_coeff_tensor()
+                c2, t2 = self.state2.as_coeff_tensor()
+                c, t = SphericalTensor('T', self._j, self._m, t1, t2
+                        ).as_coeff_direct_product(**kw_args)
+                return c1*c2*c, t
+        elif self.is_coupled:
+            return S.One, SphericalTensor('T', self._j, self._m)
         else:
-            return S.One,SphericalTensor('t',self._j, self._m)
+            return S.One, SphericalTensor('t', self._j, self._m)
 
 class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
     """
@@ -267,15 +319,33 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
     a state <jm| transforms like the spherical tensor (-1)**(j-m) T^j_-m
     """
 
-    def _eval_as_coeff_tensor(self):
-        j = self._j
-        m = self._m
-        if self.is_coupled:
+    def _eval_as_coeff_tensor(self, **kw_args):
+        """
+        >>> from sympy.physics.braket import SphFermKet, SphFermBra
+        >>> a = SphFermKet('a')
+        >>> b = SphFermBra('b')
+        >>> ab = SphFermBra('ab',a,b); ab
+        <ab(a, b)|
+        >>> ab.as_coeff_tensor()
+        ((-1)**(J_ab - M_ab), t(J_ab, -M_ab))
+
+        >>> full = ab.as_coeff_tensor(deep=True)
+        >>> full[0]
+        (-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, -M_ab)
+        >>> full[1]
+        t(j_a, m_a)*t(j_b, -m_b)
+        """
+        c = (-1)**(self._j - self._m)
+        if self.is_coupled and kw_args.get('deep'):
             c1, t1 = self.state1.as_coeff_tensor()
             c2, t2 = self.state2.as_coeff_tensor()
-            return (-1)**(j-m)*c1*c2, SphericalTensor('T', j, -m, t1, t2)
+            cgc, t = SphericalTensor('T', self._j, -self._m, t1, t2
+                    ).as_coeff_direct_product(**kw_args)
+            return c1*c2*c*cgc, t
         else:
-            return (-1)**(j-m),SphericalTensor('t',j, -m)
+            return c, SphericalTensor('t', self._j, -self._m)
+
+
 
 class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
     """
@@ -296,10 +366,6 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
 
     Single particle states return tensors with symbol 't', coupled states 'T'
 
-    >>> A.as_coeff_tensor()
-    (1, t(j_a, m_a))
-    >>> C.as_coeff_tensor()
-    (1, T[t(j_a)*t(j_b)](J_c, M_c))
 
     """
     pass
@@ -328,7 +394,12 @@ class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
     >>> A.as_coeff_tensor()
     ((-1)**(j_a - m_a), t(j_a, -m_a))
     >>> C.as_coeff_tensor()
-    ((-1)**(j_a - m_a)*(-1)**(j_b - m_b)*(-1)**(J_c - M_c), T[t(j_a)*t(j_b)](J_c, -M_c))
+    ((-1)**(J_c - M_c), T(J_c, -M_c))
+
+    >>> C.as_direct_product()
+    Sum(m_a, m_b)*(j_a, m_a, j_b, m_b|J_c, M_c)*<a|*<b|
+    >>> C.as_direct_product(strict_bra_coupling=True)
+    (-1)**(j_a - m_a)*(-1)**(j_b - m_b)*(-1)**(J_c - M_c)*Sum(m_a, m_b)*(j_a, -m_a, j_b, -m_b|J_c, -M_c)*<a|*<b|
 
     """
     _hermitian_conjugate = SphFermKet
