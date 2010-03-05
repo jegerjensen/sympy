@@ -637,6 +637,89 @@ class MatrixElement(Basic):
 class ReducedMatrixElement(MatrixElement):
     nargs = 3
 
+    def __new__(cls,left, op, right, **kw_args):
+        """
+        The reduced matrix element <.||.||.> is defined in terms of three
+        SphericalTensors, but is independent of all three projections.
+
+        >>> from sympy.physics.braket import (
+        ...         ReducedMatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('b')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> ReducedMatrixElement(bra, T, ket)
+        <a|| T(k) ||b>
+
+        If the keyword wigner_eckardt=True is given, the Wigner-Eckardt theorem
+        is applied to the supplied spherical tensors, so that the returned
+        expression is the rhs:
+
+                    k                            k
+            < J M| T  |J'M'> = (J'M'kq|JM) <J|| T ||J'>
+                    q
+
+        >>> ReducedMatrixElement(bra, T, ket, wigner_eckardt=True)
+        (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
+        """
+
+        obj = Basic.__new__(cls, left,op,right, **kw_args)
+        if kw_args.get('wigner_eckardt'):
+            cgc = obj._get_reduction_factor()
+            return cgc*obj
+        else:
+            return obj
+
+    def _get_reduction_factor(self):
+        """
+        Returns the ClebschGordanCoefficient that relates this reduced
+        matrix element to the corresponding direct matrix element.
+
+        >>> from sympy.physics.braket import (
+        ...         ReducedMatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('b')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> ReducedMatrixElement(bra, T, ket)._get_reduction_factor()
+        (j_b, m_b, k, q|j_a, m_a)
+        """
+        left,op,right = self.args
+        c_ket, t_ket = right.as_coeff_tensor()
+        j1, m1 = t_ket.get_rank_proj()
+        j2, m2 = op.get_rank_proj()
+        J, M = left._j, left._m
+        return c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
+
+    def _get_direct_matrix_element(self):
+        """
+        Returns the direct matrix element that is related to this
+        reduced matrix element by a reduction factor (a Clebsch-Gordan
+        coefficient).
+
+        >>> from sympy.physics.braket import (
+        ...         ReducedMatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('b')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> ReducedMatrixElement(bra, T, ket)._get_direct_matrix_element()
+        <a| T(k, q) |b>
+        """
+        return ThreeTensorMatrixElement(*self.args)
+
     def __str__(self,p,*args):
         return "%s| %s |%s" %(
                 p.doprint(self.left),
@@ -646,49 +729,24 @@ class ReducedMatrixElement(MatrixElement):
 
     _sympystr_ = __str__
 
-    def __new__(cls,left, op, right, **kw_args):
-        obj = Basic.__new__(cls, left,op,right, **kw_args)
-        return obj
-
     def get_direct_product_ito_self(self):
         """
         Returns the direct product of all involved spherical tensors i.t.o
         the reduced matrix element.
-
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy.physics.braket import ReducedMatrixElement
-        >>> from sympy import symbols
-        >>> a,b,c,d,e,f,g,h = symbols('abcdefgh')
-        >>> A,B,C,D,E,F,G,H = symbols('ABCDEFGH')
-
-        >>> t1 = SphericalTensor('t1',A,a)
-        >>> t2 = SphericalTensor('t2',B,b)
-        >>> t3 = SphericalTensor('t3',C,c)
-        >>> Op = SphericalTensor('Op',D,d)
-        >>> ReducedMatrixElement(t1,Op,t3)
-        <t1(A)|| Op(D) ||t3(C)>
-        >>> ReducedMatrixElement(t1,Op,t3).get_direct_product_ito_self()
-        (C, c, D, d|A, a)*<t1(A)|| Op(D) ||t3(C)>
-
-        >>> T = SphericalTensor('T',E,e,t1,t2)
-        >>> ReducedMatrixElement(T,Op,t3).get_direct_product_ito_self()
-        Sum(E, e)*(A, a, B, b|E, e)*(C, c, D, d|E, e)*<T[t1(A)*t2(B)](E)|| Op(D) ||t3(C)>
         """
-        left = self.left.get_direct_product_ito_self()
-        c_left, t_left = left.as_coeff_terms(SphericalTensor)
-        operator = self.operator.get_direct_product_ito_self()
-        c_operator, t_operator = operator.as_coeff_terms(SphericalTensor)
-        right = self.right.get_direct_product_ito_self()
-        c_right, t_right = right.as_coeff_terms(SphericalTensor)
+        cgc = self._get_reduction_factor()
+        matel = self._get_direct_matrix_element()
+        summation = ASigma(cgc.args[-2:])
+        return summation*cgc*matel.get_direct_product_ito_self()
 
-        return (
-                c_left*c_operator*c_right*self
-                *ClebschGordanCoefficient(
-                    self.right.rank, self.right.projection,
-                    self.operator.rank, self.operator.projection,
-                    self.left.rank, self.left.projection
-                    )
-                )
+    def as_direct_product(self):
+        """
+        Returns the reduced matrix element in terms of direct product
+        matrices.
+        """
+        cgc = self._get_reduction_factor()
+        matel = self._get_direct_matrix_element()
+        return cgc*matel.as_direct_product()
 
 
 class DirectMatrixElement(MatrixElement):
