@@ -594,6 +594,9 @@ class SphericalTensor(Basic):
     def projection(self):
         return self.args[2]
 
+    def get_rank_proj(self):
+        return self.args[1:3]
+
     @property
     def symbol(self):
         return self.args[0]
@@ -772,11 +775,11 @@ class CompositeSphericalTensor(SphericalTensor):
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
                     self.rank,self.projection)
-                * t1.get_direct_product_ito_self(nested=True)
-                * t2.get_direct_product_ito_self(nested=True)
+                * t1.get_direct_product_ito_self(drop_self=True)
+                * t2.get_direct_product_ito_self(drop_self=True)
                 )
 
-        if kw_args.get('nested'):
+        if kw_args.get('drop_self'):
             return ASigma(self.rank, self.projection)*expr
         else:
             return ASigma(self.rank, self.projection)*expr*self
