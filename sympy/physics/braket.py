@@ -31,6 +31,26 @@ class SphericalTensorOperator(QuantumOperator, SphericalTensor):
     def __new__(cls, symbol, rank, projection):
         return SphericalTensor.__new__(cls, symbol, rank, projection)
 
+    def _dagger_(self):
+        """
+        Hermitian conjugate of a SphericalTensorOperator.
+
+        We follow the definition of Edmonds (1974).
+
+        >>> from sympy.physics.braket import SphericalTensorOperator, Dagger
+        >>> from sympy import symbols
+        >>> k,q,T = symbols('k q T')
+        >>> SphericalTensorOperator(T, k, q)
+        T(k, q)
+        >>> Dagger(SphericalTensorOperator(T, k, q))
+        (-1)**(k + q)*T(k, -q)
+
+        """
+        k = self.rank
+        q = self.projection
+        T = self.symbol
+        cls = type(self)
+        return (-1)**(k + q)*self.__new__(cls, T, k, -q)
 
 class BosonState(QuantumState):
     @property
@@ -105,7 +125,30 @@ class QuantumState(Basic):
     def _eval_operator(self, operator):
         raise NotImplemented
 
+    def _dagger_(self):
+        """
+        Dagger(|abc>) = <abc|
 
+        >>> from sympy.physics.braket import SphFermKet, Dagger
+        >>> A = SphFermKet('a')
+        >>> Dagger(A)
+        <a|
+        >>> Dagger(Dagger(A))
+        |a>
+        >>> B = SphFermKet('b')
+        >>> C = SphFermKet('c',A,B)
+        >>> Dagger(C)
+        <c(a, b)|
+
+        >>> C.single_particle_states
+        (|a>, |b>)
+        >>> Dagger(C).single_particle_states
+        (<a|, <b|)
+        """
+        new_args = [self.symbol]
+        for arg in self.args[1:]:
+            new_args.append(Dagger(arg))
+        return self._hermitian_conjugate(*new_args)
 
 class RegularQuantumState(QuantumState):
     """
