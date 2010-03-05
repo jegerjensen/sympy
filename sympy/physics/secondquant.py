@@ -110,13 +110,15 @@ class Dagger(Expr):
         CreateBoson(0)
         >>> Dagger(Bd(0))
         AnnihilateBoson(0)
+        >>> Dagger ('a')
+        Dagger(a)
 
         The eval() method is called automatically.
 
         """
         try:
             d = arg._dagger_()
-        except:
+        except AttributeError:
             if isinstance(arg, Basic):
                 if arg.is_Add:
                     return Add(*tuple(map(Dagger, arg.args)))
