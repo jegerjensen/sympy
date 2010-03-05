@@ -697,8 +697,8 @@ class CompositeSphericalTensor(SphericalTensor):
         """
         Returns this composite tensor in terms of the direct product of constituent tensors.
 
-        If the keyword deep=True is supplied, the uncoupling is applied also to the
-        two tensors that make up the composite tensor.
+        If the keyword deep=False is supplied, the uncoupling is not applied
+        to the tensors that make up this composite tensor.
 
         >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
