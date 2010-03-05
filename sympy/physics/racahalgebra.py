@@ -861,10 +861,11 @@ class AtomicSphericalTensor(SphericalTensor):
     def get_direct_product_ito_self(self,**kw_args):
         """
         Returns the direct product expressed by the composite tensor.
-        It is not meaningful for non-composite tensors, we return unity
-        to break the recursion.
         """
-        return S.One
+        if kw_args.get('drop_self'):
+            return S.One
+        else:
+            return self
 
 class ASigma(Basic):
     """
