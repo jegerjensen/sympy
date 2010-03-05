@@ -710,6 +710,8 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.as_direct_product()
         Sum(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
+        >>> T.as_direct_product(drop_tensors=True)
+        Sum(a, b)*(A, a, B, b|D, d)
 
         With three coupled tensors we get:
 
@@ -722,20 +724,17 @@ class CompositeSphericalTensor(SphericalTensor):
 
         t1 = self.tensor1
         t2 = self.tensor2
+        cgc = (ClebschGordanCoefficient(
+                t1.rank,t1.projection,
+                t2.rank,t2.projection,
+                self.rank,self.projection))
         if not kw_args.get('deep',True):
-            expr = (ClebschGordanCoefficient(
-                    t1.rank,t1.projection,
-                    t2.rank,t2.projection,
-                    self.rank,self.projection) * t1 * t2
-                    )
+            tensors = t1 * t2
         else:
-            expr = (ClebschGordanCoefficient(
-                        t1.rank,t1.projection,
-                        t2.rank,t2.projection,
-                        self.rank,self.projection)
-                    * t1.as_direct_product(**kw_args)
-                    * t2.as_direct_product(**kw_args)
-                    )
+            tensors =(t1.as_direct_product(**kw_args)
+                    * t2.as_direct_product(**kw_args))
+
+        expr = cgc*tensors
         return combine_ASigmas(ASigma(t1.projection, t2.projection)*expr)
 
     def get_direct_product_ito_self(self, **kw_args):
@@ -830,7 +829,7 @@ class CompositeSphericalTensor(SphericalTensor):
         # Kronecker deltas.
         j,m = (other_coupling.rank,other_coupling.projection)
         dij = Dij(self.rank,j)*Dij(self.projection,m)
-        direct_product_ito_other = ( 
+        direct_product_ito_other = (
                 dij* remove_summation_indices(direct_product_ito_other,j,m)
                 )
 
@@ -856,7 +855,10 @@ class AtomicSphericalTensor(SphericalTensor):
         """
         Returns the uncoupled, direct product form of a composite tensor.
         """
-        return self
+        if kw_args.get('drop_tensors'):
+            return S.One
+        else:
+            return self
 
     def get_direct_product_ito_self(self,**kw_args):
         """
