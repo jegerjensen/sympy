@@ -104,7 +104,7 @@ def test_AtomicSphericalTensor_methods():
     A,B,C = symbols('ABC')
 
     t = SphericalTensor('T', A, a)
-    assert t.get_uncoupled_form() == t
+    assert t.as_direct_product() == t
     assert t.get_direct_product_ito_self() == 1
     assert str(t) == 'T(A, a)'
 
@@ -118,7 +118,7 @@ def test_CompositeSphericalTensor_methods():
     assert T.tensor1 == t1
     assert T.tensor2== t2
     assert str(T) == 'T[t1(A)*t2(B)](C, c)'
-    assert T.get_uncoupled_form() == ASigma(a, b)*ClebschGordanCoefficient(A,a,B,b,C,c)*t1*t2
+    assert T.as_direct_product() == ASigma(a, b)*ClebschGordanCoefficient(A,a,B,b,C,c)*t1*t2
     assert T.get_direct_product_ito_self() == ASigma(C, c)*ClebschGordanCoefficient(A,a,B,b,C,c)*T
 
 def test_CompositeSphericalTensor_nestings():
@@ -130,8 +130,8 @@ def test_CompositeSphericalTensor_nestings():
     t3 = SphericalTensor('t3',C, c)
     T = SphericalTensor('T',D, d, t1, t2)
     S = SphericalTensor('S',E, e, T, t3)
-    assert S.get_uncoupled_form() == ASigma(a, b, c, d)*t1*t2*t3*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)
-    assert S.get_uncoupled_form(deep=False) == ASigma(c, d)*T*t3*ClebschGordanCoefficient(D, d, C, c, E, e)
+    assert S.as_direct_product() == ASigma(a, b, c, d)*t1*t2*t3*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)
+    assert S.as_direct_product(deep=False) == ASigma(c, d)*T*t3*ClebschGordanCoefficient(D, d, C, c, E, e)
 
 def test_3b_coupling_schemes():
     a,b,c,d,e,f,g = symbols('abcdefg')

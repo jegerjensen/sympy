@@ -693,7 +693,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
         return symbol+tensor_product+rank_projection
 
-    def get_uncoupled_form(self, **kw_args):
+    def as_direct_product(self, **kw_args):
         """
         Returns this composite tensor in terms of the direct product of constituent tensors.
 
@@ -708,14 +708,14 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> t1 = SphericalTensor('t1',A,a)
         >>> t2 = SphericalTensor('t2',B,b)
         >>> T = SphericalTensor('T',D,d,t1,t2)
-        >>> T.get_uncoupled_form()
+        >>> T.as_direct_product()
         Sum(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
 
         With three coupled tensors we get:
 
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
-        >>> S.get_uncoupled_form()
+        >>> S.as_direct_product()
         Sum(a, b, c, d)*t1(A, a)*t2(B, b)*t3(C, c)*(A, a, B, b|D, d)*(D, d, C, c|E, e)
 
         """
@@ -733,8 +733,8 @@ class CompositeSphericalTensor(SphericalTensor):
                         t1.rank,t1.projection,
                         t2.rank,t2.projection,
                         self.rank,self.projection)
-                    * t1.get_uncoupled_form(**kw_args)
-                    * t2.get_uncoupled_form(**kw_args)
+                    * t1.as_direct_product(**kw_args)
+                    * t2.as_direct_product(**kw_args)
                     )
         return combine_ASigmas(ASigma(t1.projection, t2.projection)*expr)
 
@@ -820,7 +820,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
         # Use direct product as a link between coupling schemes
         direct_product = Mul(*my_tensors)
-        self_as_direct_product = self.get_uncoupled_form()
+        self_as_direct_product = self.as_direct_product()
         direct_product_ito_other = other_coupling.get_direct_product_ito_self()
 
         # In the direct product there is a sum over other.rank and
@@ -852,7 +852,7 @@ class AtomicSphericalTensor(SphericalTensor):
         obj = Basic.__new__(cls,symbol,rank,projection)
         return obj
 
-    def get_uncoupled_form(self, **kw_args):
+    def as_direct_product(self, **kw_args):
         """
         Returns the uncoupled, direct product form of a composite tensor.
         """
