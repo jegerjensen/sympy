@@ -1574,6 +1574,40 @@ def _identify_SixJSymbol(threejs):
 
     return  SixJSymbol(j1,j2,J12,j3,totJ,J23)
 
+def invert_clebsch_gordans(expr):
+    """
+    Replaces every sum over m1, m2 with a sum over J, M.
+    (or the other way around.)
+
+    >>> from sympy import symbols
+    >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
+    >>> from sympy.physics.racahalgebra import invert_clebsch_gordans, ASigma
+    >>> a,b,c,A,B,C = symbols('a b c A B C')
+    >>> cgc = ClebschGordanCoefficient(A,a,B,b,C,c)
+    >>> invert_clebsch_gordans(cgc*ASigma(a,b))
+    Sum(C, c)*(A, a, B, b|C, c)
+    >>> invert_clebsch_gordans(cgc*ASigma(C,c))
+    Sum(a, b)*(A, a, B, b|C, c)
+
+    """
+    cgcs = expr.atoms(ClebschGordanCoefficient)
+    sums = expr.atoms(ASigma)
+    expr = expr.subs([(s,S.One) for s in sums])
+    if len(sums) == 0 or len(cgcs) == 0:
+        return expr
+    if len(sums) > 1: indices = set(combine_ASigmas(Mul(*sums)))
+    else: indices = set(sums.pop().args)
+    for cg in cgcs:
+        m1m2 = set((cg.args[1], cg.args[3]))
+        JM = set(cg.args[4:])
+        if m1m2 <= indices:
+            indices -= m1m2
+            indices |= JM
+        elif JM <= indices:
+            indices -= JM
+            indices |= m1m2
+    return ASigma(*indices)*expr
+
 def combine_ASigmas(expr):
     """
     Combines multiple ASigma factors to one ASigma
