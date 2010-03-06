@@ -152,6 +152,13 @@ class QuantumState(Basic):
             new_args.append(Dagger(arg))
         return self._hermitian_conjugate(*new_args)
 
+    @property
+    def single_particle_states(self):
+        """
+        A tuple containing all s.p. states of this QuantumState
+        """
+        return tuple(self[1:])
+
 class RegularQuantumState(QuantumState):
     """
     A quantum state that has the properties of ket-states
@@ -294,6 +301,25 @@ class SphericalQuantumState(QuantumState):
         """
         return self._eval_as_coeff_tensor(**kw_args)
 
+    def as_direct_product(self, **kw_args):
+        c,p = self._eval_as_coeff_sp_states(**kw_args)
+        return Mul(c,*p)
+
+    def as_coeff_sp_states(self, **kw_args):
+        return self._eval_as_coeff_sp_states(**kw_args)
+
+    @property
+    def single_particle_states(self):
+        """
+        A tuple containing all s.p. states of this QuantumState
+        """
+        if self.is_coupled:
+            return (self.state1.single_particle_states
+                    + self.state2.single_particle_states)
+        else:
+            return self,
+
+
 class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
     """
     A quantum state that has the properties of spherical tensors.
@@ -312,6 +338,20 @@ class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
         else:
             return S.One, SphericalTensor('t', self._j, self._m)
 
+    def _eval_as_coeff_sp_states(self, **kw_args):
+        """
+        If we are a sp-states, there is no uncoupling to do,
+        so the tensor properties are not relevant.
+        """
+        if not self.is_coupled:
+            return S.One, (self,)
+        args = { 'deep':True }
+        args.update(kw_args)
+        c,t = self.as_coeff_tensor(**args)
+        states = self.single_particle_states
+        return c,states
+
+
 class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
     """
     A quantum state that has the properties of spherical tensors.
@@ -327,7 +367,7 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
         >>> ab = SphFermBra('ab',a,b); ab
         <ab(a, b)|
         >>> ab.as_coeff_tensor()
-        ((-1)**(J_ab - M_ab), t(J_ab, -M_ab))
+        ((-1)**(J_ab - M_ab), T(J_ab, -M_ab))
 
         >>> full = ab.as_coeff_tensor(deep=True)
         >>> full[0]
@@ -342,9 +382,33 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
             cgc, t = SphericalTensor('T', self._j, -self._m, t1, t2
                     ).as_coeff_direct_product(**kw_args)
             return c1*c2*c*cgc, t
+        elif self.is_coupled:
+            return c, SphericalTensor('T', self._j, -self._m)
         else:
             return c, SphericalTensor('t', self._j, -self._m)
 
+    def _eval_as_coeff_sp_states(self, **kw_args):
+        """
+        A coupled bra consisting of two bra states, has the same decoupling
+        as if everything was kets.  We try to do that simplification, in
+        order to simplify as much as posisble.
+
+        If we are a sp-states, there is no uncoupling to do,
+        so the tensor properties are not relevant.
+        """
+        if not self.is_coupled:
+            return S.One, (self,)
+
+        args = { 'deep':True }
+        args.update(kw_args)
+        if (self.is_coupled and not kw_args.get('strict_bra_coupling')
+                and isinstance(self.state1, DualQuantumState)
+                and isinstance(self.state2, DualQuantumState)):
+            c,t = Dagger(self).as_coeff_tensor(**args)
+        else:
+            c,t = self.as_coeff_tensor(**args)
+        states = self.single_particle_states
+        return c,states
 
 
 class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
