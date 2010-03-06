@@ -5,6 +5,7 @@ from sympy.physics.racahalgebra import (
         ThreeJSymbol, ClebschGordanCoefficient, SixJSymbol, SphericalTensor,
         refine_tjs2sjs, refine_phases, convert_cgc2tjs, convert_tjs2cgc,
         combine_ASigmas, remove_summation_indices, ASigma,
+        invert_clebsch_gordans,
         )
 from sympy.physics.secondquant import (
         Dagger, AntiSymmetricTensor, _sort_anticommuting_fermions
@@ -792,122 +793,148 @@ class ThreeTensorMatrixElement(MatrixElement):
 
     def use_wigner_eckardt(self,  **kw_args):
         """
-        Applies the Wigner-Eckard theorem to write the supplied direct matrix element
-        on the form
+        Applies the Wigner-Eckard theorem to write the supplied direct matrix
+        element on the form
 
                     k                            k
             < J M| T  |J'M'> = (J'M'kq|JM) <J|| T ||J'>
                     q
-        where the reduced matrix element <.||.||.> is independent of the projections.
+        where the reduced matrix element <.||.||.> is independent of the
+        projections.
 
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy.physics.braket import MatrixElement
+        >>> from sympy.physics.braket import (
+        ...         MatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
         >>> from sympy import symbols
-        >>> a,b,c,d,e,f,g,h = symbols('abcdefgh')
-        >>> A,B,C,D,E,F,G,H = symbols('ABCDEFGH')
+        >>> k,q = symbols('k q')
 
-        >>> t1 = SphericalTensor('t1',A,a)
-        >>> t2 = SphericalTensor('t2',B,b)
-        >>> t3 = SphericalTensor('t3',C,c)
-        >>> Op = SphericalTensor('Op',D,d)
-        >>> T = SphericalTensor('T',E,e,t1,t2)
-        >>> MatrixElement(T, Op, t3).use_wigner_eckardt()
-        (C, c, D, d|E, e)*<T[t1(A)*t2(B)](E)|| Op(D) ||t3(C)>
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('b')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> MatrixElement(bra, T, ket).use_wigner_eckardt()
+        (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
 
         """
-        redmat = ReducedMatrixElement(self.left, self.operator, self.right)
-
-        return (
-                ClebschGordanCoefficient(
-                    self.right.rank, self.right.projection,
-                    self.operator.rank, self.operator.projection,
-                    self.left.rank, self.left.projection
-                    )
-                * redmat
-                )
+        return ReducedMatrixElement(self.left, self.operator, self.right,
+                wigner_eckardt=True)
 
     def get_direct_product_ito_self(self, **kw_args):
         """
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy.physics.braket import MatrixElement
+        >>> from sympy.physics.braket import (
+        ...         MatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
         >>> from sympy import symbols
-        >>> a,b,c,d,e,f,g,h = symbols('abcdefgh')
-        >>> A,B,C,D,E,F,G,H = symbols('ABCDEFGH')
+        >>> k,q = symbols('k q')
 
-        >>> t1 = SphericalTensor('t1',A,a)
-        >>> t2 = SphericalTensor('t2',B,b)
-        >>> t3 = SphericalTensor('t3',C,c)
-        >>> Op = SphericalTensor('Op',D,d)
-        >>> T = SphericalTensor('T',E,e,t1,t2)
-        >>> MatrixElement(T, Op, t3).get_direct_product_ito_self()
-        Sum(E, e)*(A, a, B, b|E, e)*<T[t1(A)*t2(B)](E, e)| Op(D, d) |t3(C, c)>
-        >>> MatrixElement(T, Op, t3).get_direct_product_ito_self(wigner_eckardt=True)
-        Sum(E, e)*(A, a, B, b|E, e)*(C, c, D, d|E, e)*<T[t1(A)*t2(B)](E)|| Op(D) ||t3(C)>
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('c')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> MatrixElement(bra, T, ket).get_direct_product_ito_self()
+        <a| T(k, q) |c>
+
+        >>> a = SphFermBra('a')
+        >>> b = SphFermBra('b')
+        >>> bra_ab = SphFermBra('ab',a,b)
+        >>> MatrixElement(bra_ab, T, ket).get_direct_product_ito_self()
+        Sum(J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*<ab(a, b)| T(k, q) |c>
+
+        >>> c = SphFermKet('c')
+        >>> d = SphFermKet('d')
+        >>> ket_cd = SphFermKet('cd',c,d)
+        >>> MatrixElement(bra_ab, T, ket_cd).get_direct_product_ito_self()
+        Sum(J_ab, J_cd, M_ab, M_cd)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<ab(a, b)| T(k, q) |cd(c, d)>
 
         """
-        if kw_args.get('wigner_eckardt',False):
-            matrix = self.use_wigner_eckardt()
+        if kw_args.get('wigner_eckardt'):
+            redmat = ReducedMatrixElement(self.left, self.operator, self.right)
+            cgc = redmat._get_reduction_factor()
         else:
-            matrix = self
+            cgc = S.One
 
-        left = self.left.get_direct_product_ito_self(dual=True)
-        c_left, t_left = left.as_coeff_terms(SphericalTensor)
-        operator = self.operator.get_direct_product_ito_self()
-        c_operator, t_operator = operator.as_coeff_terms(SphericalTensor)
-        right = self.right.get_direct_product_ito_self()
-        c_right, t_right = right.as_coeff_terms(SphericalTensor)
+        coeffs = self.as_direct_product(only_coeffs=True)
+        return invert_clebsch_gordans(coeffs)*self*cgc
 
-        return combine_ASigmas(c_left*c_operator*c_right)*matrix
 
-    def get_self_ito_direct_product(self, **kw_args):
+    def as_direct_product(self, **kw_args):
         """
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy.physics.braket import MatrixElement
+        >>> from sympy.physics.braket import (
+        ...         MatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
         >>> from sympy import symbols
-        >>> a,b,c,d,e,f,g,h = symbols('abcdefgh')
-        >>> A,B,C,D,E,F,G,H = symbols('ABCDEFGH')
+        >>> k,q = symbols('k q')
 
-        >>> t1 = SphericalTensor('t1',A,a)
-        >>> t2 = SphericalTensor('t2',B,b)
-        >>> t3 = SphericalTensor('t3',C,c)
-        >>> Op = SphericalTensor('Op',D,d)
-        >>> T = SphericalTensor('T',E,e,t1,t2)
-        >>> MatrixElement(T, Op, t3).get_self_ito_direct_product()
-        Sum(a, b)*(A, a, B, b|E, e)*<t1(A, a)*t2(B, b)| Op(D, d) |t3(C, c)>
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('c')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> MatrixElement(bra, T, ket).as_direct_product()
+        <a| T(k, q) |c>
 
-        To get the reduced matrix element in terms of the direct product:
-        >>> MatrixElement(T, Op, t3).get_self_ito_direct_product(wigner_eckardt=True)
-        Sum(a, b, c, d)*(A, a, B, b|E, e)*(C, c, D, d|E, e)*<t1(A, a)*t2(B, b)| Op(D, d) |t3(C, c)>
+        >>> a = SphFermBra('a')
+        >>> b = SphFermBra('b')
+        >>> bra_ab = SphFermBra('ab',a,b)
+        >>> MatrixElement(bra_ab, T, ket).as_direct_product()
+        Sum(m_a, m_b)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*<a, b| T(k, q) |c>
 
+        >>> MatrixElement(bra_ab, T, ket).as_direct_product(strict_bra_coupling=1)
+        (-1)**(j_a - m_a)*(-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, -m_a, j_b, -m_b|J_ab, -M_ab)*<a, b| T(k, q) |c>
+
+        >>> c = SphFermKet('c')
+        >>> d = SphFermKet('d')
+        >>> ket_cd = SphFermKet('cd',c,d)
+        >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product()
+        Sum(m_a, m_b, m_c, m_d)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
 
         """
-        if kw_args.get('wigner_eckardt',False):
-            redmat = self.use_wigner_eckardt()
-            cgc = redmat.atoms(ClebschGordanCoefficient)
-            if len(cgc) == 1:
-                cgc = cgc.pop()
-            else:
-                raise ValueError("Wigner-Eckardt should produce 1 clebsch-gordan")
-
-            #    <A||O||B> (B,b,O,o|A,a) = <Aa|Oo|Bb>
-            # <A||O||B> (B,b,O,o|A,a)**2 = <Aa|Oo|Bb> (B,b,O,o|A,a)
-            #                  <A||O||B> = sum_bo <Aa|Oo|Bb> (B,b,O,o|A,a)
-            cgc = cgc*ASigma(cgc.args[1],cgc.args[3])
-
+        if kw_args.get('wigner_eckardt'):
+            # matrix = self.use_wigner_eckardt()
+            raise NotImplemented
         else:
-            cgc = 1
+            matrix = self.get_related_direct_matrix()
 
-        left = self.left.get_uncoupled_form()
-        c_left, t_left = left.as_coeff_terms(SphericalTensor)
-        operator = self.operator.get_uncoupled_form()
-        c_operator, t_operator = operator.as_coeff_terms(SphericalTensor)
-        right = self.right.get_uncoupled_form()
-        c_right, t_right = right.as_coeff_terms(SphericalTensor)
+        cbra, bra = self.left.as_coeff_sp_states(**kw_args)
+        cket, ket = self.right.as_coeff_sp_states(**kw_args)
 
-        return (
-                combine_ASigmas(c_left*c_operator*c_right*cgc)
-                *MatrixElement(Mul(*t_left), Mul(*t_operator), Mul(*t_right))
-                )
+        if kw_args.get('only_coeffs'):
+            return combine_ASigmas(cbra*cket)
+        else:
+            return combine_ASigmas(cbra*cket)*matrix
+
+
+    def get_related_direct_matrix(self):
+        """
+        Returns the direct product matrix that corresponds to this matrix.
+
+        >>> from sympy.physics.braket import (
+        ...         MatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> a = SphFermBra('a')
+        >>> b = SphFermBra('b')
+        >>> bra = SphFermBra('ab',a,b)
+        >>> c = SphFermKet('c')
+        >>> d = SphFermKet('d')
+        >>> ket = SphFermKet('cd',c,d)
+        >>> m=MatrixElement(bra, T, ket); m
+        <ab(a, b)| T(k, q) |cd(c, d)>
+        >>> m.get_related_direct_matrix()
+        <a, b| T(k, q) |c, d>
+        """
+
+        sp_states = list(self.left.single_particle_states +
+                self.right.single_particle_states)
+        bra = FermBra(*[ sp for sp in sp_states
+            if isinstance(sp, DualQuantumState) ])
+        ket = FermKet(*[ sp for sp in sp_states
+            if isinstance(sp, RegularQuantumState) ])
+        return DirectMatrixElement(bra, self.operator, ket)
+
+
 
 def apply_wigner_eckardt(expr):
     """
