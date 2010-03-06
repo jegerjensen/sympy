@@ -601,6 +601,12 @@ class SphericalTensor(Basic):
     def symbol(self):
         return self.args[0]
 
+    def as_direct_product(self, **kw_args):
+        return Mul(*self._eval_as_coeff_direct_product(**kw_args))
+
+    def as_coeff_direct_product(self, **kw_args):
+        return self._eval_as_coeff_direct_product(**kw_args)
+
     def _sympystr_(self, *args):
         """
         >>> from sympy.physics.racahalgebra import SphericalTensor
@@ -693,7 +699,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
         return symbol+tensor_product+rank_projection
 
-    def as_direct_product(self, **kw_args):
+    def _eval_as_coeff_direct_product(self, **kw_args):
         """
         Returns this composite tensor in terms of the direct product of constituent tensors.
 
@@ -724,18 +730,18 @@ class CompositeSphericalTensor(SphericalTensor):
 
         t1 = self.tensor1
         t2 = self.tensor2
-        cgc = (ClebschGordanCoefficient(
+        coeffs = (ClebschGordanCoefficient(
                 t1.rank,t1.projection,
                 t2.rank,t2.projection,
-                self.rank,self.projection))
-        if not kw_args.get('deep',True):
-            tensors = t1 * t2
-        else:
-            tensors =(t1.as_direct_product(**kw_args)
-                    * t2.as_direct_product(**kw_args))
+                self.rank,self.projection)
+                *ASigma(t1.projection, t2.projection))
 
-        expr = cgc*tensors
-        return combine_ASigmas(ASigma(t1.projection, t2.projection)*expr)
+        if kw_args.get('deep',True):
+            c1, t1 = t1._eval_as_coeff_direct_product(**kw_args)
+            c2, t2 = t2._eval_as_coeff_direct_product(**kw_args)
+            coeffs *= c1*c2
+
+        return combine_ASigmas(coeffs),t1*t2
 
     def get_direct_product_ito_self(self, **kw_args):
         """
@@ -851,14 +857,14 @@ class AtomicSphericalTensor(SphericalTensor):
         obj = Basic.__new__(cls,symbol,rank,projection)
         return obj
 
-    def as_direct_product(self, **kw_args):
+    def _eval_as_coeff_direct_product(self, **kw_args):
         """
         Returns the uncoupled, direct product form of a composite tensor.
         """
         if kw_args.get('drop_tensors'):
-            return S.One
+            return S.One, S.One
         else:
-            return self
+            return S.One, self
 
     def get_direct_product_ito_self(self,**kw_args):
         """
