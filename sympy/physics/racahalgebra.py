@@ -534,6 +534,53 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
         return (Pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
                 *ThreeJSymbol(j1, j2, J, m1, m2, -M))
 
+    @property
+    def projections(self):
+        """
+        The projection values must sum up to zero
+        """
+        args = self.args
+        return args[1],args[3],args[5]
+
+    @property
+    def magnitudes(self):
+        """
+        The magnitude quantum numbers of angular momentum must obey a triangular inequality.
+        """
+        args = self.args
+        return args[0],args[2],args[4]
+
+    def get_projection_symbol(self,J):
+        """
+        Returns the symbol associated with the angular momentum magnitude J.
+
+        Note: the symbol is returned without sign or coefficient, and for more
+        complicated expressions we return None.  This is in contrast to
+        .get_projection().
+
+        >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
+        >>> from sympy import symbols
+        >>> a,b,c = symbols('abc')
+        >>> A,B,C = symbols('ABC')
+        >>> ClebschGordanCoefficient(A,a,B,b,C,c).get_projection_symbol(A)
+        a
+        >>> ClebschGordanCoefficient(A,a,B,b,C,1+c).get_projection_symbol(C)
+        >>> ClebschGordanCoefficient(A,a,B,b,C,2*c).get_projection_symbol(C)
+        c
+        """
+        allJ = self.magnitudes
+        allM = self.projections
+        for i in range(3):
+            if J == allJ[i]:
+                M = allM[i]
+                if isinstance(M, Symbol):
+                    return M
+                elif isinstance(M, Mul):
+                    sign,M = M.as_coeff_terms()
+                    if len(M) == 1 and isinstance(M[0], Symbol):
+                        return M[0]
+        return None
+
     def _sympystr_(self, *args):
         """
         >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
@@ -1579,6 +1626,8 @@ def invert_clebsch_gordans(expr):
     Replaces every sum over m1, m2 with a sum over J, M.
     (or the other way around.)
 
+    Inverts any other factors.
+
     >>> from sympy import symbols
     >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
     >>> from sympy.physics.racahalgebra import invert_clebsch_gordans, ASigma
@@ -1586,27 +1635,33 @@ def invert_clebsch_gordans(expr):
     >>> cgc = ClebschGordanCoefficient(A,a,B,b,C,c)
     >>> invert_clebsch_gordans(cgc*ASigma(a,b))
     Sum(C, c)*(A, a, B, b|C, c)
-    >>> invert_clebsch_gordans(cgc*ASigma(C,c))
-    Sum(a, b)*(A, a, B, b|C, c)
+    >>> invert_clebsch_gordans(cgc*ASigma(C,c)*a)
+    Sum(a, b)*(A, a, B, b|C, c)/a
 
     """
-    cgcs = expr.atoms(ClebschGordanCoefficient)
-    sums = expr.atoms(ASigma)
-    expr = expr.subs([(s,S.One) for s in sums])
+    coeff,cgcs = expr.as_coeff_terms(ClebschGordanCoefficient)
+    sums = coeff.atoms(ASigma)
     if len(sums) == 0 or len(cgcs) == 0:
         return expr
+    coeff = coeff.subs([(s,S.One) for s in sums])
     if len(sums) > 1: indices = set(combine_ASigmas(Mul(*sums)))
     else: indices = set(sums.pop().args)
     for cg in cgcs:
-        m1m2 = set((cg.args[1], cg.args[3]))
-        JM = set(cg.args[4:])
+        m1 = cg.get_projection_symbol(cg.args[0])
+        m2 = cg.get_projection_symbol(cg.args[2])
+        J = cg.args[4]
+        M = cg.get_projection_symbol(J)
+        m1m2 = set((m1, m2))
+        JM = set((J, M))
         if m1m2 <= indices:
             indices -= m1m2
             indices |= JM
         elif JM <= indices:
             indices -= JM
             indices |= m1m2
-    return ASigma(*indices)*expr
+        else:
+            raise CannotInvertClebschGordan(cg)
+    return ASigma(*indices)*Mul(*cgcs)/coeff
 
 def combine_ASigmas(expr):
     """
