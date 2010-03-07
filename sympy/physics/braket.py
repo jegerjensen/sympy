@@ -121,6 +121,21 @@ class QuantumState(Basic):
 
     """
 
+    def __new__(cls, *args, **kw_args):
+        obj = Basic.__new__(cls, *args, **kw_args)
+        if kw_args.get('hole'): obj.is_hole = True
+        else: obj.is_hole = False
+        return obj
+
+    def _hashable_content(self):
+        return Basic._hashable_content(self) + (self.is_hole,)
+
+    def get_antiparticle(self):
+        args = self.args
+        kw_args = self.assumptions0
+        kw_args['hole'] = not self.is_hole
+        return type(self)(*args, **kw_args)
+
 
     @property
     def symbol(self):
@@ -159,7 +174,7 @@ class QuantumState(Basic):
         new_args = [self.symbol]
         for arg in self.args[1:]:
             new_args.append(Dagger(arg))
-        return self._hermitian_conjugate(*new_args)
+        return self._hermitian_conjugate(*new_args, **{'hole':self.is_hole})
 
     @property
     def single_particle_states(self):
@@ -235,7 +250,7 @@ class SphericalQuantumState(QuantumState):
     operator.
     """
 
-    def __new__(cls, symbol, state1=None, state2=None):
+    def __new__(cls, symbol, state1=None, state2=None, **kw_args):
         """
         Creates either a single particle spherical state or a
         coupled state constructed from state1 and state2.
@@ -249,14 +264,16 @@ class SphericalQuantumState(QuantumState):
         else: symbol = sympify(symbol)
 
         if state1 and state2:
-            obj = QuantumState.__new__(cls, symbol, state1, state2)
+            obj = QuantumState.__new__(cls, symbol, state1, state2, **kw_args)
+            if obj.is_hole:
+                raise ValueError("Only single particle states can be anti-particles (FIXME?)")
             obj.state1 = state1
             obj.state2 = state2
             obj.is_coupled = True
             obj._j = Symbol("J_"+str(symbol))
             obj._m = Symbol("M_"+str(symbol))
         else:
-            obj = QuantumState.__new__(cls, symbol)
+            obj = QuantumState.__new__(cls, symbol, **kw_args)
             obj.is_coupled = False
             obj._j = Symbol("j_"+str(symbol))
             obj._m = Symbol("m_"+str(symbol))
@@ -279,15 +296,20 @@ class SphericalQuantumState(QuantumState):
 
     def _str_nobraket_(self, *args):
         """
-        Coupling must show in represetantion.
+        Coupling and hole states must show in represetantion.
         """
+        if self.is_hole:
+            label = str(-self.symbol)
+        else:
+            label = str(self.symbol)
+
         if self.is_coupled:
-            return "%s(%s, %s)"%(self.symbol,
+            return "%s(%s, %s)"%(label,
                     self.state1._str_nobraket_(),
                     self.state2._str_nobraket_()
                     )
         else:
-            return str(self.symbol)
+            return label
 
     def as_coeff_tensor(self, **kw_args):
         """
@@ -365,17 +387,38 @@ class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
 
     a state |jm> transforms like the spherical tensor T^j_m
     """
+    def __new__(cls, *args, **kw_args):
+        """
+        >>> from sympy.physics.braket import SphFermKet, SphFermBra
+        >>> SphFermKet('a').as_coeff_tensor()
+        (1, t(j_a, m_a))
+        >>> SphFermKet('a',hole=True).as_coeff_tensor()
+        ((-1)**(j_a - m_a), t(j_a, -m_a))
+        """
+        obj = SphericalQuantumState.__new__(cls, *args, **kw_args)
+        if obj.is_hole:
+            obj._tensor_phase = (-1)**(obj._j - obj._m)
+            obj._tensor_proj = Mul(S.NegativeOne, obj._m)
+        else:
+            obj._tensor_phase = S.One
+            obj._tensor_proj = obj._m
+        return obj
+
+
     def _eval_as_coeff_tensor(self, **kw_args):
+        phase = self._tensor_phase
+        m = self._tensor_proj
+        j = self._j
         if self.is_coupled and kw_args.get('deep'):
                 c1, t1 = self.state1.as_coeff_tensor()
                 c2, t2 = self.state2.as_coeff_tensor()
-                c, t = SphericalTensor('T', self._j, self._m, t1, t2
+                cgc, T = SphericalTensor('T', j, m, t1, t2
                         ).as_coeff_direct_product(**kw_args)
-                return c1*c2*c, t
+                return phase*c1*c2*cgc, T
         elif self.is_coupled:
-            return S.One, SphericalTensor('T', self._j, self._m)
+            return phase, SphericalTensor('T', j, m)
         else:
-            return S.One, SphericalTensor('t', self._j, self._m)
+            return phase, SphericalTensor('t', j, m)
 
     def _eval_as_coeff_sp_states(self, **kw_args):
         """
@@ -397,6 +440,22 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
 
     a state <jm| transforms like the spherical tensor (-1)**(j-m) T^j_-m
     """
+    def __new__(cls, *args, **kw_args):
+        """
+        >>> from sympy.physics.braket import SphFermBra
+        >>> SphFermBra('a').as_coeff_tensor()
+        ((-1)**(j_a - m_a), t(j_a, -m_a))
+        >>> SphFermBra('a',hole=True).as_coeff_tensor()
+        ((-1)**(2*j_a), t(j_a, m_a))
+        """
+        obj = SphericalQuantumState.__new__(cls, *args, **kw_args)
+        if obj.is_hole:
+            obj._tensor_phase = (-1)**(2*obj._j)
+            obj._tensor_proj = obj._m
+        else:
+            obj._tensor_phase = (-1)**(obj._j - obj._m)
+            obj._tensor_proj = Mul(S.NegativeOne, obj._m)
+        return obj
 
     def _eval_as_coeff_tensor(self, **kw_args):
         """
@@ -414,17 +473,19 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
         >>> full[1]
         t(j_a, m_a)*t(j_b, -m_b)
         """
-        c = (-1)**(self._j - self._m)
+        phase = self._tensor_phase
+        m = self._tensor_proj
+        j = self._j
         if self.is_coupled and kw_args.get('deep'):
             c1, t1 = self.state1.as_coeff_tensor()
             c2, t2 = self.state2.as_coeff_tensor()
-            cgc, t = SphericalTensor('T', self._j, -self._m, t1, t2
+            cgc, t = SphericalTensor('T', j, m, t1, t2
                     ).as_coeff_direct_product(**kw_args)
-            return c1*c2*c*cgc, t
+            return phase*c1*c2*cgc, t
         elif self.is_coupled:
-            return c, SphericalTensor('T', self._j, -self._m)
+            return phase, SphericalTensor('T', j, m)
         else:
-            return c, SphericalTensor('t', self._j, -self._m)
+            return phase, SphericalTensor('t', j, m)
 
     def _eval_as_coeff_sp_states(self, **kw_args):
         """
