@@ -46,7 +46,7 @@ def test_QuantumState():
 def test_Dagger():
     assert Dagger(FermKet('a')) == FermBra('a')
     assert Dagger(FermBra('a')) == FermKet('a')
-    assert Dagger(FermBra('c',FermBra('a'),FermBra('b'))) == FermKet('c',FermKet('a'),FermKet('b')) 
+    assert Dagger(FermBra(FermBra('a'),FermBra('b'))) == FermKet(FermKet('a'),FermKet('b')) 
     assert Dagger(SphFermKet('a')) == SphFermBra('a')
     assert Dagger(SphFermBra('a')) == SphFermKet('a')
     assert Dagger(SphFermBra('c',SphFermBra('a'),SphFermBra('b'))) == SphFermKet('c',SphFermKet('a'),SphFermKet('b')) 
@@ -56,6 +56,11 @@ def test_antiparticle_Dagger_commutation():
     assert Dagger(SphFermKet('a',hole=True)) == SphFermBra('a',hole=True)
     assert Dagger(SphFermKet('a').get_antiparticle()) == SphFermBra('a').get_antiparticle()
     assert Dagger(SphFermBra('a').get_antiparticle()) == SphFermKet('a').get_antiparticle()
+
+    assert FermKet('a',hole=True) != FermKet('a',hole=False)
+    assert Dagger(FermKet('a',hole=True)) == FermBra('a',hole=True)
+    assert Dagger(FermKet('a').get_antiparticle()) == FermBra('a').get_antiparticle()
+    assert Dagger(FermBra('a').get_antiparticle()) == FermKet('a').get_antiparticle()
 
 def test_DirectQuantumState():
     a,b,c,d = symbols('a b c d')
@@ -67,6 +72,15 @@ def test_DirectQuantumState():
     assert Bosons(b,a,c,d) == Bosons(a, b, c, d)
     assert DirectQuantumState(SphFermKet('a')) == SphFermKet('a')
     assert DirectQuantumState(SphFermBra('a')) == SphFermBra('a')
+
+def test_FermKet_FermBra():
+    FermBra('a') == SphFermBra('a')
+    FermKet('c') == SphFermKet('c')
+    raises(ValueError, 'FermKet(FermBra("a"))')
+    raises(ValueError, 'FermBra(FermKet("c"))')
+    assert FermKet('a',hole=True).is_hole
+
+
  
 def test_SphericalQuantumState():
 

@@ -91,6 +91,7 @@ class BraKet(QuantumState):
     def _str_nobraket_(self, *args):
         str_args = []
         for s in self.args:
+            if s is None: continue
             try:
                 str_args.append(s._str_nobraket_(*args))
             except AttributeError:
@@ -131,7 +132,7 @@ class QuantumState(Basic):
                 kw_args['hole'] = not kw_args.get('hole')
             else:
                 symbol = Symbol(symbol)
-        else:
+        elif symbol:
             symbol = sympify(symbol)
             c, symbol = symbol.as_coeff_terms()
             symbol = symbol[0]
@@ -148,11 +149,10 @@ class QuantumState(Basic):
         return Basic._hashable_content(self) + (self.is_hole,)
 
     def get_antiparticle(self):
-        args = self.args
+        if len(self.args)>1: raise ValueError("Only single particle states can be anti-particles (FIXME?)")
         kw_args = self.assumptions0
         kw_args['hole'] = not self.is_hole
-        return type(self)(*args, **kw_args)
-
+        return type(self)(self.symbol, **kw_args)
 
     @property
     def symbol(self):
@@ -196,7 +196,8 @@ class QuantumState(Basic):
         >>> Dagger(C).single_particle_states
         (<a|, <b|)
         """
-        new_args = [self.symbol]
+        if self.symbol is None: new_args = []
+        else: new_args = [self.symbol]
         for arg in self.args[1:]:
             new_args.append(Dagger(arg))
         return self._hermitian_conjugate(*new_args, **{'hole':self.is_hole})
@@ -246,11 +247,14 @@ class DirectQuantumState(QuantumState):
         >>> class Fermions(DirectQuantumState, FermionState):
         ...     pass
         >>> Fermions(b,a,c,d)
-        -Fermions(a, b, c, d)
+        -Fermions(None, a, b, c, d)
         >>> class Bosons(DirectQuantumState, BosonState):
         ...     pass
         >>> Bosons(b,a,c,d)
-        Bosons(a, b, c, d)
+        Bosons(None, a, b, c, d)
+
+        The first argument None, is the symbol given to QuantumState.  The Bra and Ket
+        superclasses define prettier printting where the None symbol is skipped.
 
         Note: If only one state is supplied, a SphericalQuantumState, is
         returned directly.
@@ -277,7 +281,7 @@ class DirectQuantumState(QuantumState):
 
 
         new_args,sign = cls._sort_states(args)
-        obj = QuantumState.__new__(cls, *new_args, **kw_args)
+        obj = QuantumState.__new__(cls, None, *new_args, **kw_args)
         return (-1)**sign*obj
 
 
@@ -308,7 +312,11 @@ class SphericalQuantumState(QuantumState):
         j_i and m_i, and register the appropriate assumptions.
 
         Coupled states have capital J, M letters denoting rank and projection.
+
+        Note: First argument is interpreted as a symbol characteristic for this state.
         """
+        if isinstance(symbol, QuantumState):
+            raise ValueError("Quantum state cannot act as symbol")
 
         if state1 and state2:
             obj = QuantumState.__new__(cls, symbol, state1, state2, **kw_args)
