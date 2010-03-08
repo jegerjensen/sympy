@@ -597,7 +597,7 @@ class FermKet(RegularQuantumState, DirectQuantumState, Ket, FermionState):
     """
     Holds a direct product ket state of fermions.
 
-    >>> from sympy.physics.braket import FermKet
+    >>> from sympy.physics.braket import FermKet, SphFermKet
     >>> from sympy import symbols
     >>> a,b,c = symbols('a b c')
     >>> FermKet(a)
@@ -606,6 +606,11 @@ class FermKet(RegularQuantumState, DirectQuantumState, Ket, FermionState):
     |a, b>
     >>> FermKet(b, a)
     -|a, b>
+
+    >>> FermKet(SphFermKet(a), SphFermKet(b))
+    |a, b>
+    >>> FermKet(SphFermKet(b), SphFermKet(a))
+    -|a, b>
     """
     pass
 
@@ -613,7 +618,7 @@ class FermBra(DualQuantumState, DirectQuantumState, Bra, FermionState):
     """
     Holds a dual direct product bra state of fermions.
 
-    >>> from sympy.physics.braket import FermBra
+    >>> from sympy.physics.braket import FermBra, SphFermBra
     >>> from sympy import symbols
     >>> a,b,c = symbols('a b c')
     >>> FermBra(a)
@@ -621,6 +626,11 @@ class FermBra(DualQuantumState, DirectQuantumState, Bra, FermionState):
     >>> FermBra(a, b)
     <a, b|
     >>> FermBra(b, a)
+    -<a, b|
+
+    >>> FermBra(SphFermBra(a), SphFermBra(b))
+    <a, b|
+    >>> FermBra(SphFermBra(b), SphFermBra(a))
     -<a, b|
     """
     _hermitian_conjugate = FermKet
