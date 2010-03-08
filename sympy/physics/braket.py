@@ -157,6 +157,14 @@ class QuantumState(Basic):
     def symbol(self):
         return self.args[0]
 
+    @property
+    def label(self):
+        if self.is_hole:
+            label = str(-self.symbol)
+        else:
+            label = str(self.symbol)
+        return label
+
     def get_operator_result(self, operator):
         """
         Calculates the resulting state as determined by the supplied operator.
@@ -308,22 +316,19 @@ class SphericalQuantumState(QuantumState):
 
         return obj
 
+
     def _str_nobraket_(self, *args):
         """
         Coupling and hole states must show in represetantion.
         """
-        if self.is_hole:
-            label = str(-self.symbol)
-        else:
-            label = str(self.symbol)
 
         if self.is_coupled:
-            return "%s(%s, %s)"%(label,
+            return "%s(%s, %s)"%(self.label,
                     self.state1._str_nobraket_(),
                     self.state2._str_nobraket_()
                     )
         else:
-            return label
+            return self.label
 
     def as_coeff_tensor(self, **kw_args):
         """
