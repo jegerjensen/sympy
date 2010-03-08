@@ -697,13 +697,12 @@ class MatrixElement(Basic):
 
     def __new__(cls,left, operator, right, **kw_args):
 
-        assert isinstance(left, DualQuantumState)
-        assert isinstance(operator, QuantumOperator)
-        assert isinstance(right, RegularQuantumState)
-
         if cls is MatrixElement:
             return _get_matrix_element(left, operator, right, **kw_args)
         else:
+            assert isinstance(left, DualQuantumState)
+            assert isinstance(operator, QuantumOperator)
+            assert isinstance(right, RegularQuantumState)
             obj = Basic.__new__(cls, left, operator, right, **kw_args)
             return obj
 
@@ -759,7 +758,7 @@ class ReducedMatrixElement(MatrixElement):
         (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
         """
 
-        obj = Basic.__new__(cls, left,op,right, **kw_args)
+        obj = MatrixElement.__new__(cls, left,op,right, **kw_args)
         if kw_args.get('wigner_eckardt'):
             cgc = obj._get_reduction_factor()
             return cgc*obj
@@ -845,6 +844,7 @@ class DirectMatrixElement(MatrixElement):
     """
     Holds matrix elements corresponding to the direct product of any number of tensors.
 
+    The sp states are typically SphFermKet, but they may be FermKet as well
 
     >>> from sympy.physics.braket import SphFermBra, SphFermKet
     >>> from sympy.physics.braket import DirectMatrixElement, SphericalTensorOperator
@@ -853,18 +853,29 @@ class DirectMatrixElement(MatrixElement):
 
     >>> bra_a = SphFermBra(a)
     >>> ket_b = SphFermKet(b)
+    >>> ket_c = SphFermKet(c)
     >>> Op = SphericalTensorOperator('Op',D,d)
-    >>> DirectMatrixElement(bra_a,Op,ket_b)
-    <a| Op(D, d) |b>
+    >>> DirectMatrixElement(bra_a,Op,(ket_b,ket_c))
+    <a| Op(D, d) |b, c>
+    >>> DirectMatrixElement(bra_a,Op,(ket_c,ket_b))
+    -<a| Op(D, d) |b, c>
     """
     nargs=3
-    def __new__(cls,left, op, right):
-        allowed = ( QuantumState,)
-        assert isinstance(left,allowed)
-        assert isinstance(op, QuantumOperator)
-        assert isinstance(right,allowed)
+    def __new__(cls,left, op, right, **kw_args):
 
-        obj = MatrixElement.__new__(cls, left, op, right)
+        coeff = S.One
+        if isinstance(left, tuple): left = FermBra(*left)
+        if isinstance(right, tuple): right = FermKet(*right)
+        if isinstance(left, Mul):
+            c,t = left.as_coeff_terms()
+            coeff *= c
+            left = t[0]
+        if isinstance(right, Mul):
+            c,t = right.as_coeff_terms()
+            coeff *= c
+            right = t[0]
+
+        obj = coeff*MatrixElement.__new__(cls, left, op, right, **kw_args)
 
         return obj
 
@@ -878,7 +889,7 @@ class ThreeTensorMatrixElement(MatrixElement):
     nargs=3
 
     def __new__(cls,left, op, right):
-        obj = Basic.__new__(cls,left,op,right)
+        obj = MatrixElement.__new__(cls,left,op,right)
         return obj
 
 
