@@ -51,6 +51,9 @@ from printing import ccode, fcode, latex, preview
 from printing import python, print_python, srepr, sstr, sstrrepr
 from interactive import init_session, init_printing
 
+
+from physics.braket import *
+
 evalf._create_evalf_table()
 
 # This is slow to import:
