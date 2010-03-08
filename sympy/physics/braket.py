@@ -790,7 +790,7 @@ class ReducedMatrixElement(MatrixElement):
         J, M = left._j, left._m
         return c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
 
-    def _get_direct_matrix_element(self):
+    def _get_ThreeTensorMatrixElement(self):
         """
         Returns the direct matrix element that is related to this
         reduced matrix element by a reduction factor (a Clebsch-Gordan
@@ -806,7 +806,7 @@ class ReducedMatrixElement(MatrixElement):
         >>> bra = SphFermBra('a')
         >>> ket = SphFermKet('b')
         >>> T = SphericalTensorOperator('T',k,q)
-        >>> ReducedMatrixElement(bra, T, ket)._get_direct_matrix_element()
+        >>> ReducedMatrixElement(bra, T, ket)._get_ThreeTensorMatrixElement()
         <a| T(k, q) |b>
         """
         return ThreeTensorMatrixElement(*self.args)
