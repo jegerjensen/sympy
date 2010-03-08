@@ -251,7 +251,31 @@ class DirectQuantumState(QuantumState):
         ...     pass
         >>> Bosons(b,a,c,d)
         Bosons(a, b, c, d)
+
+        Note: If only one state is supplied, a SphericalQuantumState, is
+        returned directly.
+
         """
+        if len(args) == 1:
+            if isinstance(args[0], SphericalQuantumState):
+                if cls.is_dual is None: return args[0]
+                if cls.is_dual == args[0].is_dual: return args[0]
+                raise ValueError("Cannot have kets in a direct-product bra")
+            else:
+                if cls.is_dual is None: return SphericalQuantumState(args[0], **kw_args)
+                if cls.is_dual: return SphFermBra(args[0], **kw_args)
+                else: return SphFermKet(args[0], **kw_args)
+
+        # test input until stable
+        if not cls.is_dual is None:
+            for arg in args:
+                try:
+                    if cls.is_dual != arg.is_dual:
+                        raise ValueError("Cannot have kets in a direct-product bra")
+                except AttributeError:
+                    pass
+
+
         new_args,sign = cls._sort_states(args)
         obj = QuantumState.__new__(cls, *new_args, **kw_args)
         return (-1)**sign*obj
