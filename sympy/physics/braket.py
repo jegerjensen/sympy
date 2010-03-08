@@ -207,7 +207,7 @@ class QuantumState(Basic):
         """
         A tuple containing all s.p. states of this QuantumState
         """
-        return tuple(self[1:])
+        return tuple(self.args[1:])
 
 class RegularQuantumState(QuantumState):
     """
@@ -270,17 +270,23 @@ class DirectQuantumState(QuantumState):
                 if cls.is_dual: return SphFermBra(args[0], **kw_args)
                 else: return SphFermKet(args[0], **kw_args)
 
-        # test input until stable
-        if not cls.is_dual is None:
-            for arg in args:
+        new_args = []
+        for arg in args:
+            # test input until stable
+            if not cls.is_dual is None:
                 try:
                     if cls.is_dual != arg.is_dual:
                         raise ValueError("Cannot have kets in a direct-product bra")
-                except AttributeError:
-                    pass
+                except AttributeError: pass
+            if arg is None:
+                raise ValueError("Got None: %s"%(args,))
+            c, t = arg.as_coeff_terms()
+            if c.is_negative:
+                new_args.append(t[0].get_antiparticle())
+            else:
+                new_args.append(arg)
 
-
-        new_args,sign = cls._sort_states(args)
+        new_args,sign = cls._sort_states(new_args)
         obj = QuantumState.__new__(cls, None, *new_args, **kw_args)
         return (-1)**sign*obj
 
@@ -318,7 +324,14 @@ class SphericalQuantumState(QuantumState):
         if isinstance(symbol, QuantumState):
             raise ValueError("Quantum state cannot act as symbol")
 
+
         if state1 and state2:
+            # interpret minus sign as a hole state
+            c,t = state1.as_coeff_terms()
+            if c.is_negative: state1 = t[0].get_antiparticle()
+            c,t = state2.as_coeff_terms()
+            if c.is_negative: state2 = t[0].get_antiparticle()
+
             obj = QuantumState.__new__(cls, symbol, state1, state2, **kw_args)
             if obj.is_hole:
                 raise ValueError("Only single particle states can be anti-particles (FIXME?)")
@@ -664,6 +677,17 @@ class FermBra(DualQuantumState, DirectQuantumState, Bra, FermionState):
     <a, b|
     >>> FermBra(SphFermBra(b), SphFermBra(a))
     -<a, b|
+
+    >>> a = SphFermBra('a')
+    >>> b = SphFermBra('b')
+    >>> FermBra(a, -b)
+    <a, -b|
+    >>> FermBra(a, -b).single_particle_states[0].is_hole
+    False
+    >>> FermBra(a, -b).single_particle_states[1].is_hole
+    True
+    >>> FermBra('a', hole=True)
+    <-a|
     """
     _hermitian_conjugate = FermKet
 FermKet._hermitian_conjugate = FermBra
@@ -732,7 +756,7 @@ class MatrixElement(Basic):
         if cls is MatrixElement:
             return _get_matrix_element(left, operator, right, **kw_args)
         else:
-            assert isinstance(left, DualQuantumState)
+            assert isinstance(left, DualQuantumState), "not dual: %s" %left
             assert isinstance(operator, QuantumOperator)
             assert isinstance(right, RegularQuantumState)
             obj = Basic.__new__(cls, left, operator, right, **kw_args)
@@ -896,8 +920,8 @@ class DirectMatrixElement(MatrixElement):
     def __new__(cls,left, op, right, **kw_args):
 
         coeff = S.One
-        if isinstance(left, tuple): left = FermBra(*left)
-        if isinstance(right, tuple): right = FermKet(*right)
+        if isinstance(left, (tuple,list)): left = FermBra(*left)
+        if isinstance(right,(tuple,list)): right = FermKet(*right)
         if isinstance(left, Mul):
             c,t = left.as_coeff_terms()
             coeff *= c
@@ -913,6 +937,69 @@ class DirectMatrixElement(MatrixElement):
 
     def use_wigner_eckardt(self, **kw_args):
         raise WignerEckardDoesNotApply
+
+    def shift_vacuum(self, states):
+        """
+        We rewrite this matrix element by a change of vacuum.
+
+        ``states`` -- iterable containing single particle QuantumStates
+
+        For each of the supplied states we absorb it into the vacuum, or
+        separate it from the vacuum depending on the initial vacuum.
+        We return this DirectMatrix element expressed in the shifted vacuum.
+
+        >>> from sympy.physics.braket import DirectMatrixElement, SphFermKet, SphFermBra
+        >>> from sympy.physics.braket import SphericalTensorOperator
+        >>> a = SphFermBra('a')
+        >>> b = SphFermBra('b')
+        >>> c = SphFermKet('c')
+        >>> d = SphFermKet('d')
+        >>> Op = SphericalTensorOperator('T','k','q')
+
+        >>> m = DirectMatrixElement((a,b),Op,(c,d)); m
+        <a, b| T(k, q) |c, d>
+
+        >>> m.shift_vacuum([d])
+        <a, b, -d| T(k, q) |c>
+
+        """
+        shifted = self
+        coeff = S.One
+        for s in states:
+            c, shifted = shifted._eval_coeff_vacuumshifted(s)
+            coeff *= c
+        return coeff*shifted
+
+    def _eval_coeff_vacuumshifted(self, state):
+        sign = 0
+        left = list(self.left.single_particle_states)
+        right = list(self.right.single_particle_states)
+        for i in range(len(left)):
+            if left[-1-i] == state:
+                sign = i
+                left.remove(state)
+                right.append(Dagger(state.get_antiparticle()))
+                break
+        else:
+            for i in range(len(right)):
+                if right[-1-i] == state:
+                    sign = i
+                    right.remove(state)
+                    left.append(Dagger(state.get_antiparticle()))
+                    break
+            else:
+                return self
+        left = FermBra(*left)
+        return (-1)**(sign),type(self)(left, self.operator, right)
+
+
+
+
+
+
+
+
+
 
 class ThreeTensorMatrixElement(MatrixElement):
     """
