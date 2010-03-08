@@ -121,8 +121,24 @@ class QuantumState(Basic):
 
     """
 
-    def __new__(cls, *args, **kw_args):
-        obj = Basic.__new__(cls, *args, **kw_args)
+    def __new__(cls, symbol, *args, **kw_args):
+
+        # interpret negative symbols as antiparticles
+        if isinstance(symbol, str):
+            if symbol[0] == "-":
+                symbol = Symbol(symbol[1:])
+                kw_args['hole'] = not kw_args.get('hole')
+            else:
+                symbol = Symbol(symbol)
+        else:
+            symbol = sympify(symbol)
+            c, symbol = symbol.as_coeff_terms()
+            symbol = symbol[0]
+            if c.is_negative:
+                kw_args['hole'] = not kw_args.get('hole')
+
+        #
+        obj = Basic.__new__(cls, symbol, *args, **kw_args)
         if kw_args.get('hole'): obj.is_hole = True
         else: obj.is_hole = False
         return obj
@@ -260,8 +276,6 @@ class SphericalQuantumState(QuantumState):
 
         Coupled states have capital J, M letters denoting rank and projection.
         """
-        if isinstance(symbol, str): symbol = Symbol(symbol)
-        else: symbol = sympify(symbol)
 
         if state1 and state2:
             obj = QuantumState.__new__(cls, symbol, state1, state2, **kw_args)
