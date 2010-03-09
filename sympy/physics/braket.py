@@ -458,11 +458,17 @@ class SphericalQuantumState(QuantumState):
         m = self._tensor_proj
         j = self._j
         if self.is_coupled and kw_args.get('deep'):
-            c1, t1 = self.state1.as_coeff_tensor(**kw_args)
-            c2, t2 = self.state2.as_coeff_tensor(**kw_args)
+
+            # call shallow to get top-level tensors
+            c1, t1 = self.state1.as_coeff_tensor()
+            c2, t2 = self.state2.as_coeff_tensor()
             cgc, t = SphericalTensor('T', j, m, t1, t2
                     ).as_coeff_direct_product(**kw_args)
-            return phase*c1*c2*cgc, t
+
+            # call deep to get coefficients for internal structure
+            c1, t1 = self.state1.as_coeff_tensor(**kw_args)
+            c2, t2 = self.state2.as_coeff_tensor(**kw_args)
+            return phase*combine_ASigmas(c1*c2*cgc), t
         elif self.is_coupled:
             return phase, SphericalTensor('T', j, m)
         else:

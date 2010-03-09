@@ -183,6 +183,25 @@ def test_as_coeff_sp_states():
     b = SphFermBra('b')
     assert SphFermBra('c', a, b).as_coeff_sp_states() == ((-1)**(j_a-m_a)*ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,-m_a,j_b,m_b,J_c,M_c), (a,b))
 
+def test_nested_coupling():
+    j_a, m_a = symbols('j_a m_a')
+    j_b, m_b = symbols('j_b m_b')
+    j_c, m_c = symbols('j_c m_c')
+    J_ab, M_ab = symbols('J_ab M_ab')
+    J_abc, M_abc = symbols('J_abc M_abc')
+
+    Ket = SphFermKet
+    a,b = Ket('a'), Ket('b')
+    c,d = Ket('c'), Ket('d')
+    assert Ket('ab',a,b).as_coeff_sp_states() == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b))
+    assert Ket('abc',Ket('ab',a,b),c).as_coeff_sp_states() == (ASigma(M_ab, m_c, m_a,m_b)*ClebschGordanCoefficient(J_ab,M_ab,j_c,m_c,J_abc,M_abc)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b,c))
+
+    Bra = SphFermBra
+    a,b = Bra('a'), Bra('b')
+    c,d = Bra('c'), Bra('d')
+    assert Bra('ab',a,b).as_coeff_sp_states() == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b))
+    assert Bra('abc',Bra('ab',a,b),c).as_coeff_sp_states() == (ASigma(M_ab, m_c, m_a,m_b)*ClebschGordanCoefficient(J_ab,M_ab,j_c,m_c,J_abc,M_abc)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b,c))
+
 def test_MatrixElement_construction():
     bra_a = SphFermBra('a')
     ket_b = SphFermKet('b')
