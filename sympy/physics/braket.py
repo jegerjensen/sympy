@@ -1136,13 +1136,12 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         """
         if kw_args.get('wigner_eckardt'):
-            redmat = ReducedMatrixElement(self.left, self.operator, self.right)
-            cgc = redmat._get_reduction_factor()
+            matrix = self.use_wigner_eckardt()
         else:
-            cgc = S.One
+            matrix = self
 
         coeffs = self.as_direct_product(only_coeffs=True)
-        return invert_clebsch_gordans(coeffs)*self*cgc
+        return invert_clebsch_gordans(coeffs)*matrix
 
 
     def as_direct_product(self, **kw_args):
