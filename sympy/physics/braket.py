@@ -946,6 +946,18 @@ class DirectMatrixElement(MatrixElement):
     def use_wigner_eckardt(self, **kw_args):
         raise WignerEckardDoesNotApply
 
+    def as_only_particles(self):
+        """
+        Returns this matrix element in a vacuum s.t. self has only particles.
+
+        Returns an equivalent DirectMatrixElement where all hole states have been
+        reexpressed as pareticle states in a different vacuum.
+
+        """
+        holes = [ h for h in (self.left.single_particle_states
+            + self.right.single_particle_states) if h.is_hole ]
+        return self.shift_vacuum(holes)
+
     def shift_vacuum(self, states):
         """
         We rewrite this matrix element by a change of vacuum.
@@ -1128,7 +1140,7 @@ class ThreeTensorMatrixElement(MatrixElement):
             return combine_ASigmas(cbra*cket)*matrix
 
 
-    def get_related_direct_matrix(self):
+    def get_related_direct_matrix(self, **kw_args):
         """
         Returns the direct product matrix that corresponds to this matrix.
 
@@ -1157,6 +1169,12 @@ class ThreeTensorMatrixElement(MatrixElement):
             if isinstance(sp, DualQuantumState) ])
         ket = FermKet(*[ sp for sp in sp_states
             if isinstance(sp, RegularQuantumState) ])
+
+        if kw_args.get('only_particle_states'):
+            m = DirectMatrixElement(bra, self.operator, ket)
+            c,t = m.as_coeff_terms(DirectMatrixElement)
+            return c*t[0].as_only_particles()
+
         return DirectMatrixElement(bra, self.operator, ket)
 
 
