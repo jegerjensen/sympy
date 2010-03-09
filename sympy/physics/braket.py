@@ -259,7 +259,13 @@ class DirectQuantumState(QuantumState):
         Note: If only one state is supplied, a SphericalQuantumState, is
         returned directly.
 
+        If no arguments are supplied we return a vacuum state
+
         """
+        if len(args) == 0:
+            obj = QuantumState.__new__(cls, None,**kw_args)
+            return obj
+
         if len(args) == 1:
             if isinstance(args[0], SphericalQuantumState):
                 if cls.is_dual is None: return args[0]
