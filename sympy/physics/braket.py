@@ -435,6 +435,49 @@ class SphericalQuantumState(QuantumState):
         """
         return self._eval_as_coeff_tensor(**kw_args)
 
+    def _eval_as_coeff_tensor(self, **kw_args):
+        """
+        >>> from sympy.physics.braket import SphFermKet, SphFermBra
+        >>> a = SphFermKet('a')
+        >>> b = SphFermBra('b')
+        >>> ab = SphFermBra('ab',a,b); ab
+        <ab(a, b)|
+        >>> ab.as_coeff_tensor()
+        ((-1)**(J_ab - M_ab), T(J_ab, -M_ab))
+
+        >>> full = ab.as_coeff_tensor(deep=True)
+        >>> full[0]
+        (-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, -M_ab)
+        >>> full[1]
+        t(j_a, m_a)*t(j_b, -m_b)
+        """
+        phase = self._tensor_phase
+        m = self._tensor_proj
+        j = self._j
+        if self.is_coupled and kw_args.get('deep'):
+            c1, t1 = self.state1.as_coeff_tensor(**kw_args)
+            c2, t2 = self.state2.as_coeff_tensor(**kw_args)
+            cgc, t = SphericalTensor('T', j, m, t1, t2
+                    ).as_coeff_direct_product(**kw_args)
+            return phase*c1*c2*cgc, t
+        elif self.is_coupled:
+            return phase, SphericalTensor('T', j, m)
+        else:
+            return phase, SphericalTensor('t', j, m)
+
+    def _eval_as_coeff_sp_states(self, **kw_args):
+        """
+        If we are a sp-states, there is no uncoupling to do,
+        so the tensor properties are not relevant.
+        """
+        if not self.is_coupled:
+            return S.One, (self,)
+        args = { 'deep':True }
+        args.update(kw_args)
+        c,t = self.as_coeff_tensor(**args)
+        states = self.single_particle_states
+        return c,states
+
     def as_direct_product(self, **kw_args):
         c,p = self._eval_as_coeff_sp_states(**kw_args)
         return Mul(c,*p)
@@ -478,35 +521,6 @@ class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
         return obj
 
 
-    def _eval_as_coeff_tensor(self, **kw_args):
-        phase = self._tensor_phase
-        m = self._tensor_proj
-        j = self._j
-        if self.is_coupled and kw_args.get('deep'):
-                c1, t1 = self.state1.as_coeff_tensor()
-                c2, t2 = self.state2.as_coeff_tensor()
-                cgc, T = SphericalTensor('T', j, m, t1, t2
-                        ).as_coeff_direct_product(**kw_args)
-                return phase*c1*c2*cgc, T
-        elif self.is_coupled:
-            return phase, SphericalTensor('T', j, m)
-        else:
-            return phase, SphericalTensor('t', j, m)
-
-    def _eval_as_coeff_sp_states(self, **kw_args):
-        """
-        If we are a sp-states, there is no uncoupling to do,
-        so the tensor properties are not relevant.
-        """
-        if not self.is_coupled:
-            return S.One, (self,)
-        args = { 'deep':True }
-        args.update(kw_args)
-        c,t = self.as_coeff_tensor(**args)
-        states = self.single_particle_states
-        return c,states
-
-
 class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
     """
     A quantum state that has the properties of spherical tensors.
@@ -530,35 +544,6 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
             obj._tensor_proj = Mul(S.NegativeOne, obj._m)
         return obj
 
-    def _eval_as_coeff_tensor(self, **kw_args):
-        """
-        >>> from sympy.physics.braket import SphFermKet, SphFermBra
-        >>> a = SphFermKet('a')
-        >>> b = SphFermBra('b')
-        >>> ab = SphFermBra('ab',a,b); ab
-        <ab(a, b)|
-        >>> ab.as_coeff_tensor()
-        ((-1)**(J_ab - M_ab), T(J_ab, -M_ab))
-
-        >>> full = ab.as_coeff_tensor(deep=True)
-        >>> full[0]
-        (-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, -M_ab)
-        >>> full[1]
-        t(j_a, m_a)*t(j_b, -m_b)
-        """
-        phase = self._tensor_phase
-        m = self._tensor_proj
-        j = self._j
-        if self.is_coupled and kw_args.get('deep'):
-            c1, t1 = self.state1.as_coeff_tensor()
-            c2, t2 = self.state2.as_coeff_tensor()
-            cgc, t = SphericalTensor('T', j, m, t1, t2
-                    ).as_coeff_direct_product(**kw_args)
-            return phase*c1*c2*cgc, t
-        elif self.is_coupled:
-            return phase, SphericalTensor('T', j, m)
-        else:
-            return phase, SphericalTensor('t', j, m)
 
     def _eval_as_coeff_sp_states(self, **kw_args):
         """
@@ -569,19 +554,16 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
         If we are a sp-states, there is no uncoupling to do,
         so the tensor properties are not relevant.
         """
-        if not self.is_coupled:
-            return S.One, (self,)
-
-        args = { 'deep':True }
-        args.update(kw_args)
         if (self.is_coupled and not kw_args.get('strict_bra_coupling')
                 and isinstance(self.state1, DualQuantumState)
                 and isinstance(self.state2, DualQuantumState)):
+            args = { 'deep':True }
+            args.update(kw_args)
             c,t = Dagger(self).as_coeff_tensor(**args)
+            states = self.single_particle_states
+            return c,states
         else:
-            c,t = self.as_coeff_tensor(**args)
-        states = self.single_particle_states
-        return c,states
+            return SphericalQuantumState._eval_as_coeff_sp_states(self, **kw_args)
 
 
 class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
