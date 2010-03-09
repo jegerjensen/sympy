@@ -43,6 +43,17 @@ def test_QuantumState():
     assert BraKet('a').is_positive is None
     assert SphFermKet('a').is_positive is None
 
+    a = SphFermKet('a'); assert a.func(*a.args) == a
+    a = SphFermKet('-a'); assert a.func(*a.args) == a
+    a = SphFermKet('a',hole=True); assert a.func(*a.args) == a
+    a = SphFermKet('a',hole=False); assert a.func(*a.args) == a
+    a = SphFermKet(-a); assert a.func(*a.args) == a
+    a = FermKet('a'); assert a.func(*a.args) == a
+    a = FermKet('-a'); assert a.func(*a.args) == a
+    a = FermKet('a',hole=True); assert a.func(*a.args) == a
+    a = FermKet('a',hole=False); assert a.func(*a.args) == a
+    a = FermKet(-a); assert a.func(*a.args) == a
+
 def test_Dagger():
     assert Dagger(FermKet('a')) == FermBra('a')
     assert Dagger(FermBra('a')) == FermKet('a')

@@ -128,23 +128,21 @@ class QuantumState(Basic):
         # interpret negative symbols as antiparticles
         if isinstance(symbol, str):
             if symbol[0] == "-":
-                symbol = Symbol(symbol[1:])
-                kw_args['hole'] = not kw_args.get('hole')
+                symbol = -Symbol(symbol[1:])
             else:
                 symbol = Symbol(symbol)
         elif symbol:
             symbol = sympify(symbol)
-            c, symbol = symbol.as_coeff_terms()
-            symbol = symbol[0]
+            c, t = symbol.as_coeff_terms()
             if c.is_negative:
-                if isinstance(symbol, QuantumState):
-                    return symbol.get_antiparticle()
-                kw_args['hole'] = not kw_args.get('hole')
+                if isinstance(t[0], QuantumState):
+                    return t[0].get_antiparticle()
 
+
+        if kw_args.get('hole'):
+            symbol = -symbol
         #
         obj = Basic.__new__(cls, symbol, *args, **kw_args)
-        if kw_args.get('hole'): obj.is_hole = True
-        else: obj.is_hole = False
         return obj
 
     def _hashable_content(self):
@@ -152,9 +150,7 @@ class QuantumState(Basic):
 
     def get_antiparticle(self):
         if len(self.args)>1: raise ValueError("Only single particle states can be anti-particles (FIXME?)")
-        kw_args = self.assumptions0
-        kw_args['hole'] = not self.is_hole
-        return type(self)(self.symbol, **kw_args)
+        return type(self)(-self.symbol)
 
     @property
     def symbol(self):
@@ -162,12 +158,19 @@ class QuantumState(Basic):
 
     @property
     def label(self):
+        c,t = self.symbol.as_coeff_terms()
+        return t[0]
+
+    @property
+    def is_hole(self):
+        if self.symbol is None: return None
+        c,t = self.symbol.as_coeff_terms()
+        return c is S.NegativeOne
+
+    @property
+    def symbol_str(self):
         if self.symbol is None: return ""
-        if self.is_hole:
-            label = str(-self.symbol)
-        else:
-            label = str(self.symbol)
-        return label
+        return str(self.symbol)
 
     def get_operator_result(self, operator):
         """
@@ -203,7 +206,7 @@ class QuantumState(Basic):
         else: new_args = [self.symbol]
         for arg in self.args[1:]:
             new_args.append(Dagger(arg))
-        return self._hermitian_conjugate(*new_args, **{'hole':self.is_hole})
+        return self._hermitian_conjugate(*new_args)
 
     @property
     def single_particle_states(self):
@@ -347,13 +350,13 @@ class SphericalQuantumState(QuantumState):
             obj.state1 = state1
             obj.state2 = state2
             obj.is_coupled = True
-            obj._j = Symbol("J_"+str(symbol))
-            obj._m = Symbol("M_"+str(symbol))
+            obj._j = Symbol("J_"+str(obj.label))
+            obj._m = Symbol("M_"+str(obj.label))
         else:
             obj = QuantumState.__new__(cls, symbol, **kw_args)
             obj.is_coupled = False
-            obj._j = Symbol("j_"+str(symbol))
-            obj._m = Symbol("m_"+str(symbol))
+            obj._j = Symbol("j_"+str(obj.label))
+            obj._m = Symbol("m_"+str(obj.label))
 
         # register spin assumptions
         if obj.is_coupled:
@@ -377,12 +380,12 @@ class SphericalQuantumState(QuantumState):
         """
 
         if self.is_coupled:
-            return "%s(%s, %s)"%(self.label,
+            return "%s(%s, %s)"%(self.symbol_str,
                     self.state1._str_nobraket_(),
                     self.state2._str_nobraket_()
                     )
         else:
-            return self.label
+            return self.symbol_str
 
     def as_coeff_tensor(self, **kw_args):
         """
