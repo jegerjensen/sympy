@@ -88,6 +88,9 @@ def test_FermKet_FermBra():
     ch = SphFermKet('c', hole=True)
     assert FermKet(a,-b,-c,d) == FermKet(a, bh, ch, d)
 
+    assert isinstance(FermKet(),FermKet)
+    assert isinstance(FermBra(),FermBra)
+
 def test_SphericalQuantumState():
 
     j_a, m_a = symbols('j_a m_a')
@@ -190,7 +193,10 @@ def test_DirectMatrixElement():
     assert DirectMatrixElement((bra_a,bra_b), Op, (ket_c,ket_d))==-DirectMatrixElement((bra_a,bra_b), Op, (ket_d,ket_c))
     assert DirectMatrixElement((bra_a,bra_b), Op, (ket_c,ket_d))==-DirectMatrixElement((bra_b,bra_a), Op, (ket_c,ket_d)) 
     assert DirectMatrixElement((bra_a,bra_b), Op, (ket_c,ket_d))==DirectMatrixElement((bra_b,bra_a), Op, (ket_d,ket_c))
+
     assert DirectMatrixElement((bra_a,bra_b), Op, (ket_c,ket_d)).shift_vacuum([bra_b,ket_d])==DirectMatrixElement((bra_a, -Dagger(ket_d)), Op, (-Dagger(bra_b),ket_c))
+    assert DirectMatrixElement((bra_a,bra_b), Op, (ket_c,ket_d)).shift_vacuum([bra_b])==DirectMatrixElement((bra_a), Op, (-Dagger(bra_b),ket_c, ket_d))
+    assert DirectMatrixElement((bra_a,bra_b), Op, (ket_c,ket_d)).shift_vacuum([bra_a,bra_b])==DirectMatrixElement(None, Op, (-Dagger(bra_b),-Dagger(bra_a),ket_c, ket_d))
 
 def test_ThreeTensorMatrixElement():
     Op = SphericalTensorOperator('T','k','q')

@@ -926,8 +926,10 @@ class DirectMatrixElement(MatrixElement):
     def __new__(cls,left, op, right, **kw_args):
 
         coeff = S.One
-        if isinstance(left, (tuple,list)): left = FermBra(*left)
-        if isinstance(right,(tuple,list)): right = FermKet(*right)
+        if left is None: left = FermBra()
+        elif isinstance(left, (tuple,list)): left = FermBra(*left)
+        if right is None: right = FermKet()
+        elif isinstance(right,(tuple,list)): right = FermKet(*right)
         if isinstance(left, Mul):
             c,t = left.as_coeff_terms()
             coeff *= c
@@ -994,17 +996,13 @@ class DirectMatrixElement(MatrixElement):
                     left.append(Dagger(state.get_antiparticle()))
                     break
             else:
-                return self
+                return S.One, self
+
         left = FermBra(*left)
-        return (-1)**(sign),type(self)(left, self.operator, right)
-
-
-
-
-
-
-
-
+        right = FermKet(*right)
+        matrix = type(self)(left, self.operator, right)
+        c,t = matrix.as_coeff_terms()
+        return (-1)**(sign)*c,t[0]
 
 
 class ThreeTensorMatrixElement(MatrixElement):
