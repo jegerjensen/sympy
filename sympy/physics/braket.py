@@ -1125,9 +1125,8 @@ class ThreeTensorMatrixElement(MatrixElement):
         Sum(m_a, m_b, m_c, m_d)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
 
         """
-        if kw_args.get('wigner_eckardt'):
-            # matrix = self.use_wigner_eckardt()
-            raise NotImplemented
+        if kw_args.get('only_particle_states'):
+            matrix = self.get_related_direct_matrix(only_particle_states=True)
         else:
             matrix = self.get_related_direct_matrix()
 
@@ -1177,6 +1176,22 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         return DirectMatrixElement(bra, self.operator, ket)
 
+    def as_other_coupling(self, other):
+        """
+        Expresses self in terms of other
+        """
+        assert isinstance(other, ThreeTensorMatrixElement)
+        assert self.operator == other.operator
+        self_as_direct = self.as_direct_product(only_particle_states=True)
+        direct_as_other = other.get_direct_product_ito_self()
+
+        others_direct = other.get_related_direct_matrix(only_particle_states=True)
+
+        # if other_direct matrix comes with a sign, the substitution would fail
+        c,t = others_direct.as_coeff_terms()
+        if len(t) != 1: raise Error
+
+        return self_as_direct.subs(t[0],c*other.get_direct_product_ito_self())
 
 
 def apply_wigner_eckardt(expr):
