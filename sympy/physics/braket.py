@@ -162,6 +162,7 @@ class QuantumState(Basic):
 
     @property
     def label(self):
+        if self.symbol is None: return ""
         if self.is_hole:
             label = str(-self.symbol)
         else:
@@ -265,8 +266,7 @@ class DirectQuantumState(QuantumState):
 
         """
         if len(args) == 0:
-            obj = QuantumState.__new__(cls, None,**kw_args)
-            return obj
+            return QuantumVacuum(cls, **kw_args)
 
         if len(args) == 1:
             if isinstance(args[0], QuantumState):
@@ -317,7 +317,7 @@ class SphericalQuantumState(QuantumState):
     operator.
     """
 
-    def __new__(cls, symbol, state1=None, state2=None, **kw_args):
+    def __new__(cls, symbol=None, state1=None, state2=None, **kw_args):
         """
         Creates either a single particle spherical state or a
         coupled state constructed from state1 and state2.
@@ -329,9 +329,10 @@ class SphericalQuantumState(QuantumState):
 
         Note: First argument is interpreted as a symbol characteristic for this state.
         """
+        if symbol is None: return QuantumVacuum(cls)
+
         if isinstance(symbol, QuantumState):
             raise ValueError("Quantum state cannot act as symbol")
-
 
         if state1 and state2:
             # interpret minus sign as a hole state
@@ -369,7 +370,6 @@ class SphericalQuantumState(QuantumState):
 
 
         return obj
-
 
     def _str_nobraket_(self, *args):
         """
@@ -699,6 +699,63 @@ class FermBra(DualQuantumState, DirectQuantumState, Bra, FermionState):
     """
     _hermitian_conjugate = FermKet
 FermKet._hermitian_conjugate = FermBra
+
+class QuantumVacuum(DirectQuantumState, SphericalQuantumState):
+    """
+    Represents the quantum vacuum.
+    """
+
+    def __new__(cls, template_cls=None, **kw_args):
+        """
+        Spawns the correct subclass upon creation.
+
+        If template_cls is given, we examine the provided class and try
+        to return a vacuum that matches.  (Bra or Ket)
+
+        >>> from sympy.physics.braket import QuantumVacuum, FermKet, FermBra
+        >>> QuantumVacuum(FermKet)
+        |>
+        >>> QuantumVacuum(FermBra)
+        <|
+        """
+        if cls is QuantumVacuum:
+            if template_cls:
+                if template_cls.is_dual is True:
+                    return QuantumVacuumBra()
+                if template_cls.is_dual is False:
+                    return QuantumVacuumKet()
+            raise ValueError("Failed to guess which Vacuum you want")
+        else:
+            # Note: Do not call SphericalQuantumState.__new__() from here. It
+            # creates an infinite loop!
+            obj = QuantumState.__new__(cls, None)
+            obj.is_coupled = False
+            obj._j = S.Zero
+            obj._m = S.Zero
+            obj._tensor_proj = S.Zero
+            obj._tensor_phase = S.One
+            return obj
+
+    @property
+    def single_particle_states(self):
+        """
+        A tuple containing all s.p. states of this QuantumState
+        """
+        return tuple([])
+
+    @property
+    def spin_assume(self):
+        # vacuum has spin 0
+        return 'integer'
+
+class QuantumVacuumKet(QuantumVacuum, Ket, RegularQuantumState):
+    pass
+
+class QuantumVacuumBra(QuantumVacuum, Bra, DualQuantumState):
+    _hermitian_conjugate = QuantumVacuumKet
+QuantumVacuumKet._hermitian_conjugate = QuantumVacuumBra
+
+
 
 def _get_matrix_element(left, operator, right, **kw_args):
     """

@@ -1,4 +1,4 @@
-from sympy import symbols, C
+from sympy import symbols, C, S
 
 from sympy.physics.braket import (
         SphericalTensorOperator, Dagger, BosonState, FermionState, Ket, Bra,
@@ -6,7 +6,7 @@ from sympy.physics.braket import (
         DirectQuantumState, SphericalTensor, ClebschGordanCoefficient,
         MatrixElement, SphericalTensorOperator, ThreeTensorMatrixElement,
         ReducedMatrixElement, DirectMatrixElement, SphericalQuantumState,
-        BraKet, WignerEckardDoesNotApply
+        BraKet, WignerEckardDoesNotApply, QuantumVacuumKet, QuantumVacuumBra
         )
 
 from sympy.utilities import raises
@@ -91,8 +91,17 @@ def test_FermKet_FermBra():
     assert FermKet(a,-b,-c,d) == FermKet(a, bh, ch, d)
     assert FermKet(-b) == FermKet(bh)
 
-    assert isinstance(FermKet(),FermKet)
-    assert isinstance(FermBra(),FermBra)
+def test_QuantumVacuum():
+
+    assert isinstance(FermKet(),QuantumVacuumKet)
+    assert isinstance(FermBra(),QuantumVacuumBra)
+    assert isinstance(SphFermKet(),QuantumVacuumKet)
+    assert isinstance(SphFermBra(),QuantumVacuumBra)
+    assert FermKet().single_particle_states ==tuple([])
+    assert FermKet()._j is S.Zero
+    assert FermKet()._m is S.Zero
+    assert FermKet()._tensor_proj is S.Zero
+    assert FermKet()._tensor_phase is S.One
 
 def test_SphericalQuantumState():
 
