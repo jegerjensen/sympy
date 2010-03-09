@@ -1199,11 +1199,3 @@ def rewrite_as_direct_product(expr, **kw_args):
         subslist.append((m,m.get_self_ito_direct_product(**kw_args)))
     return expr.subs(subslist)
 
-def _as_coeff_tensor(tensor):
-        c,t = tensor.as_coeff_terms(SphericalTensor)
-        if len(t) == 1:
-            return c, t[0]
-        else:
-            raise ValueError("not a tensor")
-
-
