@@ -1,4 +1,4 @@
-from sympy import symbols
+from sympy import symbols, C
 
 from sympy.physics.braket import (
         SphericalTensorOperator, Dagger, BosonState, FermionState, Ket, Bra,
@@ -74,11 +74,13 @@ def test_DirectQuantumState():
     assert DirectQuantumState(SphFermBra('a')) == SphFermBra('a')
 
 def test_FermKet_FermBra():
-    FermBra('a') == SphFermBra('a')
-    FermKet('c') == SphFermKet('c')
+    assert FermBra('a') == SphFermBra('a')
+    assert FermKet('c') == SphFermKet('c')
+    assert FermKet(-SphFermKet('a')) == SphFermKet('a', hole=True)
     raises(ValueError, 'FermKet(FermBra("a"))')
     raises(ValueError, 'FermBra(FermKet("c"))')
     assert FermKet('a',hole=True).is_hole
+
 
     a = SphFermKet('a')
     b = SphFermKet('b')
@@ -87,6 +89,7 @@ def test_FermKet_FermBra():
     bh = SphFermKet('b', hole=True)
     ch = SphFermKet('c', hole=True)
     assert FermKet(a,-b,-c,d) == FermKet(a, bh, ch, d)
+    assert FermKet(-b) == FermKet(bh)
 
     assert isinstance(FermKet(),FermKet)
     assert isinstance(FermBra(),FermBra)
@@ -105,6 +108,8 @@ def test_SphericalQuantumState():
     assert SphFermKet('c', SphFermKet('a'), SphFermKet('b'))._m == M_c
     raises(ValueError,"SphFermKet('c', SphFermKet('a'), SphFermKet('b'), hole=True)")
     assert SphFermKet('a') < SphFermKet('b')
+
+    assert SphFermKet(-SphFermKet('a')) == SphFermKet('a', hole=True)
 
 def test_as_coeff_tensor():
     t, T, j_a, m_a = symbols('t T j_a m_a')
@@ -166,6 +171,16 @@ def test_MatrixElement_construction():
     assert isinstance(MatrixElement(bra_a,Op,ket_b), ThreeTensorMatrixElement)
     assert isinstance(MatrixElement(bra_a,Op,ket_b,reduced=True), ReducedMatrixElement)
     assert isinstance(MatrixElement(bra_ac,Op,ket_b), DirectMatrixElement)
+
+    # test difference antiparticle and negative coefficient of state:
+    # negative states in tuple => antiparticle state
+    # negative state without tuple => sign extracted out and in front of matrix element
+    assert MatrixElement(bra_a,Op,(-ket_b,))==MatrixElement(bra_a,Op,ket_b.get_antiparticle())
+    assert MatrixElement(bra_a,Op,-ket_b) == -MatrixElement(bra_a,Op,ket_b)
+    assert MatrixElement(-bra_a,Op,ket_b,reduced=True)== -ReducedMatrixElement(bra_a,Op,ket_b)
+    assert MatrixElement((-bra_a,),Op,ket_b,reduced=True)==ReducedMatrixElement(bra_a.get_antiparticle(),Op,ket_b)
+    assert MatrixElement(bra_ac,Op,-ket_b) == -MatrixElement(bra_ac,Op,ket_b)
+    assert MatrixElement(bra_ac,Op,(-ket_b,)) == MatrixElement(bra_ac,Op,ket_b.get_antiparticle())
 
 def test_ReducedMatrixElement():
     k, q, j_a, m_a = symbols('k q j_a m_a')

@@ -137,6 +137,8 @@ class QuantumState(Basic):
             c, symbol = symbol.as_coeff_terms()
             symbol = symbol[0]
             if c.is_negative:
+                if isinstance(symbol, QuantumState):
+                    return symbol.get_antiparticle()
                 kw_args['hole'] = not kw_args.get('hole')
 
         #
@@ -267,7 +269,7 @@ class DirectQuantumState(QuantumState):
             return obj
 
         if len(args) == 1:
-            if isinstance(args[0], SphericalQuantumState):
+            if isinstance(args[0], QuantumState):
                 if cls.is_dual is None: return args[0]
                 if cls.is_dual == args[0].is_dual: return args[0]
                 raise ValueError("Cannot have kets in a direct-product bra")
@@ -759,14 +761,28 @@ class MatrixElement(Basic):
 
     def __new__(cls,left, operator, right, **kw_args):
 
+        coeff = S.One
+        if left is None: left = FermBra()
+        elif isinstance(left, (tuple,list)): left = FermBra(*left)
+        if right is None: right = FermKet()
+        elif isinstance(right,(tuple,list)): right = FermKet(*right)
+        if isinstance(left, Mul):
+            c,t = left.as_coeff_terms()
+            coeff *= c
+            left = t[0]
+        if isinstance(right, Mul):
+            c,t = right.as_coeff_terms()
+            coeff *= c
+            right = t[0]
+
         if cls is MatrixElement:
-            return _get_matrix_element(left, operator, right, **kw_args)
+            return coeff*_get_matrix_element(left, operator, right, **kw_args)
         else:
             assert isinstance(left, DualQuantumState), "not dual: %s" %left
             assert isinstance(operator, QuantumOperator)
             assert isinstance(right, RegularQuantumState)
             obj = Basic.__new__(cls, left, operator, right, **kw_args)
-            return obj
+            return coeff*obj
 
     @property
     def left(self):
@@ -925,21 +941,8 @@ class DirectMatrixElement(MatrixElement):
     nargs=3
     def __new__(cls,left, op, right, **kw_args):
 
-        coeff = S.One
-        if left is None: left = FermBra()
-        elif isinstance(left, (tuple,list)): left = FermBra(*left)
-        if right is None: right = FermKet()
-        elif isinstance(right,(tuple,list)): right = FermKet(*right)
-        if isinstance(left, Mul):
-            c,t = left.as_coeff_terms()
-            coeff *= c
-            left = t[0]
-        if isinstance(right, Mul):
-            c,t = right.as_coeff_terms()
-            coeff *= c
-            right = t[0]
 
-        obj = coeff*MatrixElement.__new__(cls, left, op, right, **kw_args)
+        obj = MatrixElement.__new__(cls, left, op, right, **kw_args)
 
         return obj
 
