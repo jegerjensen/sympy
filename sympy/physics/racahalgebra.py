@@ -611,9 +611,9 @@ class SphericalTensor(Basic):
 
         return "%s(%s, %s)" % self.args
 
-    def _str_drop_projection_(self, p, *args):
+    def _str_drop_projection_(self, *args):
         rank= "%s" %(self.rank,)
-        symbol = p.doprint(self.symbol)
+        symbol = str(self.symbol)
 
         return symbol,rank
 
