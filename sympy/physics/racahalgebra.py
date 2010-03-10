@@ -1036,7 +1036,7 @@ class TriangularInequality(Function):
 
 
 
-def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True):
+def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args):
     """
     Simplifies and standardizes expressions containing 3j and 6j symbols.
 
@@ -1054,6 +1054,7 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True):
         - the information present in the expression
         - information stored as global_assumptions
         - assumptions supplied as an optional argument to this function.
+        - expressions supplied in list with the keyword identity_sources=
 
     Powers of (-1) can be simplified a lot if we have assumptions about symbols
     being integers or half-integers.
@@ -1125,7 +1126,9 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True):
     projections = set([])
     triags = set([])
     jm_pairs = set([])
-    for njs in expr.atoms(AngularMomentumSymbol):
+    identity_sources = set(kw_args.get('identity_sources', []))
+    identity_sources.update(expr.atoms(AngularMomentumSymbol))
+    for njs in identity_sources:
         triags.update(njs.get_triangular_inequalities())
         if isinstance(njs, ThreeJSymbol):
             projections.add(Pow(-1,Add(*njs.projections)))
