@@ -418,7 +418,7 @@ class SixJSymbol(AngularMomentumSymbol):
 
         >>> sjs = SixJSymbol(A, B, E, D, C, F);
         >>> sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f))
-        (-1)**(C + D + F - a - c - e)*Sum(a, b, d, e, f)*ThreeJSymbol(A, B, E, a, -e, -b)*ThreeJSymbol(A, C, F, a, f, -c)*ThreeJSymbol(B, D, F, e, -d, -c)*ThreeJSymbol(C, D, E, f, d, b)
+        (-1)**(C + D + F - a - c - e)*Sum(a, b, c, d, e, f)*ThreeJSymbol(A, B, E, a, -e, -b)*ThreeJSymbol(A, C, F, a, f, -c)*ThreeJSymbol(B, D, F, e, -d, -c)*ThreeJSymbol(C, D, E, f, d, b)
 
         >>> global_assumptions.clear()
         """
@@ -454,8 +454,12 @@ class SixJSymbol(AngularMomentumSymbol):
             tjs_list = [ cgc.get_as_ThreeJSymbol() for cgc in cgc_list ]
             expr = phase*hats*Mul(*tjs_list)
 
+        # FIXME: sum over M ? Yes -- Heyde claims that the sjs is defined with
+        # a sum over *all* projections.  In an expression where the sum over M
+        # is missing you can insert a sum and divide by (2J + 1) since the
+        # recoupling coefficients are independent of M.
         expr =  refine(powsimp(phase*expr))
-        summations = ASigma(m1,m2,m3,M12,M23) #FIXME: sum over M ?
+        summations = ASigma(m1,m2,m3,M12,M23, M)
         return summations*expr
 
     @classmethod

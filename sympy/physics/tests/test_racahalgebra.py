@@ -66,7 +66,8 @@ def test_sjs_methods():
 
     sjs = SixJSymbol(A, B, E, D, C, F);
 #    FIXME: check this expression!!!
-    assert sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f), definition='brink_satchler') == (-1)**(C + D + F - a - c - e)*ASigma(a, b, d, e, f)*ThreeJSymbol(A, B, E, a, -e, -b)*ThreeJSymbol(A, C, F, a, f, -c)*ThreeJSymbol(B, D, F, e, -d, -c)*ThreeJSymbol(C, D, E, f, d, b)
+    assert sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f), definition='brink_satchler') == (-1)**(C + D + F - a - c - e)*ASigma(a, b, c, d, e, f)*ThreeJSymbol(A, B, E, a, -e, -b)*ThreeJSymbol(A, C, F, a, f, -c)*ThreeJSymbol(B, D, F, e, -d, -c)*ThreeJSymbol(C, D, E, f, d, b)
+
 
     global_assumptions.clear()
 
