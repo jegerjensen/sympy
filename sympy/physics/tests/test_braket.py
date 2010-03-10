@@ -289,6 +289,7 @@ def test_ThreeTensorMatrixElement():
 
     #test wigner_eckardt
     assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).get_direct_product_ito_self(wigner_eckardt=True) == ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).use_wigner_eckardt()
+    assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True) == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))
 
     # test vacuum-shifted coupling and decoupling
     assert DirectMatrixElement((a,-b),Op,(c,-d)) == ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).get_related_direct_matrix()

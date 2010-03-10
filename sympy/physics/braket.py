@@ -1174,6 +1174,22 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product()
         Sum(m_a, m_b, m_c, m_d)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
 
+        The keyword wigner_eckardt=True gives you an expression for the reduced
+        matrix element in terms of the direct product matrix.  To this end, we
+        use the ClebschGordanCoefficient orthogonality to rewrite
+
+        <(ab)JM|T(k,q)|(cd)JM> == (J_cd, M_cd, k, q|J_ab, M_ab) <J(ab)||T(k)||J(cd)>
+
+        as
+
+        <J(ab)||T(k)||J(cd)> ==
+            Sum(M_cd, q) (J_cd, M_cd, k, q|J_ab, M_ab) <(ab)JM|T(k,q)|(cd)JM>
+
+        For the above expression we obtain:
+
+        >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product(wigner_eckardt=True)
+        Sum(M_cd, m_a, m_b, m_c, m_d, q)*(J_cd, M_cd, k, q|J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
+
         """
         if kw_args.get('only_particle_states'):
             matrix = self.get_related_direct_matrix(only_particle_states=True)
@@ -1183,10 +1199,17 @@ class ThreeTensorMatrixElement(MatrixElement):
         cbra, bra = self.left.as_coeff_sp_states(**kw_args)
         cket, ket = self.right.as_coeff_sp_states(**kw_args)
 
-        if kw_args.get('only_coeffs'):
-            return combine_ASigmas(cbra*cket)
+        if kw_args.get('wigner_eckardt'):
+            cgc = ReducedMatrixElement(self.left, self.operator, self.right
+                    )._get_reduction_factor()
+            cgc *= ASigma(self.operator.projection, self.right._m)
         else:
-            return combine_ASigmas(cbra*cket)*matrix
+            cgc = S.One
+
+        if kw_args.get('only_coeffs'):
+            return combine_ASigmas(cbra*cket*cgc)
+        else:
+            return combine_ASigmas(cbra*cket*cgc)*matrix
 
 
     def get_related_direct_matrix(self, **kw_args):
