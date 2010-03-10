@@ -120,6 +120,7 @@ class QuantumState(Basic):
     The common ground is the ability to be modified by a QuantumOperator
 
     """
+    is_dual=None
 
     def __new__(cls, symbol, *args, **kw_args):
 
@@ -214,7 +215,7 @@ class RegularQuantumState(QuantumState):
     - Operators that act must be to the left of a RegularQuantumState.
     - Any operators acting on a RegularQuantumState, acts unmodified.
     """
-    pass
+    is_dual=False
 
 class DualQuantumState(QuantumState):
     """
@@ -224,7 +225,7 @@ class DualQuantumState(QuantumState):
     - Any operators acting on a DualQuantumState, acts like its hermitian
     conjugate.
     """
-    pass
+    is_dual=True
 
 class DirectQuantumState(QuantumState):
     """
