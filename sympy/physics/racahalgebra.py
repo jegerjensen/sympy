@@ -1261,8 +1261,7 @@ def refine_tjs2sjs(expr):
     >>> global_assumptions.add( Assume(Z, 'half_integer') )
     >>> global_assumptions.add( Assume(z, 'half_integer') )
 
-    >>> expr = SixJSymbol(A, B, E, D, Z, F).get_ito_ThreeJSymbols((a,b,e,d,z,f)); expr
-    (-1)**(A + E + Z - a - e - z)*Sum(a, b, d, e, f)*ThreeJSymbol(A, B, E, a, -b, -e)*ThreeJSymbol(A, F, Z, a, f, -z)*ThreeJSymbol(B, D, F, b, d, f)*ThreeJSymbol(D, E, Z, d, -e, z)
+    >>> expr = SixJSymbol(A, B, E, D, Z, F).get_ito_ThreeJSymbols((a,b,e,d,z,f))
     >>> refine_tjs2sjs(expr)
     SixJSymbol(A, B, E, D, Z, F)
 
@@ -1272,86 +1271,94 @@ def refine_tjs2sjs(expr):
 
     >>> global_assumptions.clear()
 
-
-
     FIXME: need to call refine_phases() before returning.
     """
 
+    expr = combine_ASigmas(expr)
 
-    for threej_atoms in _iter_tjs_permutations(expr):
+    for permut in _iter_tjs_permutations(expr):
 
-        sjs = _identify_SixJSymbol(threej_atoms)
+        summations, phases, factors, threejs, ignorables = permut
+
+        sjs = _identify_SixJSymbol(threejs)
 
         # expand 6j-symbol i.t.o. 3j-symbols and try to match with original
         M_symbols = []
         for J in sjs.args:
-            for tjs in threej_atoms:
+            for tjs in threejs:
                 M = tjs.get_projection_symbol(J)
                 if M:
                     M_symbols.append(M)
                     break
+        assert len(M_symbols)==6
         new_tjs_expr = sjs.get_ito_ThreeJSymbols(M_symbols)
 
-        # We might be lucky...
-        new_atoms = new_tjs_expr.atoms(ThreeJSymbol)
-        if new_atoms == threej_atoms:
-            return _substitute_tjs2sjs(threej_atoms, expr, sjs, new_tjs_expr)
+        # There is only one permutation here but we want to split new_tjs_expr:
+        for permut2 in _iter_tjs_permutations(new_tjs_expr):
+            summations2, phases2, factors2, threejs2, ignorables2 = permut2
 
-        # ...else, we need to bring the 3js to same form by changing sign of
-        # summation indices (projection symbols that are summed over).
-        new_tjs = dict([])
-        projdict = dict([])
-        for tjs in new_atoms:
-            new_tjs[tjs.magnitudes] = tjs
-        for old in threej_atoms:
-            new = new_tjs[old.magnitudes]
-            projdict[new] =  _find_projections_to_invert(old, new)
+        # we can already simplify some parts
+        phases = refine(powsimp(phases/phases2))
+        factors = factors/factors2
 
-        # now we need to process the list of alternative projection inversions
-        phase_subs_dict = _get_phase_subslist_dict(projdict)
+        if threejs2 != threejs:
+            # We need to bring the 3js to same form by changing sign of
+            # summation indices (projection symbols that are summed over).
+            new_tjs = dict([])
+            projdict = dict([])
+            for tjs in threejs2:
+                new_tjs[tjs.magnitudes] = tjs
+            for old in threejs:
+                new = new_tjs[old.magnitudes]
+                projdict[new] =  _find_projections_to_invert(old, new)
 
-        # which phase gives the simplest final expression?
-        expr = powsimp(expr)
-        original_phase = expr.args[0]
-        new_tjs_phase = new_tjs_expr.args[0]
-        if not isinstance(original_phase, Pow):
-            raise Exception("cannot understand phase %s" %original_phase)
-        if not isinstance(new_tjs_phase, Pow):
-            raise Exception("cannot understand phase %s" %new_tjs_phase)
+            # now we need to process the list of alternative projection inversions
+            # in order to find combinations that are consistent for all 3js
+            # simultaneously
+            alternative_phases = _get_phase_subslist_dict(projdict)
 
-        residual_phase = refine(powsimp(original_phase/new_tjs_phase))
+            # choose the simplest phase
+            orig = phases
+            for alt in alternative_phases:
+                test_phase = refine(powsimp(orig*alt))
+                if test_phase is S.One or test_phase is S.NegativeOne:
+                    phases = test_phase
+                    break
+                elif orig == phases:
+                    phases = test_phase
+                elif len(test_phase.exp) < len(phases.exp):
+                    phases = test_phase
 
-        best = None
-        for phase in phase_subs_dict.keys():
-            test_phase = refine(powsimp(residual_phase/phase))
-            if test_phase == S.One or test_phase == S.NegativeOne:
-                best = test_phase
-                break
-            if best is None:
-                best = test_phase
-            else:
-                if len(test_phase.args) < len(best.args):
-                    best = test_phase
 
-        # sjs == tjs_phase * inversion_phase * (tjs)^4
-        #
-        # (tjs)^4 == sjs/(new_tjs_phase*inversion_phase)
-        #
-        # orig_phase * (tjs)^4 * rest ==
-        #               orig_phase /(new_tjs_phase*inversion_phase)* sjs * rest
-        M_symbols = M_symbols[:4]+M_symbols[5:];summation = ASigma(*M_symbols)
-        subslist = [ (original_phase, best), (summation,S.One) ]
-        expr = expr.subs(subslist)
+        # make sure there is summation over all projections
+        for m in [ m for m in M_symbols if not (m in summations.args)]:
+            # ... {}{}{}{} ... => ...( sum_abcdef {}{}{}{}/C ) ...
+            # C is a factor to compensate for the summations we introduce.
+            #
+            # Since we are searching for a 6j symbol, the expresion with 4 3j symbols
+            # cannot depend on the projections.  (If they do, it means they cannot be
+            # rewritten to 6j, so we will fail at a later point.)
+            #
+            # This means that the factor C is just (2j + 1) for every new sum.
+            j = sjs.args[ M_symbols.index(m) ]
+            factors = factors/(2*j + 1)
+
+        # remove all projection summations
+        summations = summations.remove_indices(
+                [m for m in M_symbols if (m in summations.args)])
+
+
+        # sjs == phases2*factors2*(tjs)^4  =>  (tjs)^4 == sjs/factors2/phases2
+        # expr = phases*factors*(tjs)^4 == phases/phases2 * factors/factors2 * sjs
+
+        expr = Mul(summations, phases, sjs, factors, *ignorables)
 
         # get rid of any projection symbols in the phase
         try:
-            expr = refine_phases(expr, M_symbols)
+            expr = refine_phases(expr, M_symbols, identity_sources=threejs)
         except UnableToComplyWithForbiddenAndMandatorySymbols:
             raise ThreeJSymbolsNotCompatibleWithSixJSymbol
 
-        subslist = [ (tjs,S.One) for tjs in threej_atoms ]
-
-        return expr.subs(subslist)*sjs
 
     return expr
 
@@ -1457,7 +1464,7 @@ def _get_phase_subslist_dict(projection_dict):
         phase = refine(tjs_expr.subs(eliminate_tjs))
 
         phase_inversion_dict[phase] = subslist
-    return phase_inversion_dict
+    return phase_inversion_dict.keys()
 
 
 def _substitute_tjs2sjs(threej_atoms, expression, sjs, sjs_ito_tjs):
@@ -1553,16 +1560,93 @@ def _find_projections_to_invert(start, goal):
 
 def _iter_tjs_permutations(expr):
     """
-    Iterates over possible candidates for  4*tjs -> sjs
+    Iterates over possible candidates for  4*tjs -> sjs in a Mul
+
+    returns a tuple of lists:
+        summations, phases, factors, threejs, ignorables
+
+    summations -- ASigma() containing all summation indices
+    phases -- Pow, containing all phases.
+    threejs -- list of 4 tjs
+    factors -- list of that could be relevant in search for 6j expression
+    ignorables -- list of factors that are deemed irrelevant for 6j algorithm.
+
+    The original expression can always be reconstructed as
+
+        expr == Mul(*(threejs + factors + ignorables))
 
     FIXME!!  Must check:
         - that there are 4 tjs containing only 6 J values
         - that the selected 4 tjs are independent of any remaining tjs
         - that there are summation symbols over the involved projections.
+
+
     """
-    threejs = expr.atoms(ThreeJSymbol)
-    if len(threejs)<4: return None
-    return [threejs] #FIXME
+    def combinations(iterable, r):
+        # combinations('ABCD', 2) --> AB AC AD BC BD CD
+        # combinations(range(4), 3) --> 012 013 023 123
+        #
+        # NOTE: copy-paste from http://docs.python.org/library/itertools.html
+        #
+        pool = tuple(iterable)
+        n = len(pool)
+        if r > n:
+            return
+        indices = range(r)
+        yield tuple(pool[i] for i in indices)
+        while True:
+            for i in reversed(range(r)):
+                if indices[i] != i + n - r:
+                    break
+            else:
+                return
+            indices[i] += 1
+            for j in range(i+1, r):
+                indices[j] = indices[j-1] + 1
+            yield tuple(pool[i] for i in indices)
+
+
+    # First map out expression
+    if expr.is_Mul:
+        summations = []
+        phases = []
+        threejs = []
+        factors = []
+        ignorables = []
+
+        for arg in expr.args:
+            if isinstance(arg, ThreeJSymbol):
+                threejs.append(arg)
+            elif arg.is_Pow and isinstance(arg.base, ThreeJSymbol):
+                if arg.exp.is_Integer and arg.exp.is_positive:
+                    for i in range(arg.exp):
+                        threejs.append(arg.base)
+                else:
+                    raise ValueError("Confused by %s"%arg)
+            elif arg.is_Pow and arg.base is S.NegativeOne:
+                phases.append(arg)
+            elif isinstance(arg, ASigma):
+                summations.append(arg)
+            elif isinstance(arg, SphericalTensor):
+                ignorables.append(arg)
+            else:
+                factors.append(arg)
+    else:
+        raise ValueError("Expected a Mul")
+
+    if not summations: raise ThreeJSymbolsNotCompatibleWithSixJSymbol("No sums!")
+    if len(threejs)<4: raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Too few 3js!")
+
+    summations = combine_ASigmas(Mul(*summations))
+    phases = powsimp(Mul(*phases))
+    factors = Mul(*factors)
+
+    for tjs in combinations(threejs, 4):
+
+        # FIXME: check sensibility of tjs!
+
+        yield tuple([summations, phases, factors, tjs, ignorables])
+
 
 def _identify_SixJSymbol(threejs):
     """
