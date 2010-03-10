@@ -959,12 +959,10 @@ class ASigma(Basic):
         >>> ASigma(b,a).combine(ASigma(c))
         Sum(a, b, c)
         >>> ASigma(b,a).combine(ASigma(b, c))
-        Sum(a, b, c)
+        Sum(a, b, b, c)
         """
         assert isinstance(other, ASigma)
-        args = set(self.args)
-        args.update(other.args)
-        return ASigma(*args)
+        return ASigma(*(self.args + other.args))
 
     def remove_indices(self, indices):
         """
@@ -978,13 +976,14 @@ class ASigma(Basic):
         >>> ASigma(a,b,c).remove_indices([a,b,c])
         1
         >>> s = ASigma(a,b)
-        >>> t = s.remove_indices([c])
+        >>> t = s.remove_indices([])
         >>> s is t
         True
 
         """
-        newargs = set(self.args)
-        newargs -= set(indices)
+        newargs = list(self.args)
+        for i in indices:
+            newargs.remove(i)
         if not newargs:
             return S.One
         elif len(newargs) < len(self.args):
@@ -1693,21 +1692,23 @@ def remove_summation_indices(expr, *indices):
     """
     Locates all ASigma in ``expr`` and removes requested indices.
 
+    Note: if you try to remove an index which is not there, you get a ValueError
+
     >>> from sympy.physics.racahalgebra import ASigma, remove_summation_indices
     >>> from sympy import symbols, Function
     >>> a,b,c = symbols('abc')
     >>> f = Function('f')
     >>> expr = ASigma(a,b)*f(a,b) + ASigma(a)*f(a,c)
-    >>> remove_summation_indices(expr, a,c)
+    >>> remove_summation_indices(expr, a)
     Sum(b)*f(a, b) + f(a, c)
 
     """
-    subslist = []
-    for sigma in expr.atoms(ASigma):
-        new = sigma.remove_indices(indices)
-        if not new is sigma:
-            subslist.append((sigma, new))
-    return expr.subs(subslist)
+    if expr.is_Add:
+        return Add(*[ remove_summation_indices(arg, *indices) for arg in expr.args ])
+    expr = combine_ASigmas(expr)
+    sigma = expr.atoms(ASigma).pop()
+    new = sigma.remove_indices(indices)
+    return expr.subs(sigma,new)
 
 def convert_tjs2cgc(expr):
     subslist = []
