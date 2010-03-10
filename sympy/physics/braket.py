@@ -1249,14 +1249,14 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         return DirectMatrixElement(bra, self.operator, ket)
 
-    def as_other_coupling(self, other):
+    def as_other_coupling(self, other, **kw_args):
         """
         Expresses self in terms of other
         """
         assert isinstance(other, ThreeTensorMatrixElement)
         assert self.operator == other.operator
-        self_as_direct = self.as_direct_product(only_particle_states=True)
-        direct_as_other = other.get_direct_product_ito_self()
+        self_as_direct = self.as_direct_product(only_particle_states=True, **kw_args)
+        direct_as_other = other.get_direct_product_ito_self(**kw_args)
 
         others_direct = other.get_related_direct_matrix(only_particle_states=True)
 
@@ -1264,7 +1264,8 @@ class ThreeTensorMatrixElement(MatrixElement):
         c,t = others_direct.as_coeff_terms()
         if len(t) != 1: raise Error
 
-        return self_as_direct.subs(t[0],c*other.get_direct_product_ito_self())
+        result =  self_as_direct.subs(t[0],c*direct_as_other)
+        return combine_ASigmas(result)
 
 
 def apply_wigner_eckardt(expr):
