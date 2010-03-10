@@ -931,11 +931,11 @@ class ReducedMatrixElement(MatrixElement):
         """
         return ThreeTensorMatrixElement(*self.args)
 
-    def __str__(self,p,*args):
+    def __str__(self,*args):
         return "%s| %s |%s" %(
-                p.doprint(self.left),
-                "%s(%s)"%self.operator._str_drop_projection_(p,*args),
-                p.doprint(self.right)
+                self.left,
+                "%s(%s)"%self.operator._str_drop_projection_(*args),
+                self.right
                 )
 
     _sympystr_ = __str__
