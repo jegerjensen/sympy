@@ -89,6 +89,8 @@ def test_SphericalTensor_creation():
     A,B,C = symbols('ABC')
 
     assert isinstance(SphericalTensor('T', A, a), AtomicSphericalTensor)
+    B = SphericalTensor('t', B, b)
+    C = SphericalTensor('t', C, c)
     assert isinstance(SphericalTensor('T', A, a, B, C), CompositeSphericalTensor)
 
 def test_SphericalTensor_methods():

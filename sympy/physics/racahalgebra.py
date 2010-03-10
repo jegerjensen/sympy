@@ -704,6 +704,8 @@ class CompositeSphericalTensor(SphericalTensor):
         You may build up a composite tensor with any coupling scheme this way.
 
         """
+        assert isinstance(tensor1, SphericalTensor)
+        assert isinstance(tensor2, SphericalTensor)
         obj = Basic.__new__(cls,symbol,rank,projection,tensor1,tensor2)
         return obj
 
