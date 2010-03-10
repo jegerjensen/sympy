@@ -868,10 +868,14 @@ class CompositeSphericalTensor(SphericalTensor):
 
         This method tells you how S2 can be expressed in terms of S1:
 
+        >>> S2.get_ito_other_coupling_order(S1)
+        Sum(D, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S1[T12[t1(A)*t2(B)](D)*t3(C)](F, f)*Dij(F, G)*Dij(f, g)
+
+        Note how F==G and f==g is expressed with the Kronecker delta, Dij.
+
         >>> S1.get_ito_other_coupling_order(S2)
         Sum(E, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A)*T23[t2(B)*t3(C)](E)](G, g)*Dij(F, G)*Dij(f, g)
 
-        Note how F==G and f==g is expressed with the Kronecker delta, Dij.
         """
         my_tensors = self.atoms(AtomicSphericalTensor)
         assert my_tensors == other_coupling.atoms(AtomicSphericalTensor)
