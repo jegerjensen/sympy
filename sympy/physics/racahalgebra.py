@@ -1112,11 +1112,12 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     If there is a conflict, or if the algorithm do not succed, the exception
     ``UnableToComplyWithForbiddenAndMandatorySymbols`` is raised.
 
-    To rewrite the expression, we use information from three sources:
+    To rewrite the expression, we use information from these sources:
         - the information present in the expression
         - information stored as global_assumptions
         - assumptions supplied as an optional argument to this function.
         - expressions supplied in list with the keyword identity_sources=
+        - expressions stored in a local cache. (Only if  keep_local_cache==True)
 
     Powers of (-1) can be simplified a lot if we have assumptions about symbols
     being integers or half-integers.
@@ -1153,11 +1154,11 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
 
     >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,c)
     >>> refine_phases(expr, [a,b,c], [A,B,C])
-    (-1)**(2*A + 2*B + 2*C)*ThreeJSymbol(A, B, C, a, b, c)
-
+    (-1)**(-4*A - 4*B - 4*C)*ThreeJSymbol(A, B, C, a, b, c)
     >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,-c)
     >>> refine_phases(expr, [a, b, c, A, B], [C])
     (-1)**(2*C)*ThreeJSymbol(A, B, C, a, b, -c)
+    >>> global_assumptions.clear()
 
     """
     forbidden = set(forbidden)
@@ -1166,16 +1167,16 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
 
     # fetch the phase
     expr = refine(powsimp(expr), assumptions)
-    phase = S.One
-    for p in expr.atoms(Pow):
-        if p.base == S.NegativeOne:
-            phase = p
+    phase = S.Zero
+    for orig_phase_pow in expr.atoms(Pow):
+        if orig_phase_pow.base == S.NegativeOne:
+            phase = orig_phase_pow.exp
             break
-    if phase is S.One:
-        phase, junk = expr.as_coeff_terms()
+    if phase is S.Zero:
+        orig_phase_pow = S.One
         pow_atoms = set([])
     else:
-        pow_atoms = phase.exp.atoms()
+        pow_atoms = phase.atoms(Symbol)
 
     # determine what should be done
     to_remove = forbidden & pow_atoms
@@ -1193,22 +1194,16 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     for njs in identity_sources:
         triags.update(njs.get_triangular_inequalities())
         if isinstance(njs, ThreeJSymbol):
-            projections.add(Pow(-1,Add(*njs.projections)))
+            projections.add(Add(*njs.projections))
             jm = njs.get_magnitude_projection_dict()
-            jm_list = [ Pow(S.NegativeOne,2*Add(j,m)) for j,m in jm.items() ]
+            jm_list = [ Add(2*j,2*m) for j,m in jm.items() ]
             jm_pairs.update(jm_list)
 
-            # These are not needed if we can rely on assumptions and refine_Pow():
-            # jm_list = [ Pow(S.NegativeOne,2*Add(j,-m)) for j,m in jm.items() ]
+            # These are not needed if we can rely on refinement based on assumptions:
+            # jm_list = [ Add(2*j,-2*m) for j,m in jm.items() ]
             # jm_pairs.update(jm_list)
 
-    triags = set([Pow(S.NegativeOne,2*Add(*t.args)) for t in triags])
-
-
-    # FIXME:
-    # We should work dirctly with the Add obects in the exponent.  Carrying
-    # around Pow((-1),...) is unneccesary overhead.  Then we would work with
-    # addition modulo 2, and can probably apply something from group theory.
+    triags = set([2*Add(*t.args) for t in triags])
 
 
     # organize information around the forbidden and mandatory symbols
@@ -1218,35 +1213,43 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     #  <identity: <count how many times the identity has been applied>
     #
     # the count is used to break the recursion, the symbol-identities relation
-    # should be used in an intelligent algorithm. (FIXME!)
+    # should be used in an intelligent algorithm. FIXME:  we work with
+    # addition modulo 2, so can we apply some group theory to speed this up?
 
     known_identities =dict([])
     for symbol in forbidden | mandatory:
         known_identities[symbol] = []
         for identity in projections:
             if symbol in identity:
-                known_identities[symbol].append(identity)
+                # FIXME: for the brutal approach we skip the symbol keys
+                # known_identities[symbol].append(identity)
                 known_identities[identity]=0
 
         for identity in triags | jm_pairs:
             if symbol in identity:
-                known_identities[symbol].append(identity)
+                # FIXME: for the brutal approach we skip the symbol keys
+                # known_identities[symbol].append(identity)
                 known_identities[identity]=0
 
-    # FIXME: for the brutal approach we remove symbol keys
-    for symbol in forbidden | mandatory:
-        del known_identities[symbol]
 
+    # Since global cache doesn't account for global assumptions, we use
+    # a local cache that we reset before recursion:
+    if not kw_args.get('keep_local_cache'):
+        clear_local_cache()
 
-    simple_phase = _brutal_search_for_simple_phase(phase, known_identities,
-            forbidden, mandatory)
+    better_phase = _brutal_search_for_simple_phase(
+            phase, known_identities, forbidden, mandatory)
 
-    return refine(powsimp(expr/phase)*simple_phase)
+    if orig_phase_pow is S.One:
+        return expr*Pow(-1,better_phase)
+    else:
+        return expr.subs(orig_phase_pow, Pow(-1,better_phase))
+
 
 
 
 def _brutal_search_for_simple_phase(phase, known_identities,
-        forbidden, mandatory, recursion_limit = 1):
+        forbidden, mandatory, recursion_limit = 1, start=0):
     """
     Tries all combinations of known_identities in order to rewrite the phase.
 
@@ -1257,10 +1260,10 @@ def _brutal_search_for_simple_phase(phase, known_identities,
     Brutal approach  (FIXME)
     """
 
-    if isinstance(phase, Pow):
-        current_symbols = phase.exp.atoms()
-    else:
-        current_symbols = set([])
+    # simplify first
+    phase = _simplify_Add_modulo2(phase, mandatory)
+
+    current_symbols = phase.atoms(Symbol)
     missing = mandatory - current_symbols
     to_remove = forbidden & current_symbols
 
@@ -1268,36 +1271,126 @@ def _brutal_search_for_simple_phase(phase, known_identities,
     if not (missing | to_remove):
         return phase
 
-    # FIXME: this loop tries every combination twice
-    for identity in known_identities.keys():
-        if known_identities[identity] >= recursion_limit:
-            break
-        known_identities[identity] +=1
-        try:
-            return _brutal_search_for_simple_phase(
-                    powsimp(phase*identity),
-                    known_identities,
-                    forbidden, mandatory,
-                    recursion_limit
-                    )
-        except UnableToComplyWithForbiddenAndMandatorySymbols:
-            pass
-        try:
-            return _brutal_search_for_simple_phase(
-                    powsimp(phase/identity),
-                    known_identities,
-                    forbidden, mandatory,
-                    recursion_limit
-                    )
-        except UnableToComplyWithForbiddenAndMandatorySymbols:
-            pass
-        known_identities[identity] -= 1
+    id_list = known_identities.keys()
+    for i in range(start, len(known_identities)):
+        identity = id_list[i]
+        if 0 <= known_identities[identity] < recursion_limit:
+            known_identities[identity] +=1
+            try:
+                return _brutal_search_for_simple_phase(
+                        phase + identity,
+                        known_identities,
+                        forbidden, mandatory,
+                        recursion_limit,
+                        i
+                        )
+            except UnableToComplyWithForbiddenAndMandatorySymbols:
+                known_identities[identity] -= 1
+        if 0 >= known_identities[identity] > -recursion_limit:
+            known_identities[identity] -=1
+            try:
+                return _brutal_search_for_simple_phase(
+                        phase - identity,
+                        known_identities,
+                        forbidden, mandatory,
+                        recursion_limit,
+                        i
+                        )
+            except UnableToComplyWithForbiddenAndMandatorySymbols:
+                known_identities[identity] +=1
 
 
     # if we come here, we have tried everything up to recursion_limit
     # without success
     raise UnableToComplyWithForbiddenAndMandatorySymbols
 
+def _simplify_Add_modulo2(add_expr, leave_alone=None):
+    """
+    We use assumptions to simplify addition modulo 2
+
+    All odd terms simplify to 1
+    All even terms simplify to 0
+
+    >>> from sympy.physics.racahalgebra import _simplify_Add_modulo2, clear_local_cache
+    >>> from sympy import symbols, global_assumptions, Assume
+    >>> a,b,c = symbols('abc')
+    >>> A,B,C = symbols('ABC')
+    >>> global_assumptions.add( Assume(a, 'half_integer') )
+    >>> global_assumptions.add( Assume(b, 'half_integer') )
+    >>> global_assumptions.add( Assume(c, 'half_integer') )
+    >>> global_assumptions.add( Assume(A, 'integer') )
+    >>> global_assumptions.add( Assume(B, 'integer') )
+    >>> global_assumptions.add( Assume(C, 'integer') )
+    >>> clear_local_cache()
+
+    >>> _simplify_Add_modulo2(2*A)
+    0
+    >>> _simplify_Add_modulo2(2*a)
+    1
+    >>> _simplify_Add_modulo2(2*a+2*A+c)
+    1 + c
+    >>> _simplify_Add_modulo2( b + c + 2*A + 3*a )
+    b + c - a
+
+    """
+    if add_expr.is_Add:
+        # discard even, count odd and collect others
+        odd =  0
+        others = []
+        for arg in add_expr.args:
+            if leave_alone and arg in leave_alone:
+                # others.append(arg)
+                others.append(_standardize_coeff(arg))
+            elif _ask_odd(arg):
+                odd += 1
+            elif _ask_even(arg):
+                pass
+            else:
+                others.append(_standardize_coeff(arg))
+        if odd % 2:
+            others.append(S.One)
+        return Add(*others)
+    elif add_expr.is_Mul:
+        # trick it into an Add
+        return _simplify_Add_modulo2(add_expr+2)
+    else:
+        return add_expr
+
+def _standardize_coeff(expr):
+    """
+    make sure that coeffs don't grow big
+    that will only happen for half_integer with odd coeff
+    we standardise on +/- 1
+    """
+    c,t = expr.as_coeff_terms()
+    if _ask_half_integer(Mul(*t)):
+        if c >= 3:
+            c = -(c%4 - 2)
+        elif c < -1:
+            c = c%4
+        return Mul(c,t[0])
+    elif _ask_integer(Mul(*t)) and (c > 2 or c < -2):
+        c = c%2
+        if not c: c=2  #if expr didn't vanish already it was not meant to happen!
+        return Mul(c,t[0])
+    else:
+        return expr
+
+@locally_cacheit
+def _ask_integer(expr):
+    return ask(expr,Q.integer)
+
+@locally_cacheit
+def _ask_half_integer(expr):
+    return ask(expr,'half_integer')
+
+@locally_cacheit
+def _ask_even(expr):
+    return ask(expr,Q.even)
+
+@locally_cacheit
+def _ask_odd(expr):
+    return ask(expr,Q.odd)
 
 
 
