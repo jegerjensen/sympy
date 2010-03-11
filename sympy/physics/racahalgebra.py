@@ -6,7 +6,7 @@ Module for working with spherical tensors.
 
 from sympy import (
         Basic, Function, Mul, sympify, Integer, Add, sqrt, Pow, S, Symbol, latex,
-        cache, powsimp
+        cache, powsimp, ratsimp, simplify
         )
 
 from sympy.core.cache import cacheit
@@ -1166,7 +1166,7 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     if forbidden & mandatory: raise UnableToComplyWithForbiddenAndMandatorySymbols
 
     # fetch the phase
-    expr = refine(powsimp(expr), assumptions)
+    expr = powsimp(expr)
     phase = S.Zero
     for orig_phase_pow in expr.atoms(Pow):
         if orig_phase_pow.base == S.NegativeOne:
@@ -1178,12 +1178,21 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     else:
         pow_atoms = phase.atoms(Symbol)
 
+
+    # Since the cache doesn't account for global assumptions, we use
+    # a local cache that we reset before starting the recursions:
+    if not kw_args.get('keep_local_cache'):
+        clear_local_cache()
+
     # determine what should be done
     to_remove = forbidden & pow_atoms
     to_insert = mandatory - pow_atoms
     if not (to_remove or to_insert):
-        return expr
-    to_keep = mandatory & pow_atoms
+        if orig_phase_pow is S.One:
+            return expr
+        else:
+            phase = _simplify_Add_modulo2(phase)
+            return expr.subs(orig_phase_pow, Pow(S.NegativeOne, phase))
 
     # determine what can be done and setup identities as sympy expressions
     projections = set([])
@@ -1218,24 +1227,14 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
 
     known_identities =dict([])
     for symbol in forbidden | mandatory:
-        known_identities[symbol] = []
-        for identity in projections:
-            if symbol in identity:
-                # FIXME: for the brutal approach we skip the symbol keys
-                # known_identities[symbol].append(identity)
-                known_identities[identity]=0
-
-        for identity in triags | jm_pairs:
+        # known_identities[symbol] = []
+        for identity in triags | jm_pairs | projections:
             if symbol in identity:
                 # FIXME: for the brutal approach we skip the symbol keys
                 # known_identities[symbol].append(identity)
                 known_identities[identity]=0
 
 
-    # Since global cache doesn't account for global assumptions, we use
-    # a local cache that we reset before recursion:
-    if not kw_args.get('keep_local_cache'):
-        clear_local_cache()
 
     better_phase = _brutal_search_for_simple_phase(
             phase, known_identities, forbidden, mandatory)
@@ -1261,19 +1260,24 @@ def _brutal_search_for_simple_phase(phase, known_identities,
     """
 
     # simplify first
-    phase = _simplify_Add_modulo2(phase, mandatory)
+    phase = _simplify_Add_modulo2(phase, mandatory, True)
 
-    current_symbols = phase.atoms(Symbol)
+    current_symbols = set([ s for s in phase.atoms() if s.is_Symbol ])
     missing = mandatory - current_symbols
     to_remove = forbidden & current_symbols
+    current_symbols = missing | to_remove
+
 
     # break recursion if we are done
-    if not (missing | to_remove):
-        return phase
+    if not current_symbols:
+        return _simplify_Add_modulo2(phase, mandatory, True)
 
     id_list = known_identities.keys()
     for i in range(start, len(known_identities)):
         identity = id_list[i]
+        # skip this identity if it does not contain symbols we need
+        if not current_symbols & set([s for s in identity.atoms() if s.is_Symbol]):
+            continue
         if 0 <= known_identities[identity] < recursion_limit:
             known_identities[identity] +=1
             try:
@@ -1304,7 +1308,7 @@ def _brutal_search_for_simple_phase(phase, known_identities,
     # without success
     raise UnableToComplyWithForbiddenAndMandatorySymbols
 
-def _simplify_Add_modulo2(add_expr, leave_alone=None):
+def _simplify_Add_modulo2(add_expr, leave_alone=None, standardize_coeff=True):
     """
     We use assumptions to simplify addition modulo 2
 
@@ -1339,14 +1343,19 @@ def _simplify_Add_modulo2(add_expr, leave_alone=None):
         others = []
         for arg in add_expr.args:
             if leave_alone and arg in leave_alone:
-                # others.append(arg)
-                others.append(_standardize_coeff(arg))
+                if standardize_coeff:
+                    others.append(_standardize_coeff(arg))
+                else:
+                    others.append(arg)
             elif _ask_odd(arg):
                 odd += 1
             elif _ask_even(arg):
                 pass
             else:
-                others.append(_standardize_coeff(arg))
+                if standardize_coeff:
+                    others.append(_standardize_coeff(arg))
+                else:
+                    others.append(arg)
         if odd % 2:
             others.append(S.One)
         return Add(*others)
@@ -1431,9 +1440,10 @@ def refine_tjs2sjs(expr):
 
     expr = combine_ASigmas(expr)
 
-    for permut in _iter_tjs_permutations(expr):
+    for permut in _iter_tjs_permutations(expr, 4, ThreeJSymbol):
 
         summations, phases, factors, threejs, ignorables = permut
+        # FIXME: check sensibility of tjs!
 
         sjs = _identify_SixJSymbol(threejs)
 
@@ -1516,6 +1526,47 @@ def refine_tjs2sjs(expr):
 
 
     return expr
+
+def is_equivalent(expr1, expr2):
+    """
+    Tries hard to verify that expr1 == expr2.
+    """
+
+    for permut in _iter_tjs_permutations(expr1):
+        summations1, phases1, factors1, njs1, ignorables1 = permut
+    for permut in _iter_tjs_permutations(expr2):
+        summations2, phases2, factors2, njs2, ignorables2 = permut
+
+    if njs1 != njs2:
+        return False
+    if summations1 != summations2:
+        return False
+    if phases1 != phases2:
+        ratio = refine(powsimp(phases1/phases2))
+        if ratio is S.One:
+            pass
+        elif ratio is S.NegativeOne:
+            return False
+        else:
+            ratio = refine_phases(ratio, ratio.exp.atoms(Symbol),
+                    identity_sources=njs1)
+            if not ratio is S.One:
+                return False
+    if factors1 != factors2:
+        if not ratsimp(factors1/factors2) is S.One:
+            return False
+    if ignorables1 != ignorables2:
+        return simplify(Add(*ignorables2) - Add(*ignorables1)) is S.Zero
+
+    return True
+
+
+
+
+
+
+
+
 
 def _get_phase_subslist_dict(projection_dict):
     """
@@ -1713,9 +1764,15 @@ def _find_projections_to_invert(start, goal):
     return alternatives
 
 
-def _iter_tjs_permutations(expr):
+def _iter_tjs_permutations(expr, how_many=None, which_objects=AngularMomentumSymbol):
     """
     Iterates over possible candidates for  4*tjs -> sjs in a Mul
+
+    ``how_many`` -- number of objects in each combination
+    ``which_objects`` -- class of objects to collect
+
+    If how_many is left out, we return only the combination containing all objects.
+    If ``which_objects`` is left out we return all onstances of AngularMomentumSymbol.
 
     returns a tuple of lists:
         summations, phases, factors, threejs, ignorables
@@ -1770,7 +1827,7 @@ def _iter_tjs_permutations(expr):
         ignorables = []
 
         for arg in expr.args:
-            if isinstance(arg, ThreeJSymbol):
+            if isinstance(arg, which_objects):
                 threejs.append(arg)
             elif arg.is_Pow and isinstance(arg.base, ThreeJSymbol):
                 if arg.exp.is_Integer and arg.exp.is_positive:
@@ -1789,18 +1846,18 @@ def _iter_tjs_permutations(expr):
     else:
         raise ValueError("Expected a Mul")
 
-    if not summations: raise ThreeJSymbolsNotCompatibleWithSixJSymbol("No sums!")
-    if len(threejs)<4: raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Too few 3js!")
+    if how_many and len(threejs)<how_many:
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Too few 3js!")
 
     summations = combine_ASigmas(Mul(*summations))
     phases = powsimp(Mul(*phases))
     factors = Mul(*factors)
 
-    for tjs in combinations(threejs, 4):
-
-        # FIXME: check sensibility of tjs!
-
-        yield tuple([summations, phases, factors, tjs, ignorables])
+    if how_many:
+        for tjs in combinations(threejs, how_many):
+            yield tuple([summations, phases, factors, tjs, ignorables])
+    else:
+        yield tuple([summations, phases, factors, threejs, ignorables])
 
 
 def _identify_SixJSymbol(threejs):

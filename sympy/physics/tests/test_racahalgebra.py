@@ -1,6 +1,6 @@
 from sympy import (
         Basic, Function, Mul, sympify, Integer, Add, sqrt, Pow, Symbol, latex,
-        cache, powsimp, symbols
+        cache, powsimp, symbols, Rational
         )
 from sympy.functions import Dij
 from sympy.assumptions import (
@@ -8,7 +8,8 @@ from sympy.assumptions import (
         )
 from sympy.physics.racahalgebra import (
         SixJSymbol, ThreeJSymbol, ClebschGordanCoefficient, refine_tjs2sjs,
-        convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor, CompositeSphericalTensor, AtomicSphericalTensor
+        convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor,
+        CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent
         )
 from sympy.utilities import raises
 
@@ -188,36 +189,85 @@ def test_4b_coupling_schemes():
             )
 
 def test_refine_tjs2sjs():
-    a,b,c,d,e,f,g = symbols('abcdefg')
-    A,B,C,D,E,F,G = symbols('ABCDEFG')
+    m1, m2, M, M12, M23, m3 = symbols('m1 m2 M M12 M23 m3')
+    j1, j2, J, J12, J23, j3 = symbols('j1 j2 J J12 J23 j3')
 
-    global_assumptions.add( Assume(a, 'half_integer') )
-    global_assumptions.add( Assume(b, 'half_integer') )
-    global_assumptions.add( Assume(d, 'half_integer') )
-    global_assumptions.add( Assume(A, 'half_integer') )
-    global_assumptions.add( Assume(B, 'half_integer') )
-    global_assumptions.add( Assume(D, 'half_integer') )
-    global_assumptions.add( Assume(e, Q.integer) )
-    global_assumptions.add( Assume(f, Q.integer) )
-    global_assumptions.add( Assume(E, Q.integer) )
-    global_assumptions.add( Assume(F, Q.integer) )
-    global_assumptions.add( Assume(C, 'half_integer') )
-    global_assumptions.add( Assume(c, 'half_integer') )
+    global_assumptions.clear()
+    global_assumptions.add( Assume( j1, 'half_integer') )
+    global_assumptions.add( Assume( m1, 'half_integer') )
+    global_assumptions.add( Assume( j2, 'half_integer') )
+    global_assumptions.add( Assume( m2, 'half_integer') )
+    global_assumptions.add( Assume( j3, 'half_integer') )
+    global_assumptions.add( Assume( m3, 'half_integer') )
+    global_assumptions.add( Assume(J12, Q.integer) )
+    global_assumptions.add( Assume(M12, Q.integer) )
+    global_assumptions.add( Assume(J23, Q.integer) )
+    global_assumptions.add( Assume(M23, Q.integer) )
+    global_assumptions.add( Assume(  J, 'half_integer') )
+    global_assumptions.add( Assume(  M, 'half_integer') )
 
-    t1 = SphericalTensor('t1', A, a)
-    t2 = SphericalTensor('t2', B, b)
-    t3 = SphericalTensor('t3',D, d)
-    T12 = SphericalTensor('T12',E, e, t1, t2)
-    T23 = SphericalTensor('T23',F, f, t2, t3)
-    S = SphericalTensor('S',C, c, T12, t3)
-    V = SphericalTensor('V',C, c, t1, T23)
+    t1 =    SphericalTensor('t1', j1, m1)
+    t2 =    SphericalTensor('t2', j2, m2)
+    t3 =    SphericalTensor('t3', j3, m3)
+    T12 =   SphericalTensor('T12', J12, M12, t1, t2)
+    T23 =   SphericalTensor('T23', J23, M23, t2, t3)
+    T12_3 = SphericalTensor('T12_3',J, M, T12, t3)
+    T1_23 = SphericalTensor('T1_23',J, M, t1, T23)
 
-    expr_tjs = convert_cgc2tjs(V.get_ito_other_coupling_order(S))
+    expr_tjs = convert_cgc2tjs(T1_23.get_ito_other_coupling_order(T12_3))
     expr_tjs = refine(powsimp(expr_tjs))
-    print
-    print expr_tjs
-    print refine_tjs2sjs(expr_tjs)
+    expr_tjs = refine_tjs2sjs(expr_tjs)
+
+    expr_heyde = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
+    assert is_equivalent(expr_heyde, expr_tjs)
 
 
+def test_is_equivalent():
+    m1, m2, M, M12, M23, m3 = symbols('m1 m2 M M12 M23 m3')
+    j1, j2, J, J12, J23, j3 = symbols('j1 j2 J J12 J23 j3')
+
+    global_assumptions.clear()
+    global_assumptions.add( Assume( j1, 'half_integer') )
+    global_assumptions.add( Assume( m1, 'half_integer') )
+    global_assumptions.add( Assume( j2, 'half_integer') )
+    global_assumptions.add( Assume( m2, 'half_integer') )
+    global_assumptions.add( Assume( j3, 'half_integer') )
+    global_assumptions.add( Assume( m3, 'half_integer') )
+    global_assumptions.add( Assume(J12, Q.integer) )
+    global_assumptions.add( Assume(M12, Q.integer) )
+    global_assumptions.add( Assume(J23, Q.integer) )
+    global_assumptions.add( Assume(M23, Q.integer) )
+    global_assumptions.add( Assume(  J, 'half_integer') )
+    global_assumptions.add( Assume(  M, 'half_integer') )
+
+    t1 =    SphericalTensor('t1', j1, m1)
+    t2 =    SphericalTensor('t2', j2, m2)
+    t3 =    SphericalTensor('t3', j3, m3)
+    T12 =   SphericalTensor('T12', J12, M12, t1, t2)
+    T23 =   SphericalTensor('T23', J23, M23, t2, t3)
+    T12_3 = SphericalTensor('T12_3',J, M, T12, t3)
+    T1_23 = SphericalTensor('T1_23',J, M, t1, T23)
+
+    expr1 = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
+    expr2 = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
+    assert is_equivalent(expr1, expr2)  # identical
+    expr2 = (ASigma(J12)*(-1)**(j1-j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
+    assert is_equivalent(expr1, expr2) == False # different phase
+    expr2 = (ASigma(J23)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
+    assert is_equivalent(expr1, expr2) == False # different sum
+    expr2 = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+2)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
+    assert is_equivalent(expr1, expr2) == False # different factor
+    expr2 = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j3, J12, j2, J, J23)*T12_3)
+    assert is_equivalent(expr1, expr2) == False # different 6j symbol
+    expr2 = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+            * SixJSymbol(j1, j2, J12, j3, J, J23)*T1_23)
+    assert is_equivalent(expr1, expr2) == False # different tensor
 
 
