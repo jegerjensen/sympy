@@ -1154,7 +1154,7 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
 
     >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,c)
     >>> refine_phases(expr, [a,b,c], [A,B,C])
-    (-1)**(-4*A - 4*B - 4*C)*ThreeJSymbol(A, B, C, a, b, c)
+    (-1)**(-2*A - 2*B - 2*C)*ThreeJSymbol(A, B, C, a, b, c)
     >>> expr = (-1)**(a+b+c)*ThreeJSymbol(A,B,C,a,b,-c)
     >>> refine_phases(expr, [a, b, c, A, B], [C])
     (-1)**(2*C)*ThreeJSymbol(A, B, C, a, b, -c)
@@ -1201,19 +1201,25 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     identity_sources = set(kw_args.get('identity_sources', []))
     identity_sources.update(expr.atoms(AngularMomentumSymbol))
     for njs in identity_sources:
-        triags.update(njs.get_triangular_inequalities())
         if isinstance(njs, ThreeJSymbol):
             projections.add(Add(*njs.projections))
             jm = njs.get_magnitude_projection_dict()
             jm_list = [ Add(2*j,2*m) for j,m in jm.items() ]
             jm_pairs.update(jm_list)
-
-            # These are not needed if we can rely on refinement based on assumptions:
-            # jm_list = [ Add(2*j,-2*m) for j,m in jm.items() ]
-            # jm_pairs.update(jm_list)
+        else:
+            triags.update(njs.get_triangular_inequalities())
 
     triags = set([2*Add(*t.args) for t in triags])
 
+    # Now it is a good idea to remove redundant symbols from the identities
+    # Even terms are identities on their own, so they will not change the phase
+    all_identities = triags | jm_pairs | projections
+    for identity in  triags | jm_pairs | projections:
+        not_even = [ arg for arg in identity.args if not _ask_even(arg) ]
+        if len(not_even) < len(identity.args):
+            all_identities.remove(identity)
+            if not_even:
+                all_identities.add(Add(*not_even))
 
     # organize information around the forbidden and mandatory symbols
     #
@@ -1228,16 +1234,33 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     known_identities =dict([])
     for symbol in forbidden | mandatory:
         # known_identities[symbol] = []
-        for identity in triags | jm_pairs | projections:
+        for identity in all_identities:
             if symbol in identity:
                 # FIXME: for the brutal approach we skip the symbol keys
                 # known_identities[symbol].append(identity)
                 known_identities[identity]=0
 
+    #
+    # What we really want to do, is to express the forbidden, f, in terms of the
+    # mandatory, m, so that:
+    #
+    #  (-1)**(f + m0 + x0) ==> (-1)**(m + x1)
+    #
+    # where x1 contains no forbidden symbols.
 
+    # separate f and m0 from x0
+    x0 = []; fm0 = []
+    for arg in phase.args:
+        if arg.atoms() & (forbidden|mandatory):
+            fm0.append(arg)
+        else:
+            x0.append(arg)
+
+    phase = Add(*fm0)
 
     better_phase = _brutal_search_for_simple_phase(
             phase, known_identities, forbidden, mandatory)
+    better_phase = _simplify_Add_modulo2(better_phase+Add(*x0), mandatory)
 
     if orig_phase_pow is S.One:
         return expr*Pow(-1,better_phase)
