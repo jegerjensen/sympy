@@ -1309,3 +1309,55 @@ def rewrite_as_direct_product(expr, **kw_args):
         subslist.append((m,m.get_self_ito_direct_product(**kw_args)))
     return expr.subs(subslist)
 
+class InjectionFailureException(Exception):
+    def __init__(self, failures):
+        self.failures = failures
+
+protected_symbols = set((
+    blank_symbol,
+    ))
+def inject_every_symbol_globally(expr, force=False):
+    """
+    Extracts all symbols in expr, and injects them all into the global namespace.
+
+    If a name is already in the global namespace, we don't overwrite it.  If there
+    is a conflict, we raise an exception, but inject everything else first.
+    """
+    import inspect
+    frame = inspect.currentframe().f_back
+    try:
+        s = expr.atoms(Symbol)
+        s -= protected_symbols
+
+        if not s:
+            return None
+        failures = {}
+        injections = []
+        for t in s:
+            old = frame.f_globals.get(t.name)
+            if old and old != t:
+                failures[t] = old
+            elif not old:
+                frame.f_globals[t.name] = t
+                injections.append(t)
+        if failures and not force:
+            print  "injected", injections
+            print  "Failed on", failures
+            raise InjectionFailureException(failures)
+        elif failures and force:
+            replaced_items = []
+            for k,v in failures.items():
+                frame.f_globals[k.name] = k
+                injections.append(k)
+                replaced_items.append(v)
+            print "injected", injections
+            print "*** Replaced ***", replaced_items
+            return replaced
+        elif injections:
+            return injections
+    finally:
+        # we should explicitly break cyclic dependencies as stated in inspect
+        # doc
+        del frame
+
+
