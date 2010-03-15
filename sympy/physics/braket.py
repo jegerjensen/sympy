@@ -99,7 +99,8 @@ class BraKet(QuantumState):
                 str_args.append(str(s))
         return ", ".join([ str(s) for s in str_args])
 
-    _sympystr_ = __str__
+    def _sympystr_(self, p, *args):
+        return str(self)
 
 class Ket(BraKet):
     left_braket = '|'
@@ -868,7 +869,8 @@ class MatrixElement(Basic):
     def __str__(self,*args):
         return "%s %s %s" %self.args[:4]
 
-    _sympystr_ = __str__
+    def _sympystr_(self, p, *args):
+        return str(self)
 
 
 class ReducedMatrixElement(MatrixElement):
@@ -964,7 +966,6 @@ class ReducedMatrixElement(MatrixElement):
                 self.right
                 )
 
-    _sympystr_ = __str__
 
     def get_direct_product_ito_self(self):
         """
