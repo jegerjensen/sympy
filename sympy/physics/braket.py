@@ -12,6 +12,7 @@ from sympy.physics.secondquant import (
         )
 
 braket_assumptions = global_assumptions
+blank_symbol = Symbol("[blank symbol]")
 
 class WignerEckardDoesNotApply(Exception): pass
 
@@ -91,7 +92,7 @@ class BraKet(QuantumState):
     def _str_nobraket_(self, *args):
         str_args = []
         for s in self.args:
-            if s is None: continue
+            if s is blank_symbol: continue
             try:
                 str_args.append(s._str_nobraket_(*args))
             except AttributeError:
@@ -137,6 +138,8 @@ class QuantumState(Basic):
             if c.is_negative:
                 if isinstance(t[0], QuantumState):
                     return t[0].get_antiparticle()
+        else:
+            symbol = blank_symbol
 
 
         if kw_args.get('hole'):
@@ -163,13 +166,13 @@ class QuantumState(Basic):
 
     @property
     def is_hole(self):
-        if self.symbol is None: return None
+        if self.symbol is blank_symbol: return None
         c,t = self.symbol.as_coeff_terms()
         return c is S.NegativeOne
 
     @property
     def symbol_str(self):
-        if self.symbol is None: return ""
+        if self.symbol is blank_symbol: return ""
         return str(self.symbol)
 
     def get_operator_result(self, operator):
@@ -202,7 +205,7 @@ class QuantumState(Basic):
         >>> Dagger(C).single_particle_states
         (<a|, <b|)
         """
-        if self.symbol is None: new_args = []
+        if self.symbol is blank_symbol: new_args = []
         else: new_args = [self.symbol]
         for arg in self.args[1:]:
             new_args.append(Dagger(arg))
@@ -253,11 +256,11 @@ class DirectQuantumState(QuantumState):
         >>> class Fermions(DirectQuantumState, FermionState):
         ...     pass
         >>> Fermions(b,a,c,d)
-        -Fermions(None, a, b, c, d)
+        -Fermions([blank symbol], a, b, c, d)
         >>> class Bosons(DirectQuantumState, BosonState):
         ...     pass
         >>> Bosons(b,a,c,d)
-        Bosons(None, a, b, c, d)
+        Bosons([blank symbol], a, b, c, d)
 
         The first argument None, is the symbol given to QuantumState.  The Bra and Ket
         superclasses define prettier printting where the None symbol is skipped.
