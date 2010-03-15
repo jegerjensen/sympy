@@ -244,6 +244,11 @@ class ThreeJSymbol(AngularMomentumSymbol):
 
         >>> ThreeJSymbol(A, C, B, -a, c, b)
         ThreeJSymbol(A, B, C, a, -b, -c)
+
+        If one of the angular momenta is zero, we immediately simplify to deltafunctions.
+
+        >>> ThreeJSymbol(A, B, 0, a, b, 0)
+        (-1)**(A - a)*Dij(A, B)*Dij(a, -b)/(1 + 2*A)**(1/2)
         """
 
         # We search for even permuations first, to avoid phases if possible
@@ -259,6 +264,10 @@ class ThreeJSymbol(AngularMomentumSymbol):
             phase=pow(S.NegativeOne,j1+j2+J)
             expr = ThreeJSymbol(j1,J,j2,m1,M,m2)
             return cls._determine_phase(phase, expr)
+
+        # If any j is zero, it is now in position j1
+        if j1 is S.Zero:
+            return (-1)**(j2-m2)*(2*j2 + 1)**(S.NegativeOne/2)*Dij(j2, J)*Dij(m2, -M)
 
         if m1 is S.Zero:
             coeff, term = m2.as_coeff_terms()

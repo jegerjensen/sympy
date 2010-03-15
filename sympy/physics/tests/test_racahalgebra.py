@@ -1,6 +1,6 @@
 from sympy import (
         Basic, Function, Mul, sympify, Integer, Add, sqrt, Pow, Symbol, latex,
-        cache, powsimp, symbols, Rational
+        cache, powsimp, symbols, Rational, S
         )
 from sympy.functions import Dij
 from sympy.assumptions import (
@@ -24,6 +24,9 @@ def test_half_integer_ask_handler():
 def test_tjs_methods():
     a,b,c = symbols('abc')
     A,B,C = symbols('ABC')
+
+    assert (0 < A)
+    assert (S.Zero < A)
 
     # canonical ordering
     assert (ThreeJSymbol(A, C, B, a, c, b) == (-1)**(A + B + C)*ThreeJSymbol(A, B, C, a, b, c))
@@ -134,9 +137,9 @@ def test_CompositeSphericalTensor_nestings():
     t2 = SphericalTensor('t2', B, b)
     t3 = SphericalTensor('t3',C, c)
     T = SphericalTensor('T',D, d, t1, t2)
-    S = SphericalTensor('S',E, e, T, t3)
-    assert S.as_direct_product() == ASigma(a, b, c, d)*t1*t2*t3*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)
-    assert S.as_direct_product(deep=False) == ASigma(c, d)*T*t3*ClebschGordanCoefficient(D, d, C, c, E, e)
+    U = SphericalTensor('U',E, e, T, t3)
+    assert U.as_direct_product() == ASigma(a, b, c, d)*t1*t2*t3*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)
+    assert U.as_direct_product(deep=False) == ASigma(c, d)*T*t3*ClebschGordanCoefficient(D, d, C, c, E, e)
 
 def test_3b_coupling_schemes():
     a,b,c,d,e,f,g = symbols('abcdefg')
@@ -148,16 +151,16 @@ def test_3b_coupling_schemes():
     T12 = SphericalTensor('T12',D, d, t1, t2)
     T23 = SphericalTensor('T23',F, f, t2, t3)
 
-    S = SphericalTensor('S',E, e, T12, t3)
+    U = SphericalTensor('U',E, e, T12, t3)
     V = SphericalTensor('V',G, g, t1, T23)
 
-    assert V.get_ito_other_coupling_order(S) == (
+    assert V.get_ito_other_coupling_order(U) == (
             ASigma(D, a, b, c, d, f)
             *ClebschGordanCoefficient(A, a, B, b, D, d)
             *ClebschGordanCoefficient(A, a, F, f, G, g)
             *ClebschGordanCoefficient(B, b, C, c, F, f)
             *ClebschGordanCoefficient(D, d, C, c, E, e)
-            *S*Dij(G,E)*Dij(g,e)
+            *U*Dij(G,E)*Dij(g,e)
             )
 
 def test_4b_coupling_schemes():
@@ -170,11 +173,11 @@ def test_4b_coupling_schemes():
     s2 = SphericalTensor('s2', D, d)
 
     L  = SphericalTensor( 'L', E, e, l1, l2)
-    S  = SphericalTensor( 'S', F, f, s1, s2)
+    U  = SphericalTensor( 'U', F, f, s1, s2)
     j1 = SphericalTensor('j1', G, g, l1, s1)
     j2 = SphericalTensor('j2', H, h, l2, s2)
 
-    Tls = SphericalTensor('Tls', Y, y,  L,  S)
+    Tls = SphericalTensor('Tls', Y, y,  L,  U)
     Tjj = SphericalTensor('Tjj', Z, z, j1, j2)
 
     assert Tls.get_ito_other_coupling_order(Tjj) == (
@@ -182,7 +185,7 @@ def test_4b_coupling_schemes():
             *ClebschGordanCoefficient(A, a, C, c, G, g) # j1
             *ClebschGordanCoefficient(B, b, D, d, H, h) # j2
             *ClebschGordanCoefficient(A, a, B, b, E, e) # L
-            *ClebschGordanCoefficient(C, c, D, d, F, f) # S
+            *ClebschGordanCoefficient(C, c, D, d, F, f) # U
             *ClebschGordanCoefficient(E, e, F, f, Y, y) # Tls
             *ClebschGordanCoefficient(G, g, H, h, Z, z) # Tjj
             *Tjj*Dij(Y,Z)*Dij(y,z)
