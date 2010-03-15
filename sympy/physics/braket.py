@@ -5,7 +5,7 @@ from sympy.physics.racahalgebra import (
         ThreeJSymbol, ClebschGordanCoefficient, SixJSymbol, SphericalTensor,
         refine_tjs2sjs, refine_phases, convert_cgc2tjs, convert_tjs2cgc,
         combine_ASigmas, remove_summation_indices, ASigma,
-        invert_clebsch_gordans,
+        invert_clebsch_gordans, AngularMomentumSymbol
         )
 from sympy.physics.secondquant import (
         Dagger, AntiSymmetricTensor, _sort_anticommuting_fermions
@@ -13,6 +13,7 @@ from sympy.physics.secondquant import (
 
 braket_assumptions = global_assumptions
 blank_symbol = Symbol("[blank symbol]")
+default_redmat_definition = 'wikipedia'
 
 class WignerEckardDoesNotApply(Exception): pass
 
@@ -875,11 +876,30 @@ class MatrixElement(Basic):
 
 class ReducedMatrixElement(MatrixElement):
     nargs = 3
+    _definition = None
 
-    def __new__(cls,left, op, right, **kw_args):
+    def __new__(cls,left, op, right, *opt_args, **kw_args):
         """
         The reduced matrix element <.||.||.> is defined in terms of three
         SphericalTensors, but is independent of all three projections.
+        The relation with the direct product matrix element is on the form
+
+                    k                            k
+            < J M| T  |J'M'> = G(J'M'kqJM) <J|| T ||J'>
+                    q
+
+        where G(...) is a purely geometrical factor depending on ranks and
+        projections of the involved spherical tensors.  The exact form of the
+        geometrical factor defines the reduced matrix elements.  There are many
+        different conventions in the wild.  In order to cater for many choices,
+        the most common definition are supplied as subclasses to
+        ReducedMatrixElement.
+
+        If you want to introduce yet another definition, all you have to do is
+        to subclass ReducedMatrixElement and overload the method
+        ReducedMatrixElement._get_reduction_factor(self).  The convention is to
+        name the subclass ReducedMatrixElement_<definition_string>.  (Future
+        functionality may depend on that.)
 
         >>> from sympy.physics.braket import (
         ...         ReducedMatrixElement, SphFermKet, SphFermBra,
@@ -887,30 +907,40 @@ class ReducedMatrixElement(MatrixElement):
         ...         )
         >>> from sympy import symbols
         >>> k,q = symbols('k q')
-
         >>> bra = SphFermBra('a')
         >>> ket = SphFermKet('b')
         >>> T = SphericalTensorOperator('T',k,q)
         >>> ReducedMatrixElement(bra, T, ket)
         <a|| T(k) ||b>
 
-        If the keyword wigner_eckardt=True is given, the Wigner-Eckardt theorem
-        is applied to the supplied spherical tensors, so that the returned
-        expression is the rhs:
+        The geometrical factor is available through _get_reduction_factor():
 
-                    k                            k
-            < J M| T  |J'M'> = (J'M'kq|JM) <J|| T ||J'>
-                    q
+        >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_reduction_factor()
+        (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
 
-        >>> ReducedMatrixElement(bra, T, ket, wigner_eckardt=True)
+
+        >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
         (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
+        >>> ReducedMatrixElement(bra, T, ket, 'brink_satchler').get_direct_product_ito_self()
+        (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
         """
 
-        obj = MatrixElement.__new__(cls, left,op,right, **kw_args)
-        if kw_args.get('wigner_eckardt'):
-            cgc = obj._get_reduction_factor(**kw_args)
-            return cgc*obj
+        if cls is ReducedMatrixElement:
+            if len(opt_args)==1:
+                definition = opt_args[0]
+            else:
+                definition = kw_args.get('definition', default_redmat_definition)
+            if definition == 'edmonds':
+                return ReducedMatrixElement_edmonds(left, op, right, **kw_args)
+            elif definition == 'brink_satchler':
+                return ReducedMatrixElement_brink_satchler(left, op, right, **kw_args)
+            elif definition == 'wikipedia':
+                return ReducedMatrixElement_wikipedia(left, op, right, **kw_args)
+            else:
+                raise ValueError(
+                        "Incomprehensible reduced matrix definition: %s"%definition)
         else:
+            obj = MatrixElement.__new__(cls, left,op,right, **kw_args)
             return obj
 
     def _get_reduction_factor(self, **kw_args):
@@ -930,13 +960,27 @@ class ReducedMatrixElement(MatrixElement):
         >>> T = SphericalTensorOperator('T',k,q)
         >>> ReducedMatrixElement(bra, T, ket)._get_reduction_factor()
         (j_b, m_b, k, q|j_a, m_a)
+        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler')._get_reduction_factor()
+        (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)
+        >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_reduction_factor()
+        (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
         """
         left,op,right = self.args
         c_ket, t_ket = right.as_coeff_tensor()
         j1, m1 = t_ket.get_rank_proj()
         j2, m2 = op.get_rank_proj()
         J, M = left._j, left._m
-        return c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
+        if self.definition == 'wikipedia':
+            factor = c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
+        elif self.definition == 'edmonds':
+            factor = c_ket*(-1)**(J-M)*ThreeJSymbol(J, j2, j1, -M, m2, m1)
+        elif self.definition == 'brink_satchler':
+            factor = (-1)**(2*j2)*c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
+
+        if kw_args.get('3j'):
+            return refine_phases(convert_cgc2tjs(factor))
+        else:
+            return factor
 
     def _get_ThreeTensorMatrixElement(self):
         """
@@ -966,6 +1010,13 @@ class ReducedMatrixElement(MatrixElement):
                 self.right
                 )
 
+    @property
+    def definition(self):
+        """
+        Returns the a string describing the definition associated with this RedMat.
+        """
+        return self._definition
+
 
     def get_direct_product_ito_self(self, **kw_args):
         """
@@ -973,19 +1024,28 @@ class ReducedMatrixElement(MatrixElement):
         the reduced matrix element.
         """
         cgc = self._get_reduction_factor(**kw_args)
-        matel = self._get_direct_matrix_element()
-        summation = ASigma(cgc.args[-2:])
-        return summation*cgc*matel.get_direct_product_ito_self()
+        matel = self._get_ThreeTensorMatrixElement()
+        dirprod = matel.get_direct_product_ito_self()
+        return cgc * dirprod.subs(matel, self)
 
-    def as_direct_product(self):
+    def as_direct_product(self, **kw_args):
         """
         Returns the reduced matrix element in terms of direct product
         matrices.
         """
         cgc = self._get_reduction_factor(**kw_args)
-        matel = self._get_direct_matrix_element()
-        return cgc*matel.as_direct_product()
+        matel = self._get_ThreeTensorMatrixElement()
+        # FIXME: need to invert the angular momentum factor properly, using the
+        # orthogonality relations.  Division is correct, but is not easily
+        # handled by the racah-module
+        return matel.as_direct_product()/cgc
 
+class ReducedMatrixElement_edmonds(ReducedMatrixElement):
+    _definition = 'edmonds'
+class ReducedMatrixElement_brink_satchler(ReducedMatrixElement):
+    _definition = 'brink_satchler'
+class ReducedMatrixElement_wikipedia(ReducedMatrixElement):
+    _definition = 'wikipedia'
 
 class DirectMatrixElement(MatrixElement):
     """
@@ -1100,7 +1160,7 @@ class ThreeTensorMatrixElement(MatrixElement):
         return obj
 
 
-    def use_wigner_eckardt(self,  **kw_args):
+    def use_wigner_eckardt(self, definition=default_redmat_definition, **kw_args):
         """
         Applies the Wigner-Eckard theorem to write the supplied direct matrix
         element on the form
@@ -1123,9 +1183,13 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> T = SphericalTensorOperator('T',k,q)
         >>> MatrixElement(bra, T, ket).use_wigner_eckardt()
         (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
+        >>> MatrixElement(bra, T, ket).use_wigner_eckardt('brink_satchler')
+        (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
+        >>> MatrixElement(bra, T, ket).use_wigner_eckardt('edmonds')
+         (-1)**(j_a - m_a)*<a|| T(k) ||b>*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
 
         """
-        redmat = ReducedMatrixElement(self.left, self.operator, self.right)
+        redmat = ReducedMatrixElement(self.left, self.operator, self.right, definition)
         return redmat._get_reduction_factor(**kw_args)*redmat
 
     def get_direct_product_ito_self(self, **kw_args):
@@ -1211,6 +1275,8 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product(wigner_eckardt=True)
         Sum(M_cd, m_a, m_b, m_c, m_d, q)*(J_cd, M_cd, k, q|J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
 
+        >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product(wigner_eckardt=True, definition='brink_satchler')
+        (-1)**(-2*k)*Sum(M_cd, m_a, m_b, m_c, m_d, q)*(J_cd, M_cd, k, q|J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
         """
         if kw_args.get('only_particle_states'):
             matrix = self.get_related_direct_matrix(only_particle_states=True)
@@ -1221,9 +1287,11 @@ class ThreeTensorMatrixElement(MatrixElement):
         cket, ket = self.right.as_coeff_sp_states(**kw_args)
 
         if kw_args.get('wigner_eckardt'):
-            cgc = ReducedMatrixElement(self.left, self.operator, self.right
-                    )._get_reduction_factor(**kw_args)
-            cgc *= ASigma(self.operator.projection, self.right._m)
+            cgc = ReducedMatrixElement(self.left, self.operator, self.right,
+                    **kw_args)._get_reduction_factor()
+            # inversion of cgc is best done with orthogonality:
+            c, t = cgc.as_coeff_terms(AngularMomentumSymbol)
+            cgc = ASigma(self.operator.projection, self.right._m)*t[0]/c
         else:
             cgc = S.One
 

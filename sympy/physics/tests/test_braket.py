@@ -228,14 +228,22 @@ def test_ReducedMatrixElement():
     bra_a = SphFermBra('a')
     ket_b = SphFermKet('b')
     Op = SphericalTensorOperator('T','k','q')
-    assert ReducedMatrixElement(bra_a, Op, ket_b, wigner_eckardt=True)==ClebschGordanCoefficient(j_b,m_b,k,q,j_a,m_a)*ReducedMatrixElement(bra_a, Op, ket_b)
     assert ReducedMatrixElement(bra_a, Op, ket_b)._get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,j_a,m_a)
     assert ReducedMatrixElement(bra_a, Op, ket_b)._get_ThreeTensorMatrixElement()==ThreeTensorMatrixElement(bra_a, Op, ket_b)
 
     bra_ac = SphFermBra('ac', bra_a, SphFermBra('c'))
-    assert ReducedMatrixElement(bra_ac, Op, ket_b, wigner_eckardt=True)==ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)*ReducedMatrixElement(bra_ac, Op, ket_b)
     assert ReducedMatrixElement(bra_ac, Op, ket_b)._get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)
     assert ReducedMatrixElement(bra_ac, Op, ket_b)._get_ThreeTensorMatrixElement()==ThreeTensorMatrixElement(bra_ac, Op, ket_b)
+
+    redmat = ReducedMatrixElement(bra_a,Op,ket_b,'brink_satchler')
+    assert redmat.definition == 'brink_satchler'
+    assert redmat.func(*redmat.args) == redmat
+    assert redmat.func(*redmat.args).definition == 'brink_satchler'
+    assert redmat._get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,j_a,m_a)*(-1)**(2*k)
+
+    redmat = ReducedMatrixElement(bra_a,Op,ket_b,'edmonds')
+    assert redmat.definition == 'edmonds'
+    assert redmat.func(*redmat.args).definition == 'edmonds'
 
 def test_DirectMatrixElement():
     Op = SphericalTensorOperator('T','k','q')
@@ -290,6 +298,7 @@ def test_ThreeTensorMatrixElement():
     #test wigner_eckardt
     assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).get_direct_product_ito_self(wigner_eckardt=True) == ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).use_wigner_eckardt()
     assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True) == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))
+    assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True, definition='brink_satchler') == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))*(-1)**(-2*k)
 
     # test vacuum-shifted coupling and decoupling
     assert DirectMatrixElement((a,-b),Op,(c,-d)) == ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).get_related_direct_matrix()
