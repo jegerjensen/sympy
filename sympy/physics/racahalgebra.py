@@ -6,7 +6,7 @@ Module for working with spherical tensors.
 
 from sympy import (
         Basic, Function, Mul, sympify, Integer, Add, sqrt, Pow, S, Symbol, latex,
-        cache, powsimp, ratsimp, simplify
+        cache, powsimp, ratsimp, simplify, sympify
         )
 
 from sympy.core.cache import cacheit
@@ -698,6 +698,7 @@ class SphericalTensor(Basic):
             symbol = Symbol(symbol)
         else:
             symbol = sympify(symbol)
+        args = map(sympify, args)
 
         if cls == SphericalTensor:
             return get_spherical_tensor(symbol, *args)
