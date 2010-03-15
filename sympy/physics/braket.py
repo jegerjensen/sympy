@@ -287,13 +287,17 @@ class DirectQuantumState(QuantumState):
         new_args = []
         for arg in args:
             # test input until stable
-            if not cls.is_dual is None:
-                try:
+            if isinstance(arg, QuantumState):
+                if not arg.is_dual is None:
                     if cls.is_dual != arg.is_dual:
                         raise ValueError("Cannot have kets in a direct-product bra")
-                except AttributeError: pass
-            if arg is None:
+            elif arg is None:
                 raise ValueError("Got None: %s"%(args,))
+            elif isinstance(arg, str):
+                if cls.is_dual is True:
+                    arg = SphFermBra(arg)
+                elif cls.is_dual is False:
+                    arg = SphFermKet(arg)
             c, t = arg.as_coeff_terms()
             if c.is_negative:
                 new_args.append(t[0].get_antiparticle())
@@ -335,13 +339,16 @@ class SphericalQuantumState(QuantumState):
 
         Note: First argument is interpreted as a symbol characteristic for this state.
         """
-        if symbol is None: return QuantumVacuum(cls)
+        if not symbol: return QuantumVacuum(cls)
 
         if isinstance(symbol, QuantumState):
             raise ValueError("Quantum state cannot act as symbol")
 
         if state1 and state2:
-            # interpret minus sign as a hole state
+            if isinstance(state1, str):
+                state1 = cls(state1)
+            if isinstance(state2, str):
+                state2 = cls(state2)
             c,t = state1.as_coeff_terms()
             if c.is_negative: state1 = t[0].get_antiparticle()
             c,t = state2.as_coeff_terms()
@@ -594,6 +601,12 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
     >>> A, B = SphFermKet('a'), SphFermKet('b')
     >>> C = SphFermKet('c',A,B); C
     |c(a, b)>
+    >>> SphFermKet('z','x','y')
+    |z(x, y)>
+    >>> SphFermKet('z','x','y').state1
+    |x>
+    >>> SphFermKet('z','x','y').state2
+    |y>
 
     Single particle states return tensors with symbol 't', coupled states 'T'
 
@@ -622,6 +635,8 @@ class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
     False
     >>> isinstance(C, SphericalQuantumState)
     True
+    >>> SphFermBra('z','x','y')
+    <z(x, y)|
 
     Single particle states return tensors with symbol 't', coupled states 'T'
 
@@ -813,10 +828,12 @@ class MatrixElement(Basic):
     def __new__(cls,left, operator, right, **kw_args):
 
         coeff = S.One
-        if left is None: left = FermBra()
+        if not left : left = FermBra()
         elif isinstance(left, (tuple,list)): left = FermBra(*left)
-        if right is None: right = FermKet()
+        elif isinstance(left, str): left = SphFermBra(left)
+        if not right: right = FermKet()
         elif isinstance(right,(tuple,list)): right = FermKet(*right)
+        elif isinstance(right, str): right = SphFermKet(right)
         if isinstance(left, Mul):
             c,t = left.as_coeff_terms()
             coeff *= c
