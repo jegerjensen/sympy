@@ -908,12 +908,12 @@ class ReducedMatrixElement(MatrixElement):
 
         obj = MatrixElement.__new__(cls, left,op,right, **kw_args)
         if kw_args.get('wigner_eckardt'):
-            cgc = obj._get_reduction_factor()
+            cgc = obj._get_reduction_factor(**kw_args)
             return cgc*obj
         else:
             return obj
 
-    def _get_reduction_factor(self):
+    def _get_reduction_factor(self, **kw_args):
         """
         Returns the ClebschGordanCoefficient that relates this reduced
         matrix element to the corresponding direct matrix element.
@@ -967,12 +967,12 @@ class ReducedMatrixElement(MatrixElement):
                 )
 
 
-    def get_direct_product_ito_self(self):
+    def get_direct_product_ito_self(self, **kw_args):
         """
         Returns the direct product of all involved spherical tensors i.t.o
         the reduced matrix element.
         """
-        cgc = self._get_reduction_factor()
+        cgc = self._get_reduction_factor(**kw_args)
         matel = self._get_direct_matrix_element()
         summation = ASigma(cgc.args[-2:])
         return summation*cgc*matel.get_direct_product_ito_self()
@@ -982,7 +982,7 @@ class ReducedMatrixElement(MatrixElement):
         Returns the reduced matrix element in terms of direct product
         matrices.
         """
-        cgc = self._get_reduction_factor()
+        cgc = self._get_reduction_factor(**kw_args)
         matel = self._get_direct_matrix_element()
         return cgc*matel.as_direct_product()
 
@@ -1125,8 +1125,8 @@ class ThreeTensorMatrixElement(MatrixElement):
         (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
 
         """
-        return ReducedMatrixElement(self.left, self.operator, self.right,
-                wigner_eckardt=True)
+        redmat = ReducedMatrixElement(self.left, self.operator, self.right)
+        return redmat._get_reduction_factor(**kw_args)*redmat
 
     def get_direct_product_ito_self(self, **kw_args):
         """
@@ -1157,7 +1157,7 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         """
         if kw_args.get('wigner_eckardt'):
-            matrix = self.use_wigner_eckardt()
+            matrix = self.use_wigner_eckardt(**kw_args)
         else:
             matrix = self
 
@@ -1222,7 +1222,7 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         if kw_args.get('wigner_eckardt'):
             cgc = ReducedMatrixElement(self.left, self.operator, self.right
-                    )._get_reduction_factor()
+                    )._get_reduction_factor(**kw_args)
             cgc *= ASigma(self.operator.projection, self.right._m)
         else:
             cgc = S.One
@@ -1289,14 +1289,14 @@ class ThreeTensorMatrixElement(MatrixElement):
         return combine_ASigmas(result)
 
 
-def apply_wigner_eckardt(expr):
+def apply_wigner_eckardt(expr, **kw_args):
     """
     Applies the Wigner-Eckardt theorem to all instances of ThreeTensorMatrixElement
     """
     ttme = expr.atoms(ThreeTensorMatrixElement)
     subslist= []
     for m in ttme:
-        subslist.append((m,m.use_wigner_eckardt()))
+        subslist.append((m,m.use_wigner_eckardt(**kw_args)))
     return expr.subs(subslist)
 
 def rewrite_as_direct_product(expr, **kw_args):
