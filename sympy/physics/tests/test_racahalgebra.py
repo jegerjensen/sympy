@@ -9,7 +9,8 @@ from sympy.assumptions import (
 from sympy.physics.racahalgebra import (
         SixJSymbol, ThreeJSymbol, ClebschGordanCoefficient, refine_tjs2sjs,
         convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor,
-        CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent
+        CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent,
+        _standardize_coeff,
         )
 from sympy.utilities import raises
 
@@ -190,6 +191,25 @@ def test_4b_coupling_schemes():
             *ClebschGordanCoefficient(G, g, H, h, Z, z) # Tjj
             *Tjj*Dij(Y,Z)*Dij(y,z)
             )
+def test_standardize_coeff():
+    a,b,c = symbols('a b c')
+    global_assumptions.clear()
+    global_assumptions.add( Assume( a, 'half_integer') )
+    global_assumptions.add( Assume( b, 'integer') )
+    assert _standardize_coeff(3*a) == -a
+    assert _standardize_coeff(-2*a) == 2*a
+    assert _standardize_coeff(-4*a) == S.Zero
+    assert _standardize_coeff(-4*a, True) == 4*a
+
+    assert _standardize_coeff( 3*b) == b
+    assert _standardize_coeff(-3*b) == b
+    assert _standardize_coeff(-2*b) == S.Zero
+    assert _standardize_coeff(-2*b, True) == 2*b
+
+    assert _standardize_coeff( 3*c) == 3*c
+    assert _standardize_coeff(-3*c) == -3*c
+    assert _standardize_coeff(-2*c) == -2*c
+    assert _standardize_coeff(-4*c) == -4*c
 
 def test_refine_tjs2sjs():
     m1, m2, M, M12, M23, m3 = symbols('m1 m2 M M12 M23 m3')

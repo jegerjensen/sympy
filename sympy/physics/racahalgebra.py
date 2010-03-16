@@ -1377,7 +1377,7 @@ def _simplify_Add_modulo2(add_expr, leave_alone=None, standardize_coeff=True):
         for arg in add_expr.args:
             if leave_alone and arg in leave_alone:
                 if standardize_coeff:
-                    others.append(_standardize_coeff(arg))
+                    others.append(_standardize_coeff(arg, True))
                 else:
                     others.append(arg)
             elif _ask_odd(arg):
@@ -1386,7 +1386,7 @@ def _simplify_Add_modulo2(add_expr, leave_alone=None, standardize_coeff=True):
                 pass
             else:
                 if standardize_coeff:
-                    others.append(_standardize_coeff(arg))
+                    others.append(_standardize_coeff(arg, False))
                 else:
                     others.append(arg)
         if odd % 2:
@@ -1398,7 +1398,7 @@ def _simplify_Add_modulo2(add_expr, leave_alone=None, standardize_coeff=True):
     else:
         return add_expr
 
-def _standardize_coeff(expr):
+def _standardize_coeff(expr, skip_obvious = False):
     """
     make sure that coeffs don't grow big
     that will only happen for half_integer with odd coeff
@@ -1410,10 +1410,11 @@ def _standardize_coeff(expr):
             c = -(c%4 - 2)
         elif c < -1:
             c = c%4
+        if skip_obvious and not c: c=4  #if expr didn't vanish already it was not meant to happen!
         return Mul(c,t[0])
-    elif _ask_integer(Mul(*t)) and (c > 2 or c < -2):
+    elif _ask_integer(Mul(*t)) and (c > 2 or c <= -2):
         c = c%2
-        if not c: c=2  #if expr didn't vanish already it was not meant to happen!
+        if skip_obvious and not c: c=2  #if expr didn't vanish already it was not meant to happen!
         return Mul(c,t[0])
     else:
         return expr
