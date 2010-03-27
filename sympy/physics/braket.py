@@ -259,6 +259,10 @@ class DirectQuantumState(QuantumState):
         ...     pass
         >>> Fermions(b,a,c,d)
         -Fermions([blank symbol], a, b, c, d)
+        >>> Fermions(b,a,Fermions(c,d))
+        -Fermions([blank symbol], a, b, c, d)
+        >>> Fermions(Fermions(b,a),Fermions(c,d))
+        -Fermions([blank symbol], a, b, c, d)
         >>> class Bosons(DirectQuantumState, BosonState):
         ...     pass
         >>> Bosons(b,a,c,d)
@@ -287,28 +291,36 @@ class DirectQuantumState(QuantumState):
                 else: return SphFermKet(args[0], **kw_args)
 
         new_args = []
+        coeff = S.One
         for arg in args:
-            # test input until stable
-            if isinstance(arg, QuantumState):
-                if not arg.is_dual is None:
-                    if cls.is_dual != arg.is_dual:
-                        raise ValueError("Cannot have kets in a direct-product bra")
-            elif arg is None:
-                raise ValueError("Got None: %s"%(args,))
-            elif isinstance(arg, str):
+            if arg is blank_symbol:
+                continue
+            if isinstance(arg, str):
                 if cls.is_dual is True:
                     arg = SphFermBra(arg)
                 elif cls.is_dual is False:
                     arg = SphFermKet(arg)
             c, t = arg.as_coeff_terms()
+            if isinstance(t[0], QuantumState):
+                if not t[0].is_dual is None:
+                    if cls.is_dual != t[0].is_dual:
+                        raise ValueError("Cannot have kets in a direct-product bra")
+                if isinstance(t[0], QuantumVacuum):
+                    continue
+                if isinstance(t[0], DirectQuantumState):
+                    if len(t[0].args) > 1:
+                        new_args.extend(t[0].args[1:])
+                        coeff *= c
+                        continue
             if c.is_negative:
                 new_args.append(t[0].get_antiparticle())
             else:
                 new_args.append(arg)
 
         new_args,sign = cls._sort_states(new_args)
+
         obj = QuantumState.__new__(cls, None, *new_args, **kw_args)
-        return (-1)**sign*obj
+        return coeff*(-1)**sign*obj
 
 
 class SphericalQuantumState(QuantumState):
