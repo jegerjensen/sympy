@@ -1373,6 +1373,9 @@ class ThreeTensorMatrixElement(MatrixElement):
         c,t = others_direct.as_coeff_terms()
         if len(t) != 1: raise Error
 
+        if not self_as_direct.has(t[0]):
+            raise ValueError("The matrices are not compatible: %s, %s" %(t[0],self.get_related_direct_matrix()))
+
         result =  self_as_direct.subs(t[0],c*direct_as_other)
         return combine_ASigmas(result)
 
