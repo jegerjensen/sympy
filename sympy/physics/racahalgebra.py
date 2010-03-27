@@ -1600,7 +1600,7 @@ def refine_tjs2sjs(expr):
 
     return expr
 
-def is_equivalent(expr1, expr2):
+def is_equivalent(expr1, expr2, verbosity=0):
     """
     Tries hard to verify that expr1 == expr2.
     """
@@ -1610,35 +1610,40 @@ def is_equivalent(expr1, expr2):
     for permut in _iter_tjs_permutations(expr2):
         summations2, phases2, factors2, njs2, ignorables2 = permut
 
+    fails = {}
     if njs1 != njs2:
-        return False
+        if verbosity: fails['AngularMomentumSymbols'] = (njs1,njs2)
+        else: return False
     if summations1 != summations2:
-        return False
+        if verbosity: fails['summations'] = (summations1, summations2)
+        else: return False
     if phases1 != phases2:
         ratio = refine(powsimp(phases1/phases2))
         if ratio is S.One:
             pass
         elif ratio is S.NegativeOne:
-            return False
+            if verbosity: fails['phaseratio'] = ratio
+            else: return False
         else:
             ratio = refine_phases(ratio, ratio.exp.atoms(Symbol),
                     identity_sources=njs1)
             if not ratio is S.One:
-                return False
+                if verbosity: fails['phaseratio'] = ratio
+                else: return False
     if factors1 != factors2:
         if not ratsimp(factors1/factors2) is S.One:
-            return False
+            if verbosity: fails['factors'] = (factors1,factors2)
+            else: return False
     if ignorables1 != ignorables2:
-        return simplify(Add(*ignorables2) - Add(*ignorables1)) is S.Zero
+        if not simplify(Add(*ignorables2) - Add(*ignorables1)) is S.Zero:
+            if verbosity: fails['other'] = (ignorables1, ignorables2)
+            else: return False
 
-    return True
-
-
-
-
-
-
-
+    if fails:
+        print "failing matches are:",fails
+        return False
+    else:
+        return True
 
 
 def _get_phase_subslist_dict(projection_dict):
