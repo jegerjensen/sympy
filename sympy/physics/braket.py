@@ -87,15 +87,18 @@ class BraKet(QuantumState):
 
     is_commutative = False
 
-    def __str__(self, *args):
-        return self.left_braket+self._str_nobraket_(*args)+self.right_braket
+    def __str__(self):
+        return self.left_braket+self._str_nobraket_()+self.right_braket
 
-    def _str_nobraket_(self, *args):
+    def _str_nobraket_(self, contained_in=None):
+        if contained_in and not contained_in.is_dual is None:
+            if self.is_dual != contained_in.is_dual:
+                return str(self)
         str_args = []
         for s in self.args:
             if s is blank_symbol: continue
             try:
-                str_args.append(s._str_nobraket_(*args))
+                str_args.append(s._str_nobraket_(self))
             except AttributeError:
                 str_args.append(str(s))
         return ", ".join([ str(s) for s in str_args])
@@ -398,15 +401,18 @@ class SphericalQuantumState(QuantumState):
 
         return obj
 
-    def _str_nobraket_(self, *args):
+    def _str_nobraket_(self, contained_in=None):
         """
         Coupling and hole states must show in represetantion.
         """
 
+        if contained_in and not contained_in.is_dual is None:
+            if contained_in.is_dual != self.is_dual:
+                return str(self)
         if self.is_coupled:
             return "%s(%s, %s)"%(self.symbol_str,
-                    self.state1._str_nobraket_(),
-                    self.state2._str_nobraket_()
+                    self.state1._str_nobraket_(self),
+                    self.state2._str_nobraket_(self)
                     )
         else:
             return self.symbol_str
@@ -434,7 +440,7 @@ class SphericalQuantumState(QuantumState):
         properties of ab:
 
         >>> ab = SphFermKet('ab',a,b); ab
-        |ab(a, b)>
+        |ab(a, <b|)>
         >>> ab.as_coeff_tensor()
         (1, T(J_ab, M_ab))
 
@@ -468,7 +474,7 @@ class SphericalQuantumState(QuantumState):
         >>> a = SphFermKet('a')
         >>> b = SphFermBra('b')
         >>> ab = SphFermBra('ab',a,b); ab
-        <ab(a, b)|
+        <ab(|a>, b)|
         >>> ab.as_coeff_tensor()
         ((-1)**(J_ab - M_ab), T(J_ab, -M_ab))
 
@@ -603,7 +609,7 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
     """
     Represents a spherical fermion ket.
 
-    >>> from sympy.physics.braket import SphFermKet
+    >>> from sympy.physics.braket import SphFermKet, Dagger
     >>> from sympy import symbols
     >>> a,b,c = symbols('a b c')
     >>> SphFermKet(a)
@@ -624,6 +630,8 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
 
     Single particle states return tensors with symbol 't', coupled states 'T'
 
+    >>> C = SphFermKet('c',A,Dagger(B)); C
+    |c(a, <b|)>
 
     """
     pass
@@ -879,7 +887,7 @@ class MatrixElement(Basic):
         return self.args[1]
 
 
-    def __str__(self,*args):
+    def __str__(self):
         return "%s %s %s" %self.args[:4]
 
     def _sympystr_(self, p, *args):
@@ -1015,10 +1023,10 @@ class ReducedMatrixElement(MatrixElement):
         """
         return ThreeTensorMatrixElement(*self.args)
 
-    def __str__(self,*args):
+    def __str__(self):
         return "%s| %s |%s" %(
                 self.left,
-                "%s(%s)"%self.operator._str_drop_projection_(*args),
+                "%s(%s)"%self.operator._str_drop_projection_(),
                 self.right
                 )
 
