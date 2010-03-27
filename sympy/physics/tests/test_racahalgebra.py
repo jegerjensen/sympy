@@ -48,6 +48,17 @@ def test_tjs_methods():
 
     assert tjs.get_as_ClebschGordanCoefficient() == (-1)**(A-B-3*c)*ClebschGordanCoefficient(A, a, B, -b, C, -3*c)/sqrt(2*C+1)
 
+def test_determine_best_phase():
+    from sympy.physics.racahalgebra import _determine_best_phase, __all_phases_seen_in_search
+    a,b,c,d,e,f = symbols('a b c d e f')
+    __all_phases_seen_in_search |= set([a+b, a+b+c, c])
+    assert _determine_best_phase(set(),set()) == c
+    __all_phases_seen_in_search |= set([a+b, a+b+d, c])
+    assert _determine_best_phase(set([c]),set()) == a+b
+    __all_phases_seen_in_search |= set([a+b, a+b+d, c])
+    assert _determine_best_phase(set(),set([d])) == a+b +d
+    assert len(__all_phases_seen_in_search) == 0
+
 
 def test_sjs_methods():
     a,b,c,d,e,f,z = symbols('abcdefz')

@@ -1108,6 +1108,8 @@ class TriangularInequality(Function):
 
 
 
+__all_phases_seen_in_search = set()
+
 def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args):
     """
     Simplifies and standardizes expressions containing 3j and 6j symbols.
@@ -1119,8 +1121,10 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     ``forbidden`` -- iterable containing symbols that cannot be in the phase
     ``mandatory`` -- iterable containing symbols that must be in the phase
 
-    If there is a conflict, or if the algorithm do not succed, the exception
+    If there are conflicting requirements, the exception
     ``UnableToComplyWithForbiddenAndMandatorySymbols`` is raised.
+    If you supply the keyword, strict=True, this exception is also raised if
+    the algorithm do not succed.
 
     To rewrite the expression, we use information from these sources:
         - the information present in the expression
@@ -1268,15 +1272,49 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
 
     phase = Add(*fm0)
 
-    better_phase = _brutal_search_for_simple_phase(
-            phase, known_identities, forbidden, mandatory)
-    better_phase = _simplify_Add_modulo2(better_phase+Add(*x0), mandatory)
+    __all_phases_seen_in_search.clear()
+    try:
+        better_phase = _brutal_search_for_simple_phase(
+                phase, known_identities, forbidden, mandatory)
+        better_phase = _simplify_Add_modulo2(better_phase+Add(*x0), mandatory)
+    except UnableToComplyWithForbiddenAndMandatorySymbols:
+        if kw_args.get('strict'):
+            raise
+        else:
+            tmpset = set()
+            for p in __all_phases_seen_in_search:
+                tmpset.add(_simplify_Add_modulo2(p+Add(*x0), mandatory))
+            __all_phases_seen_in_search.clear()
+            __all_phases_seen_in_search.update(tmpset)
+            better_phase = _determine_best_phase(forbidden, mandatory)
 
     if orig_phase_pow is S.One:
         return expr*Pow(-1,better_phase)
     else:
         return expr.subs(orig_phase_pow, Pow(-1,better_phase))
 
+
+
+def _determine_best_phase(forbidden, mandatory):
+    best_phase = __all_phases_seen_in_search.pop()
+    best_symbs = best_phase.atoms(Symbol)
+    best_forbidden = best_symbs & forbidden
+    best_mandatory = best_symbs & mandatory
+
+    while __all_phases_seen_in_search:
+        phase = __all_phases_seen_in_search.pop()
+        symbs = phase.atoms(Symbol)
+        if len(symbs & forbidden) > len(best_forbidden): continue
+        if len(symbs & mandatory) < len(best_mandatory): continue
+        # fewer symbols is most important
+        if len(symbs) > len(best_symbs): continue
+        # then fewer terms
+        if len(phase.args) < len(best_phase.args):
+            best_phase = phase
+            best_forbidden = symbs & forbidden
+            best_mandatory = symbs & mandatory
+            best_symbs = symbs
+    return best_phase
 
 
 
@@ -1294,6 +1332,7 @@ def _brutal_search_for_simple_phase(phase, known_identities,
 
     # simplify first
     phase = _simplify_Add_modulo2(phase, mandatory, True)
+    __all_phases_seen_in_search.add(phase)
 
     current_symbols = set([ s for s in phase.atoms() if s.is_Symbol ])
     missing = mandatory - current_symbols
@@ -1554,7 +1593,7 @@ def refine_tjs2sjs(expr):
 
         # get rid of any projection symbols in the phase
         try:
-            expr = refine_phases(expr, M_symbols, identity_sources=threejs)
+            expr = refine_phases(expr, M_symbols, strict=True, identity_sources=threejs)
         except UnableToComplyWithForbiddenAndMandatorySymbols:
             raise ThreeJSymbolsNotCompatibleWithSixJSymbol
 
