@@ -1407,7 +1407,7 @@ class InjectionFailureException(Exception):
 protected_symbols = set((
     blank_symbol,
     ))
-def inject_every_symbol_globally(expr, force=False):
+def inject_every_symbol_globally(expr, force=False, quiet=False, strict=False):
     """
     Extracts all symbols in expr, and injects them all into the global namespace.
 
@@ -1415,6 +1415,16 @@ def inject_every_symbol_globally(expr, force=False):
     is a conflict, we raise an exception, but inject everything else first.
     """
     import inspect
+
+    def _report():
+        if quiet: return
+        if force:
+            print "injected", injections
+            print "*** Replaced ***", replaced_items
+        else:
+            print  "injected", injections
+            print  "Failed on", failures
+
     frame = inspect.currentframe().f_back
     try:
         s = expr.atoms(Symbol)
@@ -1432,23 +1442,20 @@ def inject_every_symbol_globally(expr, force=False):
                 frame.f_globals[t.name] = t
                 injections.append(t)
         if failures and not force:
-            print  "injected", injections
-            print  "Failed on", failures
-            raise InjectionFailureException(failures)
+            _report()
+            if strict:
+                raise InjectionFailureException(failures)
         elif failures and force:
             replaced_items = []
             for k,v in failures.items():
                 frame.f_globals[k.name] = k
                 injections.append(k)
                 replaced_items.append(v)
-            print "injected", injections
-            print "*** Replaced ***", replaced_items
+            _report()
             return replaced
-        elif injections:
-            return injections
+        return injections
     finally:
-        # we should explicitly break cyclic dependencies as stated in inspect
-        # doc
+        # we should explicitly break cyclic dependencies as stated in inspect doc
         del frame
 
 
