@@ -125,7 +125,6 @@ def test_AtomicSphericalTensor_methods():
     t = SphericalTensor('T', A, a)
     assert t.as_direct_product() == t
     assert t.get_direct_product_ito_self() == t
-    assert t.get_direct_product_ito_self(drop_self=True) == 1
     assert str(t) == 'T(A, a)'
 
 def test_CompositeSphericalTensor_methods():

@@ -720,6 +720,9 @@ class SphericalTensor(Basic):
     def symbol(self):
         return self.args[0]
 
+    def get_direct_product_ito_self(self, **kw_args):
+        return Mul(self._eval_coeff_for_direct_product_ito_self(**kw_args), self)
+
     def as_direct_product(self, **kw_args):
         return Mul(*self._eval_as_coeff_direct_product(**kw_args))
 
@@ -837,8 +840,8 @@ class CompositeSphericalTensor(SphericalTensor):
         >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.as_direct_product()
         Sum(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
-        >>> T.as_direct_product(drop_tensors=True)
-        Sum(a, b)*(A, a, B, b|D, d)
+        >>> T.as_coeff_direct_product()
+        (Sum(a, b)*(A, a, B, b|D, d), t1(A, a)*t2(B, b))
 
         With three coupled tensors we get:
 
@@ -864,7 +867,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
         return combine_ASigmas(coeffs),t1*t2
 
-    def get_direct_product_ito_self(self, **kw_args):
+    def _eval_coeff_for_direct_product_ito_self(self, **kw_args):
         """
         Returns the direct product of all constituent tensors in terms of (=ito) self.
 
@@ -901,14 +904,11 @@ class CompositeSphericalTensor(SphericalTensor):
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
                     self.rank,self.projection)
-                * t1.get_direct_product_ito_self(drop_self=True)
-                * t2.get_direct_product_ito_self(drop_self=True)
+                * t1._eval_coeff_for_direct_product_ito_self()
+                * t2._eval_coeff_for_direct_product_ito_self()
                 )
 
-        if kw_args.get('drop_self'):
-            return ASigma(self.rank, self.projection)*expr
-        else:
-            return ASigma(self.rank, self.projection)*expr*self
+        return ASigma(self.rank, self.projection)*expr
 
 
 
@@ -986,19 +986,13 @@ class AtomicSphericalTensor(SphericalTensor):
         """
         Returns the uncoupled, direct product form of a composite tensor.
         """
-        if kw_args.get('drop_tensors'):
-            return S.One, S.One
-        else:
-            return S.One, self
+        return S.One, self
 
-    def get_direct_product_ito_self(self,**kw_args):
+    def _eval_coeff_for_direct_product_ito_self(self,**kw_args):
         """
         Returns the direct product expressed by the composite tensor.
         """
-        if kw_args.get('drop_self'):
-            return S.One
-        else:
-            return self
+        return S.One
 
 class ASigma(Basic):
     """
