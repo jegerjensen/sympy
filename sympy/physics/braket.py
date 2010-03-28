@@ -926,55 +926,90 @@ class MatrixElement(Basic):
 
 
 class ReducedMatrixElement(MatrixElement):
+    """
+    The reduced matrix element <.||.||.> is defined in terms of three
+    SphericalTensors, but is independent of all three projections.
+    The relation with the direct product matrix element is on the form
+
+                k                            k
+        < J M| T  |J'M'> = G(J'M'kqJM) <J|| T ||J'>
+                q
+
+    where G(...) is a purely geometrical factor depending on ranks and
+    projections of the involved spherical tensors.
+
+    The exact form of the geometrical factor defines the reduced matrix
+    element, and there are different versions available.  A few definitions
+    are supplied in this module, and the section "Alternative definitions"
+    below provides details and examples.
+
+    >>> from sympy.physics.braket import (
+    ...         ReducedMatrixElement, SphFermKet, SphFermBra,
+    ...         SphericalTensorOperator, default_redmat_definition
+    ...         )
+    >>> from sympy import symbols
+    >>> k,q = symbols('k q')
+    >>> bra = SphFermBra('a')
+    >>> ket = SphFermKet('b')
+    >>> T = SphericalTensorOperator('T',k,q)
+    >>> ReducedMatrixElement(bra, T, ket)
+    <a|| T(k) ||b>
+
+    The geometrical factor is available through the method
+    ._get_reduction_factor():
+
+    >>> ReducedMatrixElement(bra, T, ket)._get_reduction_factor()
+    (j_b, m_b, k, q|j_a, m_a)
+
+    You can also formulate the direct product (corresponding to a full decomposition
+    of all states) in terms of (ito) the ReducedMatrixElement:
+    Note that those expressions are not equal to the ReducedMatrixElement,
+    but rather to the corresponding uncoupled matrix element.
+
+    >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
+    (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
+    >>> ReducedMatrixElement(bra, T, SphFermKet('bc',ket,'c')).get_direct_product_ito_self()
+    Sum(J_bc, M_bc)*(J_bc, M_bc, k, q|j_a, m_a)*(j_b, m_b, j_c, m_c|J_bc, M_bc)*<a|| T(k) ||bc(b, c)>
+
+    The ReducedMatrixElement can also express itself in terms of a direct product.
+
+    >>> ReducedMatrixElement(bra, T, ket).as_direct_product()
+    Sum(m_b, q)*(j_b, m_b, k, q|j_a, m_a)*<a| T(k, q) |b>
+    >>> ReducedMatrixElement(bra, T, SphFermKet('bc',ket,'c')).as_direct_product()
+    Sum(M_bc, m_b, m_c, q)*(J_bc, M_bc, k, q|j_a, m_a)*(j_b, m_b, j_c, m_c|J_bc, M_bc)*<a| T(k, q) |b, c>
+
+
+    Alternative definitions
+    =======================
+
+    The default definition is specified with the global variable
+    default_redmat_definition:
+
+    >>> default_redmat_definition
+    'wikipedia'
+    >>> type(ReducedMatrixElement(bra, T, ket)).__name__
+    'ReducedMatrixElement_wikipedia'
+
+    Other definitions currently available are 'edmonds' and 'brink_satchler':
+
+    >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_reduction_factor()
+    (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
+    >>> ReducedMatrixElement(bra, T, ket, 'brink_satchler')._get_reduction_factor()
+    (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)
+
+    If you want to introduce yet another definition, all you have to do is
+    to subclass ReducedMatrixElement and overload the method
+    ReducedMatrixElement._get_reduction_factor(self).  The convention is to
+    name the subclass ReducedMatrixElement_<definition_string>.  (Future
+    functionality may depend on that.)
+
+    """
+
     nargs = 3
     _definition = None
 
+
     def __new__(cls,left, op, right, *opt_args, **kw_args):
-        """
-        The reduced matrix element <.||.||.> is defined in terms of three
-        SphericalTensors, but is independent of all three projections.
-        The relation with the direct product matrix element is on the form
-
-                    k                            k
-            < J M| T  |J'M'> = G(J'M'kqJM) <J|| T ||J'>
-                    q
-
-        where G(...) is a purely geometrical factor depending on ranks and
-        projections of the involved spherical tensors.  The exact form of the
-        geometrical factor defines the reduced matrix elements.  There are many
-        different conventions in the wild.  In order to cater for many choices,
-        the most common definition are supplied as subclasses to
-        ReducedMatrixElement.
-
-        If you want to introduce yet another definition, all you have to do is
-        to subclass ReducedMatrixElement and overload the method
-        ReducedMatrixElement._get_reduction_factor(self).  The convention is to
-        name the subclass ReducedMatrixElement_<definition_string>.  (Future
-        functionality may depend on that.)
-
-        >>> from sympy.physics.braket import (
-        ...         ReducedMatrixElement, SphFermKet, SphFermBra,
-        ...         SphericalTensorOperator
-        ...         )
-        >>> from sympy import symbols
-        >>> k,q = symbols('k q')
-        >>> bra = SphFermBra('a')
-        >>> ket = SphFermKet('b')
-        >>> T = SphericalTensorOperator('T',k,q)
-        >>> ReducedMatrixElement(bra, T, ket)
-        <a|| T(k) ||b>
-
-        The geometrical factor is available through _get_reduction_factor():
-
-        >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_reduction_factor()
-        (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
-
-
-        >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
-        (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
-        >>> ReducedMatrixElement(bra, T, ket, 'brink_satchler').get_direct_product_ito_self()
-        (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
-        """
 
         if cls is ReducedMatrixElement:
             if len(opt_args)==1:
@@ -1033,6 +1068,48 @@ class ReducedMatrixElement(MatrixElement):
         else:
             return factor
 
+    def _get_inverse_reduction_factor(self, **kw_args):
+        """
+        Returns the inverted ClebschGordanCoefficient that relates this reduced
+        matrix element to the corresponding direct matrix element.
+
+        The inversion is done with orthogonality relations, employing the fact
+        that the reduced matrix element is independent of the projections.
+
+        >>> from sympy.physics.braket import (
+        ...         ReducedMatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('b')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> ReducedMatrixElement(bra, T, ket)._get_inverse_reduction_factor()
+        Sum(m_b, q)*(j_b, m_b, k, q|j_a, m_a)
+        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler')._get_inverse_reduction_factor()
+        (-1)**(-2*k)*Sum(m_b, q)*(j_b, m_b, k, q|j_a, m_a)
+        >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_inverse_reduction_factor()
+        (-1)**(m_a - j_a)*(1 + 2*j_a)*Sum(m_b, q)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
+        """
+        left,op,right = self.args
+        c_ket, t_ket = right.as_coeff_tensor()
+        j1, m1 = t_ket.get_rank_proj()
+        j2, m2 = op.get_rank_proj()
+        J, M = left._j, left._m
+        if self.definition == 'wikipedia':
+            factor = ASigma(m1, m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket
+        elif self.definition == 'edmonds':
+            factor = (-1)**(M-J)*ASigma(m1, m2)*(2*J+1)*ThreeJSymbol(J, j2, j1, -M, m2, m1)/c_ket
+        elif self.definition == 'brink_satchler':
+            factor = (-1)**(-2*j2)*ASigma(m1,m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket
+
+        if kw_args.get('3j'):
+            return refine_phases(convert_cgc2tjs(factor))
+        else:
+            return factor
+
     def _get_ThreeTensorMatrixElement(self):
         """
         Returns the direct matrix element that is related to this
@@ -1073,6 +1150,20 @@ class ReducedMatrixElement(MatrixElement):
         """
         Returns the direct product of all involved spherical tensors i.t.o
         the reduced matrix element.
+
+        >>> from sympy.physics.braket import (
+        ...         ReducedMatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('b')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
+        (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
+
         """
         cgc = self._get_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
@@ -1084,12 +1175,10 @@ class ReducedMatrixElement(MatrixElement):
         Returns the reduced matrix element in terms of direct product
         matrices.
         """
-        cgc = self._get_reduction_factor(**kw_args)
+        invcgc = self._get_inverse_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
-        # FIXME: need to invert the angular momentum factor properly, using the
-        # orthogonality relations.  Division is correct, but is not easily
-        # handled by the racah-module
-        return matel.as_direct_product()/cgc
+
+        return combine_ASigmas(matel.as_direct_product()*invcgc)
 
 class ReducedMatrixElement_edmonds(ReducedMatrixElement):
     _definition = 'edmonds'
