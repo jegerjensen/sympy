@@ -421,9 +421,6 @@ class SphericalQuantumState(QuantumState):
         """
         Returns the coefficient and tensor corresponding to this state.
 
-        If this state is composed of other spherical states, and the keyword
-        deep=True is supplied, we return the full decoupling of the state.
-
         >>> from sympy.physics.braket import SphFermKet, SphFermBra
         >>> a = SphFermKet('a')
         >>> a.as_coeff_tensor()
@@ -453,20 +450,10 @@ class SphericalQuantumState(QuantumState):
         not be mislead to believe that a subsequent decomposition of a
         composite tensor T[t(a)*t(b)] would be correct.
 
-        To get the full tensor decomposition, you can supply the keyword
-        deep=True:
-
-        >>> full = ab.as_coeff_tensor(deep=True)
-        >>> full[0]
-        (-1)**(j_b - m_b)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, M_ab)
-        >>> full[1]
-        t(j_a, m_a)*t(j_b, -m_b)
-
-        Here we see that the dual state <b| is represented properly as
-        (-1)**(j_b-m_b)*T(j_b,-m_b).
-
+        To get the full decomposition of the state, use .as_coeff_sp_states()
         """
         return self._eval_as_coeff_tensor(**kw_args)
+
 
     def _eval_as_coeff_tensor(self, **kw_args):
         """
@@ -522,6 +509,58 @@ class SphericalQuantumState(QuantumState):
         return Mul(c,*p)
 
     def as_coeff_sp_states(self, **kw_args):
+        """
+        Returns the uncoupled form of self as a tuple (coeff, tuple(a,b,c,...))
+
+        a,b,c are the single particle states from which this state is built.
+
+        >>> from sympy.physics.braket import SphFermKet, SphFermBra, Dagger
+        >>> a = SphFermKet('a')
+        >>> b = SphFermBra('b')
+        >>> a.as_coeff_sp_states()
+        (1, (|a>,))
+        >>> b.as_coeff_sp_states()
+        (1, (<b|,))
+
+        >>> coeff, states = SphFermKet('ab',a,b).as_coeff_sp_states()
+        >>> coeff
+        (-1)**(j_b - m_b)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, M_ab)
+        >>> states
+        (|a>, <b|)
+
+        If a,b are coupled to form a dual state, this is reflected in the
+        coupling coefficient:
+
+        >>> bra_ab = SphFermBra('ab',a,b)
+        >>> coeff, states = bra_ab.as_coeff_sp_states()
+        >>> coeff
+        (-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, -M_ab)
+        >>> states
+        (|a>, <b|)
+
+        But if two bra states are coupled to form a new bra state, the coupling
+        coefficient simplifies by symmetry relations of the Clebsch-Gordan
+        coefficients.
+
+        >>> bra_ab = SphFermBra('ab',Dagger(a), b)
+        >>> coeff, states = bra_ab.as_coeff_sp_states()
+        >>> coeff
+        Sum(m_a, m_b)*(j_a, m_a, j_b, m_b|J_ab, M_ab)
+        >>> states
+        (<a|, <b|)
+
+        Nested couplings are also decomposed:
+
+        >>> abc = SphFermKet('abc', SphFermKet('ab', a,b), 'c'); abc
+        |abc(ab(a, <b|), c)>
+        >>> coeff_abc, states = abc.as_coeff_sp_states()
+        >>> coeff_abc
+        (-1)**(j_b - m_b)*Sum(M_ab, m_a, m_b, m_c)*(J_ab, M_ab, j_c, m_c|J_abc, M_abc)*(j_a, m_a, j_b, -m_b|J_ab, M_ab)
+        >>> states
+        (|a>, <b|, |c>)
+
+
+        """
         return self._eval_as_coeff_sp_states(**kw_args)
 
     @property
