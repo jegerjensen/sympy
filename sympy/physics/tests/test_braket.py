@@ -33,16 +33,6 @@ def test_QuantumState():
     assert QuantumState('-a').is_hole == True
     assert QuantumState('-a').get_antiparticle().is_hole == False
 
-    assert QuantumState('a').is_negative is None
-    assert FermionState('a').is_negative is None
-    assert BraKet('a').is_negative is None
-    assert SphFermKet('a').is_negative is None
-
-    assert QuantumState('a').is_positive is None
-    assert FermionState('a').is_positive is None
-    assert BraKet('a').is_positive is None
-    assert SphFermKet('a').is_positive is None
-
     a = SphFermKet('a'); assert a.func(*a.args) == a
     a = SphFermKet('-a'); assert a.func(*a.args) == a
     a = SphFermKet('a',hole=True); assert a.func(*a.args) == a
