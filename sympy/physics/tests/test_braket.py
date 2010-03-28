@@ -137,9 +137,6 @@ def test_as_coeff_tensor():
     # coupled states
     assert SphFermKet('c', SphFermKet('a'), SphFermKet('b')).as_coeff_tensor() == (1, SphericalTensor(T, J_c, M_c))
     assert SphFermBra('c', SphFermBra('a'), SphFermBra('b')).as_coeff_tensor() == ((-1)**(J_c-M_c), SphericalTensor(T, J_c, -M_c))
-    full_bra_decoupling = SphFermBra('c', SphFermBra('a'), SphFermBra('b')).as_coeff_tensor(deep=True)
-    assert full_bra_decoupling[0] == (-1)**(J_c-M_c)*(-1)**(j_a - m_a)*(-1)**(j_b - m_b)*ASigma(m_a, m_b)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_c, -M_c)
-    assert full_bra_decoupling[1] == SphericalTensor(t,j_a, -m_a)*SphericalTensor(t,j_b, -m_b)
 
 def test_as_coeff_sp_states():
     t, T, j_a, m_a = symbols('t T j_a m_a')
