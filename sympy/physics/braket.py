@@ -1486,7 +1486,7 @@ class ThreeTensorMatrixElement(MatrixElement):
         others_direct = other.get_related_direct_matrix(only_particle_states=True)
 
         # if other_direct matrix comes with a sign, the substitution would fail
-        c,t = others_direct.as_coeff_terms()
+        c,t = others_direct.as_coeff_terms(MatrixElement)
         if len(t) != 1: raise Error
 
         if not self_as_direct.has(t[0]):
