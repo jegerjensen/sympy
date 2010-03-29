@@ -496,12 +496,6 @@ class SphericalQuantumState(QuantumState):
         c2, s2 = self.state2._eval_as_coeff_sp_states(**kw_args)
         return phase*combine_ASigmas(c1*c2*cgc), s1 + s2
 
-        args = { 'deep':True }
-        args.update(kw_args)
-        c,t = self.as_coeff_tensor(**args)
-        states = self.single_particle_states
-        return c,states
-
     def as_direct_product(self, **kw_args):
         c,p = self._eval_as_coeff_sp_states(**kw_args)
         return Mul(c,*p)
