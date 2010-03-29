@@ -1326,7 +1326,7 @@ def refine_tjs2sjs(expr):
                     break
                 elif orig == phases:
                     phases = test_phase
-                elif len(test_phase.exp) < len(phases.exp):
+                elif len(test_phase.exp.args) < len(phases.exp.args):
                     phases = test_phase
 
 
