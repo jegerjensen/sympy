@@ -1099,7 +1099,7 @@ class ReducedMatrixElement(MatrixElement):
         elif self.definition == 'brink_satchler':
             factor = (-1)**(-2*j2)*ASigma(m1,m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket
 
-        if kw_args.get('3j'):
+        if kw_args.get('tjs'):
             return refine_phases(convert_cgc2tjs(factor))
         else:
             return factor
@@ -1162,7 +1162,10 @@ class ReducedMatrixElement(MatrixElement):
         cgc = self._get_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
         dirprod = matel.get_direct_product_ito_self()
-        return cgc * dirprod.subs(matel, self)
+        if kw_args.get('tjs'):
+            return refine_phases(convert_cgc2tjs(cgc * dirprod.subs(matel, self)))
+        else:
+            return cgc * dirprod.subs(matel, self)
 
     def as_direct_product(self, **kw_args):
         """
@@ -1359,7 +1362,10 @@ class ThreeTensorMatrixElement(MatrixElement):
             return redmat.get_direct_product_ito_self(**kw_args)
 
         coeffs = self.as_direct_product(only_coeffs=True)
-        return invert_clebsch_gordans(coeffs)*matrix
+        if kw_args.get('tjs'):
+            return refine_phases(convert_cgc2tjs(invert_clebsch_gordans(coeffs))*self)
+        else:
+            return invert_clebsch_gordans(coeffs)*self
 
 
     def as_direct_product(self, **kw_args):
