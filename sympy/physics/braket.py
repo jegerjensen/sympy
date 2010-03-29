@@ -1449,14 +1449,24 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> T = SphericalTensorOperator('T',k,q)
         >>> a = SphFermBra('a')
         >>> b = SphFermBra('b')
-        >>> bra = SphFermBra('ab',a,b)
         >>> c = SphFermKet('c')
         >>> d = SphFermKet('d')
+
+        >>> bra = SphFermBra('ab',a,b)
         >>> ket = SphFermKet('cd',c,d)
         >>> m=MatrixElement(bra, T, ket); m
         <ab(a, b)| T(k, q) |cd(c, d)>
         >>> m.get_related_direct_matrix()
         <a, b| T(k, q) |c, d>
+
+        >>> bra = SphFermBra('ab',a,-b)
+        >>> ket = SphFermKet('cd',c,-d)
+        >>> m=MatrixElement(bra, T, ket); m
+        <ab(a, -b)| T(k, q) |cd(c, -d)>
+        >>> m.get_related_direct_matrix()
+        <a, -b| T(k, q) |c, -d>
+        >>> m.get_related_direct_matrix(only_particle_states=True)
+        <a, d| T(k, q) |b, c>
         """
 
         sp_states = list(self.left.single_particle_states +
