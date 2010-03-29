@@ -1472,7 +1472,7 @@ def _ask_odd(expr):
 
 
 
-def refine_tjs2sjs(expr):
+def refine_tjs2sjs(expr, **kw_args):
     """
     Tries to rewrite four 3j-symbols to a 6j-symbol.
 
@@ -1525,7 +1525,7 @@ def refine_tjs2sjs(expr):
                     M_symbols.append(M)
                     break
         assert len(M_symbols)==6
-        new_tjs_expr = sjs.get_ito_ThreeJSymbols(M_symbols)
+        new_tjs_expr = sjs.get_ito_ThreeJSymbols(M_symbols, **kw_args)
 
         # There is only one permutation here but we want to split new_tjs_expr:
         for permut2 in _iter_tjs_permutations(new_tjs_expr):
