@@ -1323,7 +1323,7 @@ class ThreeTensorMatrixElement(MatrixElement):
          (-1)**(j_a - m_a)*<a|| T(k) ||b>*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
 
         """
-        redmat = ReducedMatrixElement(self.left, self.operator, self.right, definition)
+        redmat = self.get_related_redmat(definition=definition)
         return redmat._get_reduction_factor(**kw_args)*redmat
 
     def get_direct_product_ito_self(self, **kw_args):
@@ -1355,9 +1355,8 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         """
         if kw_args.get('wigner_eckardt'):
-            matrix = self.use_wigner_eckardt(**kw_args)
-        else:
-            matrix = self
+            redmat = self.get_related_redmat()
+            return redmat.get_direct_product_ito_self(**kw_args)
 
         coeffs = self.as_direct_product(only_coeffs=True)
         return invert_clebsch_gordans(coeffs)*matrix
@@ -1417,15 +1416,12 @@ class ThreeTensorMatrixElement(MatrixElement):
         else:
             matrix = self.get_related_direct_matrix()
 
+        matrix = self.get_related_direct_matrix(**kw_args)
         cbra, bra = self.left.as_coeff_sp_states(**kw_args)
         cket, ket = self.right.as_coeff_sp_states(**kw_args)
 
         if kw_args.get('wigner_eckardt'):
-            cgc = ReducedMatrixElement(self.left, self.operator, self.right,
-                    **kw_args)._get_reduction_factor()
-            # inversion of cgc is best done with orthogonality:
-            c, t = cgc.as_coeff_terms(AngularMomentumSymbol)
-            cgc = ASigma(self.operator.projection, self.right._m)*t[0]/c
+            cgc = self.get_related_redmat(**kw_args)._get_inverse_reduction_factor()
         else:
             cgc = S.One
 
@@ -1492,6 +1488,9 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         result =  self_as_direct.subs(t[0],c*direct_as_other)
         return combine_ASigmas(result)
+
+    def get_related_redmat(self, **kw_args):
+        return ReducedMatrixElement(self.left, self.operator, self.right, **kw_args)
 
 
 def apply_wigner_eckardt(expr, **kw_args):
