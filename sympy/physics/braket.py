@@ -1417,10 +1417,6 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product(wigner_eckardt=True, definition='brink_satchler')
         (-1)**(-2*k)*Sum(M_cd, m_a, m_b, m_c, m_d, q)*(J_cd, M_cd, k, q|J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
         """
-        if kw_args.get('only_particle_states'):
-            matrix = self.get_related_direct_matrix(only_particle_states=True)
-        else:
-            matrix = self.get_related_direct_matrix()
 
         matrix = self.get_related_direct_matrix(**kw_args)
         cbra, bra = self.left.as_coeff_sp_states(**kw_args)
