@@ -1360,12 +1360,17 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> MatrixElement(bra_ab, T, ket).get_direct_product_ito_self()
         Sum(J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*<ab(a, b)| T(k, q) |c>
 
-        >>> c = SphFermKet('c')
-        >>> d = SphFermKet('d')
-        >>> ket_cd = SphFermKet('cd',c,d)
-        >>> MatrixElement(bra_ab, T, ket_cd).get_direct_product_ito_self()
-        Sum(J_ab, J_cd, M_ab, M_cd)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<ab(a, b)| T(k, q) |cd(c, d)>
+        Now a cross coupled matrix element:
 
+        >>> c = SphFermKet('c')
+        >>> ket_bc = SphFermKet('bc',b,c)
+        >>> MatrixElement(a, T, ket_bc).get_direct_product_ito_self()
+        (-1)**(m_b - j_b)*Sum(J_bc, M_bc)*(j_b, -m_b, j_c, m_c|J_bc, M_bc)*<a| T(k, q) |bc(<b|, c)>
+
+        ...and in combination with the Wigner-Eckard theorem:
+
+        >>> MatrixElement(a, T, ket_bc).get_direct_product_ito_self(wigner_eckardt=True)
+        (-1)**(m_b - j_b)*Sum(J_bc, M_bc)*(J_bc, M_bc, k, q|j_a, m_a)*(j_b, -m_b, j_c, m_c|J_bc, M_bc)*<a|| T(k) ||bc(<b|, c)>
         """
         if kw_args.get('wigner_eckardt'):
             redmat = self.get_related_redmat()
