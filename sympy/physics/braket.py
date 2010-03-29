@@ -1407,30 +1407,18 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> MatrixElement(bra_ab, T, ket).as_direct_product(strict_bra_coupling=1)
         (-1)**(j_a - m_a)*(-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, -m_a, j_b, -m_b|J_ab, -M_ab)*<a, b| T(k, q) |c>
 
-        >>> c = SphFermKet('c')
-        >>> d = SphFermKet('d')
-        >>> ket_cd = SphFermKet('cd',c,d)
-        >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product()
-        Sum(m_a, m_b, m_c, m_d)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
-
         The keyword wigner_eckardt=True gives you an expression for the reduced
-        matrix element in terms of the direct product matrix.  To this end, we
-        use the ClebschGordanCoefficient orthogonality to rewrite
-
-        <(ab)JM|T(k,q)|(cd)JM> == (J_cd, M_cd, k, q|J_ab, M_ab) <J(ab)||T(k)||J(cd)>
-
-        as
-
-        <J(ab)||T(k)||J(cd)> ==
-            Sum(M_cd, q) (J_cd, M_cd, k, q|J_ab, M_ab) <(ab)JM|T(k,q)|(cd)JM>
-
+        matrix element in terms of the direct product matrix.
         For the above expression we obtain:
 
-        >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product(wigner_eckardt=True)
-        Sum(M_cd, m_a, m_b, m_c, m_d, q)*(J_cd, M_cd, k, q|J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
+        >>> MatrixElement(bra_ab, T, ket).as_direct_product(wigner_eckardt=True)
+        Sum(m_a, m_b, m_c, q)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, k, q|J_ab, M_ab)*<a, b| T(k, q) |c>
 
-        >>> MatrixElement(bra_ab, T, ket_cd).as_direct_product(wigner_eckardt=True, definition='brink_satchler')
-        (-1)**(-2*k)*Sum(M_cd, m_a, m_b, m_c, m_d, q)*(J_cd, M_cd, k, q|J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, j_d, m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
+        To express everything with a different ReducedMatrixElement definition
+        supply the definition with a keyword:
+
+        >>> MatrixElement(bra_ab, T, ket).as_direct_product(wigner_eckardt=True, definition='brink_satchler')
+        (-1)**(-2*k)*Sum(m_a, m_b, m_c, q)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, k, q|J_ab, M_ab)*<a, b| T(k, q) |c>
         """
 
         matrix = self.get_related_direct_matrix(**kw_args)
