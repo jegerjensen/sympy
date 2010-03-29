@@ -505,11 +505,13 @@ class SixJSymbol(AngularMomentumSymbol):
                     ThreeJSymbol(j3,J,J12,m3,-M,-M12))
 
         elif definition == 'brink_satchler':
-            phase = pow(S.NegativeOne,j1+J12+J-m1-M12-M)
-            expr = ( ThreeJSymbol(j1,J23,J, m1,M23,-M)*
-                    ThreeJSymbol(J,j3,J12,M, m3,-M12)*
-                    ThreeJSymbol(J12,j2,j1,M12,m2,-m1)*
-                    ThreeJSymbol(j2,j3,J23,m2,m3,M23))
+            (A, B, E, D, C, F) = self.args
+            (a, b, e, d, c, f) = projection_labels
+            phase = pow(S.NegativeOne, A+E+C-a-e-c)
+            expr = (ThreeJSymbol(A, F, C, a, f,-c)*
+                    ThreeJSymbol(C, D, E, c, d,-e)*
+                    ThreeJSymbol(E, B, A, e, b,-a)*
+                    ThreeJSymbol(B, D, F, b, d, f))
 
         elif definition == 'cgc':
             phase= Pow(S.NegativeOne, j1+j2+j3+J)
