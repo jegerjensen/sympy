@@ -10,7 +10,7 @@ from sympy.physics.racahalgebra import (
         SixJSymbol, ThreeJSymbol, ClebschGordanCoefficient, refine_tjs2sjs,
         convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor,
         CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent,
-        _standardize_coeff,
+        _standardize_coeff, iDij
         )
 from sympy.utilities import raises
 
@@ -21,6 +21,14 @@ def test_half_integer_ask_handler():
     assert ask(x,'half_integer', Assume(x,'half_integer', False)) == False
     assert ask(2*x,Q.even, Assume(x,'half_integer')) == False
     assert ask(2*x,Q.odd, Assume(x,'half_integer')) == True
+
+def test_inverse_kronecker_delta():
+    a,b,c = symbols('abc')
+    assert iDij(a, b) == iDij(b, a)
+
+    assert iDij(a, b) != Dij(a, b)
+    assert iDij(a, a) == Dij(a, a)
+
 
 def test_tjs_methods():
     a,b,c = symbols('abc')
