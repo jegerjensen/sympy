@@ -1172,15 +1172,6 @@ class ReducedMatrixElement(MatrixElement):
         Returns the reduced matrix element in terms of direct product
         matrices.
 
-        To this end, we use the ClebschGordanCoefficient orthogonality to
-        rewrite the relation
-
-        <(ab)JM|T(k,q)|(cd)JM> == (J_cd, M_cd, k, q|J_ab, M_ab) <J(ab)||T(k)||J(cd)>
-
-        as
-
-        <J(ab)||T(k)||J(cd)> ==
-            Sum(M_cd, q) (J_cd, M_cd, k, q|J_ab, M_ab) <(ab)JM|T(k,q)|(cd)JM>
         """
         invcgc = self._get_inverse_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
