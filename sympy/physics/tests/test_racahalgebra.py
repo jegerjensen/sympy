@@ -69,8 +69,8 @@ def test_determine_best_phase():
 
 
 def test_sjs_methods():
-    a,b,c,d,e,f,z = symbols('abcdefz')
-    A,B,C,D,E,F,Z = symbols('ABCDEFZ')
+    a,b,d,e,f,z = symbols('abdefz')
+    A,B,D,E,F,Z = symbols('ABDEFZ')
 
     # canonical ordering
     assert SixJSymbol(B, A, Z, E, D, F) == SixJSymbol(A, F, E, D, Z, B)
@@ -85,13 +85,11 @@ def test_sjs_methods():
     global_assumptions.add( Assume(f, Q.integer) )
     global_assumptions.add( Assume(E, Q.integer) )
     global_assumptions.add( Assume(F, Q.integer) )
-    global_assumptions.add( Assume(C, 'half_integer') )
-    global_assumptions.add( Assume(c, 'half_integer') )
+    global_assumptions.add( Assume(Z, 'half_integer') )
+    global_assumptions.add( Assume(z, 'half_integer') )
 
-    sjs = SixJSymbol(A, B, E, D, C, F);
-#    FIXME: check this expression!!!
-    assert sjs.get_ito_ThreeJSymbols((a,b,e,d,c,f), definition='brink_satchler') == (-1)**(C + D + F - a - c - e)*ASigma(a, b, c, d, e, f)*ThreeJSymbol(A, B, E, a, -e, -b)*ThreeJSymbol(A, C, F, a, f, -c)*ThreeJSymbol(B, D, F, e, -d, -c)*ThreeJSymbol(C, D, E, f, d, b)
-
+    sjs = SixJSymbol(A, B, E, D, Z, F);
+    assert sjs.get_ito_ThreeJSymbols((a,b,e,d,z,f), definition='brink_satchler') == (-1)**(A + E + Z - a - e - z)*ASigma(a, b, z, d, e, f)*ThreeJSymbol(A, F, Z, a,  f, -z)*ThreeJSymbol(Z, D, E, z, d, -e)*ThreeJSymbol(E, B, A, e,  b, -a)*ThreeJSymbol(B, D, F, b, d, f)
 
     global_assumptions.clear()
 
@@ -166,9 +164,9 @@ def test_3b_coupling_schemes():
 
     t1 = SphericalTensor('t1', A, a)
     t2 = SphericalTensor('t2', B, b)
-    t3 = SphericalTensor('t3',C, c)
-    T12 = SphericalTensor('T12',D, d, t1, t2)
-    T23 = SphericalTensor('T23',F, f, t2, t3)
+    t3 = SphericalTensor('t3', C, c)
+    T12 = SphericalTensor('T12', D, d, t1, t2)
+    T23 = SphericalTensor('T23', F, f, t2, t3)
 
     U = SphericalTensor('U',E, e, T12, t3)
     V = SphericalTensor('V',G, g, t1, T23)
@@ -256,12 +254,14 @@ def test_refine_tjs2sjs():
     T1_23 = SphericalTensor('T1_23',J, M, t1, T23)
 
     expr_tjs = convert_cgc2tjs(T1_23.get_ito_other_coupling_order(T12_3))
-    expr_tjs = refine(powsimp(expr_tjs))
-    expr_tjs = refine_tjs2sjs(expr_tjs)
-
     expr_heyde = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
             * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
-    assert is_equivalent(expr_heyde, expr_tjs)
+
+    expr = refine_tjs2sjs(expr_tjs, definition='brink_satchler')
+    assert is_equivalent(expr_heyde, expr)
+
+    expr = refine_tjs2sjs(expr_tjs, definition='edmonds')
+    assert is_equivalent(expr_heyde, expr)
 
 
 def test_is_equivalent():
