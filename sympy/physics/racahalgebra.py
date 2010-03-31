@@ -2146,7 +2146,11 @@ def convert_sumindex2dummy(expr):
     Replaces all summation Symbols with dummies.
     """
     expr = combine_ASigmas(expr)
-    sums = expr.atoms(ASigma).pop()
+    try:
+        sums = expr.atoms(ASigma).pop()
+    except KeyError:
+        return expr
+
     subslist = []
     Dummy = type(Symbol('x', dummy=True))
     for x in sums.args:
@@ -2172,7 +2176,11 @@ def convert_sumindex2nondummy(expr, subslist=[]):
     """
     Dummy = type(Symbol('x', dummy=True))
     expr = combine_ASigmas(expr)
-    sums = expr.atoms(ASigma).pop()
+    try:
+        sums = expr.atoms(ASigma).pop()
+    except KeyError:
+        return expr
+
     dummies = [ d for d in sums.args if isinstance(d, Dummy)]
     nondummies = extract_symbol2dummy_dict(sums)
 
