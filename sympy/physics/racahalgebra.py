@@ -754,6 +754,13 @@ class SphericalTensor(Basic):
         >>> t2 = SphericalTensor('t2',B,b)
         >>> T = SphericalTensor('T',D,d,t1,t2)
         >>> T.get_direct_product_ito_self()
+        Sum(_D, _d)*(A, a, B, b|_D, _d)*T[t1(A)*t2(B)](_D, _d)
+
+        If you know that you will not need to distinguish the summation indices
+        and would prefer an expression without dummy symbols, you can supply
+        the keyword argument use_dummies=False.
+
+        >>> T.get_direct_product_ito_self(use_dummies=False)
         Sum(D, d)*(A, a, B, b|D, d)*T[t1(A)*t2(B)](D, d)
 
         With three coupled tensors we get:
@@ -761,11 +768,14 @@ class SphericalTensor(Basic):
         >>> t3 = SphericalTensor('t3',C,c)
         >>> S = SphericalTensor('S',E,e,T,t3)
         >>> S.get_direct_product_ito_self()
-        Sum(D, d)*Sum(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A)*t2(B)](D)*t3(C)](E, e)
+        Sum(_D, _E, _d, _e)*(A, a, B, b|_D, _d)*(_D, _d, C, c|_E, _e)*S[T[t1(A)*t2(B)](_D)*t3(C)](_E, _e)
 
         """
-
-        return Mul(self._eval_coeff_for_direct_product_ito_self(**kw_args), self)
+        coeff = self._eval_coeff_for_direct_product_ito_self(**kw_args)
+        if kw_args.get('use_dummies', True):
+            return convert_sumindex2dummy(coeff*self)
+        else:
+            return coeff*self
 
     def as_direct_product(self, **kw_args):
         """
@@ -780,6 +790,13 @@ class SphericalTensor(Basic):
         >>> t2 = SphericalTensor('t2', 'B', 'b')
         >>> T = SphericalTensor('T', 'D', 'd', t1, t2)
         >>> T.as_direct_product()
+        Sum(_a, _b)*t1(A, _a)*t2(B, _b)*(A, _a, B, _b|D, d)
+
+        If you know that you will not need to distinguish the summation indices
+        and would prefer an expression without dummy symbols, you can supply
+        the keyword argument use_dummies=False.
+
+        >>> T.as_direct_product(use_dummies=False)
         Sum(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
 
         With three coupled tensors we get:
@@ -787,10 +804,10 @@ class SphericalTensor(Basic):
         >>> t3 = SphericalTensor('t3', 'C', 'c')
         >>> S = SphericalTensor('S', 'E', 'e', T, t3)
         >>> S.as_direct_product()
-        Sum(a, b, c, d)*t1(A, a)*t2(B, b)*t3(C, c)*(A, a, B, b|D, d)*(D, d, C, c|E, e)
+        Sum(_a, _b, _c, _d)*t1(A, _a)*t2(B, _b)*t3(C, _c)*(A, _a, B, _b|D, _d)*(D, _d, C, _c|E, e)
 
         """
-        return Mul(*self._eval_as_coeff_direct_product(**kw_args))
+        return Mul(*self.as_coeff_direct_product(**kw_args))
 
     def as_coeff_direct_product(self, **kw_args):
         """
@@ -805,10 +822,15 @@ class SphericalTensor(Basic):
         >>> t2 = SphericalTensor('t2', 'B', 'b')
         >>> T = SphericalTensor('T', 'D', 'd', t1, t2)
         >>> T.as_coeff_direct_product()
-        (Sum(a, b)*(A, a, B, b|D, d), t1(A, a)*t2(B, b))
+        (Sum(_a, _b)*(A, _a, B, _b|D, d), t1(A, _a)*t2(B, _b))
 
         """
-        return self._eval_as_coeff_direct_product(**kw_args)
+        coeff, dirprod = self._eval_as_coeff_direct_product(**kw_args)
+        if kw_args.get('use_dummies', True):
+            coeff = convert_sumindex2dummy(coeff)
+            subsdict = extract_symbol2dummy_dict(coeff)
+            dirprod = dirprod.subs(subsdict)
+        return coeff, dirprod
 
     def _sympystr_(self, *args):
         """
@@ -926,13 +948,14 @@ class CompositeSphericalTensor(SphericalTensor):
                     self.rank,self.projection)
                 * t1._eval_coeff_for_direct_product_ito_self()
                 * t2._eval_coeff_for_direct_product_ito_self()
+                * ASigma(self.rank, self.projection)
                 )
 
-        return ASigma(self.rank, self.projection)*expr
+        return combine_ASigmas(expr)
 
 
 
-    def get_ito_other_coupling_order(self,other_coupling):
+    def as_other_coupling(self, other_coupling, **kw_args):
         """
         Returns an expression that states how this Composite spherical tensor
         can be written in terms of the supplied composite spherical tensor.
@@ -956,36 +979,63 @@ class CompositeSphericalTensor(SphericalTensor):
 
         This method tells you how S2 can be expressed in terms of S1:
 
-        >>> S2.get_ito_other_coupling_order(S1)
-        Sum(D, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S1[T12[t1(A)*t2(B)](D)*t3(C)](F, f)*Dij(F, G)*Dij(f, g)
+        >>> S2.as_other_coupling(S1)
+        Sum(_D, _a, _b, _c, _d, _e)*(A, _a, B, _b|_D, _d)*(A, _a, E, _e|G, g)*(B, _b, C, _c|E, _e)*(_D, _d, C, _c|G, g)*S1[T12[t1(A)*t2(B)](_D)*t3(C)](G, g)
 
-        Note how F==G and f==g is expressed with the Kronecker delta, Dij.
+        Note how S1(F, f) has been replaced with S1(G, g) because only those
+        values of rank and projection can contribute when S2 is expressed
+        i.t.o. S1.  Here, there are no dummy variables with conflicting names,
+        so we can also ask for an expression without dummies:
 
-        >>> S1.get_ito_other_coupling_order(S2)
-        Sum(E, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A)*T23[t2(B)*t3(C)](E)](G, g)*Dij(F, G)*Dij(f, g)
+        >>> S2.as_other_coupling(S1, use_dummies=False)
+        Sum(D, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|G, g)*(B, b, C, c|E, e)*(D, d, C, c|G, g)*S1[T12[t1(A)*t2(B)](D)*t3(C)](G, g)
+
+        The result has now been filtered through convert_sumindex2nondummy().
+        If there is a name conflict during the substitution, an exception is
+        raised.  If we ask for the other relation, S1 expressed in terms of S2,
+        we see that the only S2(F, f) can contribute:
+
+        >>> S1.as_other_coupling(S2, use_dummies=False)
+        Sum(E, a, b, c, d, e)*(A, a, B, b|D, d)*(A, a, E, e|F, f)*(B, b, C, c|E, e)*(D, d, C, c|F, f)*S2[t1(A)*T23[t2(B)*t3(C)](E)](F, f)
 
         """
         my_tensors = self.atoms(AtomicSphericalTensor)
         assert my_tensors == other_coupling.atoms(AtomicSphericalTensor)
 
         # Use direct product as a link between coupling schemes
-        direct_product = Mul(*my_tensors)
         self_as_direct_product = self.as_direct_product()
         direct_product_ito_other = other_coupling.get_direct_product_ito_self()
 
         # In the direct product there is a sum over other.rank and
         # other.projection, but for a transformation of coupling scheme the
         # coefficient <(..).:J'M'|.(..);J M> implies that J'==J and M'==M.
-        # We correct this by replacing the superfluous summation symbol with
-        # Kronecker deltas.
-        j,m = (other_coupling.rank,other_coupling.projection)
-        dij = Dij(self.rank,j)*Dij(self.projection,m)
-        direct_product_ito_other = (
-                dij* remove_summation_indices(direct_product_ito_other,(j,m))
+        # We can evaluate those sums immediately, i.e. only return the
+        # surviving term. So we remove the summations and substitute with the
+        # correct rank, projection.
+        j = self.rank
+        m = self.projection
+        direct_product_ito_other = convert_sumindex2nondummy(
+                direct_product_ito_other,
+                [(other_coupling.rank, j), (other_coupling.projection, m)]
+                )
+        direct_product_ito_other = remove_summation_indices(
+                direct_product_ito_other, (j, m)
                 )
 
-        return combine_ASigmas(self_as_direct_product.subs(
-            direct_product,direct_product_ito_other))
+        # self_as_direct_product is a sum over dummy symbols.  To substitute
+        # correctly, these dummies must be inserted in the substitution target,
+        # and in direct_product_ito_other as well:
+        subsdict = extract_symbol2dummy_dict(self_as_direct_product)
+        direct_product = Mul(*my_tensors).subs(subsdict)
+        direct_product_ito_other = direct_product_ito_other.subs(subsdict)
+
+        expr = combine_ASigmas(
+                self_as_direct_product.subs(direct_product, direct_product_ito_other)
+                )
+        if kw_args.get('use_dummies', True):
+            return expr
+        else:
+            return convert_sumindex2nondummy(expr)
 
 
 class AtomicSphericalTensor(SphericalTensor):

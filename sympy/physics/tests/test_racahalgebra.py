@@ -143,8 +143,8 @@ def test_CompositeSphericalTensor_methods():
     assert T.tensor1 == t1
     assert T.tensor2== t2
     assert str(T) == 'T[t1(A)*t2(B)](C, c)'
-    assert T.as_direct_product() == ASigma(a, b)*ClebschGordanCoefficient(A,a,B,b,C,c)*t1*t2
-    assert T.get_direct_product_ito_self() == ASigma(C, c)*ClebschGordanCoefficient(A,a,B,b,C,c)*T
+    assert T.as_direct_product(use_dummies=False) == ASigma(a, b)*ClebschGordanCoefficient(A,a,B,b,C,c)*t1*t2
+    assert T.get_direct_product_ito_self(use_dummies=False) == ASigma(C, c)*ClebschGordanCoefficient(A,a,B,b,C,c)*T
 
 def test_CompositeSphericalTensor_nestings():
     a,b,c,d,e,f = symbols('abcdef')
@@ -155,8 +155,8 @@ def test_CompositeSphericalTensor_nestings():
     t3 = SphericalTensor('t3',C, c)
     T = SphericalTensor('T',D, d, t1, t2)
     U = SphericalTensor('U',E, e, T, t3)
-    assert U.as_direct_product() == ASigma(a, b, c, d)*t1*t2*t3*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)
-    assert U.as_direct_product(deep=False) == ASigma(c, d)*T*t3*ClebschGordanCoefficient(D, d, C, c, E, e)
+    assert U.as_direct_product(use_dummies=False) == ASigma(a, b, c, d)*t1*t2*t3*ClebschGordanCoefficient(A, a, B, b, D, d)*ClebschGordanCoefficient(D, d, C, c, E, e)
+    assert U.as_direct_product(deep=False, use_dummies=False) == ASigma(c, d)*T*t3*ClebschGordanCoefficient(D, d, C, c, E, e)
 
 def test_3b_coupling_schemes():
     a,b,c,d,e,f,g = symbols('abcdefg')
@@ -171,14 +171,13 @@ def test_3b_coupling_schemes():
     U = SphericalTensor('U',E, e, T12, t3)
     V = SphericalTensor('V',G, g, t1, T23)
 
-    assert V.get_ito_other_coupling_order(U) == (
+    assert V.as_other_coupling(U, use_dummies=False) == (
             ASigma(D, a, b, c, d, f)
             *ClebschGordanCoefficient(A, a, B, b, D, d)
             *ClebschGordanCoefficient(A, a, F, f, G, g)
             *ClebschGordanCoefficient(B, b, C, c, F, f)
             *ClebschGordanCoefficient(D, d, C, c, E, e)
-            *U*Dij(G,E)*Dij(g,e)
-            )
+            *U).subs({E: G, e: g})
 
 def test_4b_coupling_schemes():
     a,b,c,d,e,f,g,h,y,z = symbols('abcdefghyz')
@@ -197,7 +196,7 @@ def test_4b_coupling_schemes():
     Tls = SphericalTensor('Tls', Y, y,  L,  U)
     Tjj = SphericalTensor('Tjj', Z, z, j1, j2)
 
-    assert Tls.get_ito_other_coupling_order(Tjj) == (
+    assert Tls.as_other_coupling(Tjj, use_dummies=False) == (
             ASigma(a, b, c, d, e, f, g, h, G, H)
             *ClebschGordanCoefficient(A, a, C, c, G, g) # j1
             *ClebschGordanCoefficient(B, b, D, d, H, h) # j2
@@ -205,8 +204,8 @@ def test_4b_coupling_schemes():
             *ClebschGordanCoefficient(C, c, D, d, F, f) # U
             *ClebschGordanCoefficient(E, e, F, f, Y, y) # Tls
             *ClebschGordanCoefficient(G, g, H, h, Z, z) # Tjj
-            *Tjj*Dij(Y,Z)*Dij(y,z)
-            )
+            *Tjj).subs({Z: Y, z: y})
+
 def test_standardize_coeff():
     a,b,c = symbols('a b c')
     global_assumptions.clear()
@@ -253,7 +252,7 @@ def test_refine_tjs2sjs():
     T12_3 = SphericalTensor('T12_3',J, M, T12, t3)
     T1_23 = SphericalTensor('T1_23',J, M, t1, T23)
 
-    expr_tjs = convert_cgc2tjs(T1_23.get_ito_other_coupling_order(T12_3))
+    expr_tjs = convert_cgc2tjs(T1_23.as_other_coupling(T12_3, use_dummies=False))
     expr_heyde = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
             * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
 
