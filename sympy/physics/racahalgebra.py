@@ -981,7 +981,7 @@ class CompositeSphericalTensor(SphericalTensor):
         j,m = (other_coupling.rank,other_coupling.projection)
         dij = Dij(self.rank,j)*Dij(self.projection,m)
         direct_product_ito_other = (
-                dij* remove_summation_indices(direct_product_ito_other,j,m)
+                dij* remove_summation_indices(direct_product_ito_other,(j,m))
                 )
 
         return combine_ASigmas(self_as_direct_product.subs(
@@ -2083,23 +2083,23 @@ def combine_ASigmas(expr):
     else:
         return expr
 
-def remove_summation_indices(expr, *indices):
+def remove_summation_indices(expr, indices):
     """
     Locates all ASigma in ``expr`` and removes requested indices.
 
-    Note: if you try to remove an index which is not there, you get a ValueError
+    If you try to remove an index which is not there, you get a ValueError
 
     >>> from sympy.physics.racahalgebra import ASigma, remove_summation_indices
     >>> from sympy import symbols, Function
     >>> a,b,c = symbols('abc')
     >>> f = Function('f')
     >>> expr = ASigma(a,b)*f(a,b) + ASigma(a)*f(a,c)
-    >>> remove_summation_indices(expr, a)
+    >>> remove_summation_indices(expr, [a])
     Sum(b)*f(a, b) + f(a, c)
 
     """
     if expr.is_Add:
-        return Add(*[ remove_summation_indices(arg, *indices) for arg in expr.args ])
+        return Add(*[ remove_summation_indices(arg, indices) for arg in expr.args ])
     expr = combine_ASigmas(expr)
     sigma = expr.atoms(ASigma).pop()
     new = sigma.remove_indices(indices)
