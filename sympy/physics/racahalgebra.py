@@ -739,6 +739,32 @@ class SphericalTensor(Basic):
         return self.args[0]
 
     def get_direct_product_ito_self(self, **kw_args):
+        """
+        Returns the direct product of all constituent tensors in terms of (=ito) self.
+
+        The direct product can be expressed as a sum over composite tensors.
+        Note: the returned expression of this method is *not* equal to self.
+
+        >>> from sympy.physics.racahalgebra import SphericalTensor
+        >>> from sympy import symbols
+        >>> a,b,c,d,e = symbols('abcde')
+        >>> A,B,C,D,E = symbols('ABCDE')
+
+        >>> t1 = SphericalTensor('t1',A,a)
+        >>> t2 = SphericalTensor('t2',B,b)
+        >>> T = SphericalTensor('T',D,d,t1,t2)
+        >>> T.get_direct_product_ito_self()
+        Sum(D, d)*(A, a, B, b|D, d)*T[t1(A)*t2(B)](D, d)
+
+        With three coupled tensors we get:
+
+        >>> t3 = SphericalTensor('t3',C,c)
+        >>> S = SphericalTensor('S',E,e,T,t3)
+        >>> S.get_direct_product_ito_self()
+        Sum(D, d)*Sum(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A)*t2(B)](D)*t3(C)](E, e)
+
+        """
+
         return Mul(self._eval_coeff_for_direct_product_ito_self(**kw_args), self)
 
     def as_direct_product(self, **kw_args):
@@ -892,32 +918,6 @@ class CompositeSphericalTensor(SphericalTensor):
         return combine_ASigmas(coeffs),t1*t2
 
     def _eval_coeff_for_direct_product_ito_self(self, **kw_args):
-        """
-        Returns the direct product of all constituent tensors in terms of (=ito) self.
-
-        The direct product can be expressed as a sum over composite tensors.
-        Note: the returned expression of this method is *not* equal to self.
-
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy import symbols
-        >>> a,b,c,d,e = symbols('abcde')
-        >>> A,B,C,D,E = symbols('ABCDE')
-
-        >>> t1 = SphericalTensor('t1',A,a)
-        >>> t2 = SphericalTensor('t2',B,b)
-        >>> T = SphericalTensor('T',D,d,t1,t2)
-        >>> T.get_direct_product_ito_self()
-        Sum(D, d)*(A, a, B, b|D, d)*T[t1(A)*t2(B)](D, d)
-
-        With three coupled tensors we get:
-
-        >>> t3 = SphericalTensor('t3',C,c)
-        >>> S = SphericalTensor('S',E,e,T,t3)
-        >>> S.get_direct_product_ito_self()
-        Sum(D, d)*Sum(E, e)*(A, a, B, b|D, d)*(D, d, C, c|E, e)*S[T[t1(A)*t2(B)](D)*t3(C)](E, e)
-
-        """
-
         t1 = self.tensor1
         t2 = self.tensor2
         expr = (ClebschGordanCoefficient(
