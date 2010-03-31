@@ -923,10 +923,6 @@ class CompositeSphericalTensor(SphericalTensor):
 
         t1 = self.tensor1
         t2 = self.tensor2
-        max_j = t1.rank + t2.rank
-        min_j = abs(t1.rank - t2.rank)
-        sum_J = (self.rank, min_j, max_j)
-        sum_M = (self.projection, -self.rank, self.rank)
         expr = (ClebschGordanCoefficient(
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
