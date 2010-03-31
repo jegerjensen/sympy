@@ -742,9 +742,46 @@ class SphericalTensor(Basic):
         return Mul(self._eval_coeff_for_direct_product_ito_self(**kw_args), self)
 
     def as_direct_product(self, **kw_args):
+        """
+        Returns this tensor in terms of a direct product of constituent tensors.
+
+        If the keyword deep=False is supplied, only the top-level composite
+        tensor (i.e. self) is uncoupled.
+
+        >>> from sympy.physics.racahalgebra import SphericalTensor
+        >>> from sympy import symbols
+        >>> t1 = SphericalTensor('t1', 'A', 'a')
+        >>> t2 = SphericalTensor('t2', 'B', 'b')
+        >>> T = SphericalTensor('T', 'D', 'd', t1, t2)
+        >>> T.as_direct_product()
+        Sum(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
+
+        With three coupled tensors we get:
+
+        >>> t3 = SphericalTensor('t3', 'C', 'c')
+        >>> S = SphericalTensor('S', 'E', 'e', T, t3)
+        >>> S.as_direct_product()
+        Sum(a, b, c, d)*t1(A, a)*t2(B, b)*t3(C, c)*(A, a, B, b|D, d)*(D, d, C, c|E, e)
+
+        """
         return Mul(*self._eval_as_coeff_direct_product(**kw_args))
 
     def as_coeff_direct_product(self, **kw_args):
+        """
+        Returns a tuple with the coupling coefficient and direct product.
+
+        If the keyword deep=False is supplied, only the top-level composite
+        tensor (i.e. self) is uncoupled.
+
+        >>> from sympy.physics.racahalgebra import SphericalTensor
+        >>> from sympy import symbols
+        >>> t1 = SphericalTensor('t1', 'A', 'a')
+        >>> t2 = SphericalTensor('t2', 'B', 'b')
+        >>> T = SphericalTensor('T', 'D', 'd', t1, t2)
+        >>> T.as_coeff_direct_product()
+        (Sum(a, b)*(A, a, B, b|D, d), t1(A, a)*t2(B, b))
+
+        """
         return self._eval_as_coeff_direct_product(**kw_args)
 
     def _sympystr_(self, *args):
@@ -842,34 +879,6 @@ class CompositeSphericalTensor(SphericalTensor):
         return symbol+tensor_product+rank_projection
 
     def _eval_as_coeff_direct_product(self, **kw_args):
-        """
-        Returns this composite tensor in terms of the direct product of constituent tensors.
-
-        If the keyword deep=False is supplied, the uncoupling is not applied
-        to the tensors that make up this composite tensor.
-
-        >>> from sympy.physics.racahalgebra import SphericalTensor
-        >>> from sympy import symbols
-        >>> a,b,c,d,e = symbols('abcde')
-        >>> A,B,C,D,E = symbols('ABCDE')
-
-        >>> t1 = SphericalTensor('t1',A,a)
-        >>> t2 = SphericalTensor('t2',B,b)
-        >>> T = SphericalTensor('T',D,d,t1,t2)
-        >>> T.as_direct_product()
-        Sum(a, b)*t1(A, a)*t2(B, b)*(A, a, B, b|D, d)
-        >>> T.as_coeff_direct_product()
-        (Sum(a, b)*(A, a, B, b|D, d), t1(A, a)*t2(B, b))
-
-        With three coupled tensors we get:
-
-        >>> t3 = SphericalTensor('t3',C,c)
-        >>> S = SphericalTensor('S',E,e,T,t3)
-        >>> S.as_direct_product()
-        Sum(a, b, c, d)*t1(A, a)*t2(B, b)*t3(C, c)*(A, a, B, b|D, d)*(D, d, C, c|E, e)
-
-        """
-
         t1 = self.tensor1
         t2 = self.tensor2
         coeffs = (ClebschGordanCoefficient(
