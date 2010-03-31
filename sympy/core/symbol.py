@@ -125,6 +125,17 @@ class Dummy(Symbol):
         obj.dummy_index = Dummy._count
         return obj
 
+    def as_nondummy(self):
+        """
+        Returns the corresponding non-dummy symbol
+
+        >>> from sympy import Symbol
+        >>> x1 = Symbol('x', dummy = True)
+        >>> x1.as_nondummy() == Symbol('x')
+        True
+        """
+        return Symbol(self.name, self.is_commutative, **self.assumptions0)
+
     def _hashable_content(self):
         return Symbol._hashable_content(self) + (self.dummy_index,)
 

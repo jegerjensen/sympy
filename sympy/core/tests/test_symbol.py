@@ -37,13 +37,13 @@ def test_as_dummy_nondummy():
     x1 = x.as_dummy()
     assert x1 != x
     assert x1 != x.as_dummy()
-    # assert x == x1.as_nondummy()
+    assert x == x1.as_nondummy()
 
     x = Symbol('x', commutative = False)
     x1 = x.as_dummy()
     assert x1 != x
     assert x1.is_commutative == False
-    # assert x == x1.as_nondummy()
+    assert x == x1.as_nondummy()
 
 def test_lt_gt():
     x, y = Symbol('x'), Symbol('y')
