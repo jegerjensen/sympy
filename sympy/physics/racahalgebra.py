@@ -2122,3 +2122,71 @@ def convert_cgc2tjs(expr):
         subslist.append((cgc,cgc.get_as_ThreeJSymbol()))
     return expr.subs(subslist)
 
+def extract_symbol2dummy_dict(expr):
+    """
+    Returns a dict mapping nondummies to dummies in expr.
+
+    >>> from sympy.physics.racahalgebra import extract_symbol2dummy_dict
+    >>> from sympy import symbols
+    >>> a,b = symbols('a b')
+    >>> expr = a.as_dummy() + b.as_dummy()
+    >>> extract_symbol2dummy_dict(expr)
+    {a: _a, b: _b}
+
+    """
+    Dummy = type(Symbol('x', dummy=True))
+    dummies = list(expr.atoms(Dummy))
+    nondummies ={}
+    for k,v in [ (d.as_nondummy(), d) for d in dummies ]:
+        if k in nondummies:
+            raise ValueError("No unique mapping for symbols to dummies")
+        else:
+            nondummies[k] = v
+    return nondummies
+
+def convert_sumindex2dummy(expr):
+    """
+    Replaces all summation Symbols with dummies.
+    """
+    expr = combine_ASigmas(expr)
+    sums = expr.atoms(ASigma).pop()
+    subslist = []
+    Dummy = type(Symbol('x', dummy=True))
+    for x in sums.args:
+        if not isinstance(x, Dummy):
+            subslist.append((x, x.as_dummy()))
+    return (expr).subs(subslist)
+
+def convert_sumindex2nondummy(expr, subslist=[]):
+    """
+    Replaces summation dummies according to recipe in subslist.
+
+     - if ``subslist'' is not present: every dummy is replaced
+
+     - if ``subslist'' is present it should contain tuples of symbols (old, new)
+
+    If old is of type Dummy, the substitution is performed directly from the
+    supplied subslist.
+
+    If old is of type Symbol, and there is a unique summation dummy symbol that
+    corresponds to ``old'', it will be substituted.  If there is more than one
+    summation dummy that corresponds to ``old'' an exception is raised.
+
+    """
+    Dummy = type(Symbol('x', dummy=True))
+    expr = combine_ASigmas(expr)
+    sums = expr.atoms(ASigma).pop()
+    dummies = [ d for d in sums.args if isinstance(d, Dummy)]
+    nondummies = extract_symbol2dummy_dict(sums)
+
+    new_subslist = []
+    if not subslist:
+        for x in dummies:
+            new_subslist.append((x, x.as_nondummy()))
+    for old, new in subslist:
+        if old in dummies:
+            new_subslist.append(old, new)
+        elif old in nondummies:
+                new_subslist.append((nondummies[old], new))
+
+    return (expr).subs(new_subslist)
