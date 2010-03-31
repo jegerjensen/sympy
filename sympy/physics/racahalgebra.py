@@ -788,10 +788,7 @@ class SphericalTensor(Basic):
         """
         >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
-        >>> a,b,c,d,e = symbols('abcde')
-        >>> A,B,C,D,E = symbols('ABCDE')
-
-        >>> SphericalTensor('t1',A,a)
+        >>> SphericalTensor('t1', 'A', 'a')
         t1(A, a)
         """
 
