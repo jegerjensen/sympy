@@ -5,7 +5,8 @@ from sympy.physics.racahalgebra import (
         ThreeJSymbol, ClebschGordanCoefficient, SixJSymbol, SphericalTensor,
         refine_tjs2sjs, refine_phases, convert_cgc2tjs, convert_tjs2cgc,
         combine_ASigmas, remove_summation_indices, ASigma,
-        invert_clebsch_gordans, AngularMomentumSymbol
+        invert_clebsch_gordans, AngularMomentumSymbol,
+        extract_symbol2dummy_dict, convert_sumindex2dummy
         )
 from sympy.physics.secondquant import (
         Dagger, AntiSymmetricTensor, _sort_anticommuting_fermions
@@ -488,13 +489,22 @@ class SphericalQuantumState(QuantumState):
         c1, t1 = self.state1.as_coeff_tensor()
         c2, t2 = self.state2.as_coeff_tensor()
         cgc, t = SphericalTensor('T', j, m, t1, t2
-                ).as_coeff_direct_product(deep=True)
-        cgc = cgc*c1*c2
+                ).as_coeff_direct_product(deep=True, **kw_args)
+        cgc = phase*cgc*c1*c2
 
         # call deep to get coefficients for internal structure
         c1, s1 = self.state1._eval_as_coeff_sp_states(**kw_args)
         c2, s2 = self.state2._eval_as_coeff_sp_states(**kw_args)
-        return phase*combine_ASigmas(c1*c2*cgc), s1 + s2
+
+        if kw_args.get('use_dummies', True):
+            s2d = extract_symbol2dummy_dict(cgc)
+            c1 = c1.subs(s2d)
+            c2 = c2.subs(s2d)
+            cgc = cgc.subs(s2d)
+            s1 = [ s.subs(s2d) for s in s1]
+            s2 = [ s.subs(s2d) for s in s2]
+
+        return combine_ASigmas(c1*c2*cgc), tuple(s1 + s2)
 
     def as_direct_product(self, **kw_args):
         c,p = self._eval_as_coeff_sp_states(**kw_args)
@@ -1099,10 +1109,11 @@ class ReducedMatrixElement(MatrixElement):
         elif self.definition == 'brink_satchler':
             factor = (-1)**(-2*j2)*ASigma(m1,m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket
 
+        if kw_args.get('use_dummies', True):
+            factor = convert_sumindex2dummy(factor)
         if kw_args.get('tjs'):
-            return refine_phases(convert_cgc2tjs(factor))
-        else:
-            return factor
+            factor = refine_phases(convert_cgc2tjs(factor))
+        return factor
 
     def _get_ThreeTensorMatrixElement(self):
         """
@@ -1159,9 +1170,14 @@ class ReducedMatrixElement(MatrixElement):
         (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
 
         """
-        cgc = self._get_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
         dirprod = matel.get_direct_product_ito_self()
+        subsdict = extract_symbol2dummy_dict(dirprod)
+
+        matel = matel.subs(subsdict)
+        redmat = self.subs(subsdict)
+        cgc = redmat._get_reduction_factor(**kw_args)
+
         if kw_args.get('tjs'):
             return refine_phases(convert_cgc2tjs(cgc * dirprod.subs(matel, self)))
         else:
@@ -1176,7 +1192,11 @@ class ReducedMatrixElement(MatrixElement):
         invcgc = self._get_inverse_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
 
-        return combine_ASigmas(matel.as_direct_product()*invcgc)
+        subsdict = extract_symbol2dummy_dict(invcgc)
+        matel = matel.subs(subsdict)
+        matel = matel.as_direct_product(**kw_args)
+
+        return combine_ASigmas(matel*invcgc)
 
 class ReducedMatrixElement_edmonds(ReducedMatrixElement):
     _definition = 'edmonds'
@@ -1364,14 +1384,21 @@ class ThreeTensorMatrixElement(MatrixElement):
         (-1)**(m_b - j_b)*Sum(J_bc, M_bc)*(J_bc, M_bc, k, q|j_a, m_a)*(j_b, -m_b, j_c, m_c|J_bc, M_bc)*<a|| T(k) ||bc(<b|, c)>
         """
         if kw_args.get('wigner_eckardt'):
-            redmat = self.get_related_redmat()
+            redmat = self.get_related_redmat(**kw_args)
             return redmat.get_direct_product_ito_self(**kw_args)
 
-        coeffs = self.as_direct_product(only_coeffs=True)
+        coeffs_inv = self.as_direct_product(only_coeffs=True, use_dummies=False)
+        coeffs = invert_clebsch_gordans(coeffs_inv)
+        matrix = self
+
+        if kw_args.get('use_dummies', True):
+            coeffs = convert_sumindex2dummy(coeffs)
+            subsdict = extract_symbol2dummy_dict(coeffs)
+            matrix = matrix.subs(subsdict)
         if kw_args.get('tjs'):
-            return refine_phases(convert_cgc2tjs(invert_clebsch_gordans(coeffs))*self)
-        else:
-            return invert_clebsch_gordans(coeffs)*self
+            coeffs = refine_phases(convert_cgc2tjs(coeffs))
+
+        return coeffs*matrix
 
 
     def as_direct_product(self, **kw_args):
@@ -1416,8 +1443,12 @@ class ThreeTensorMatrixElement(MatrixElement):
         cbra, bra = self.left.as_coeff_sp_states(**kw_args)
         cket, ket = self.right.as_coeff_sp_states(**kw_args)
 
+        if kw_args.get('use_dummies', True):
+            subsdict = extract_symbol2dummy_dict(cbra*cket)
+            matrix = matrix.subs(subsdict)
+
         if kw_args.get('wigner_eckardt'):
-            cgc = self.get_related_redmat(**kw_args)._get_inverse_reduction_factor()
+            cgc = self.get_related_redmat(**kw_args)._get_inverse_reduction_factor(**kw_args)
         else:
             cgc = S.One
 
