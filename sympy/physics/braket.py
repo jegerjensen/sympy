@@ -539,15 +539,30 @@ class SphericalQuantumState(QuantumState):
 
         >>> coeff, states = SphFermKet('ab',a,b).as_coeff_sp_states()
         >>> coeff
-        (-1)**(j_b - m_b)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, M_ab)
+        (-1)**(j_b - _m_b)*Sum(_m_a, _m_b)*(j_a, _m_a, j_b, -_m_b|J_ab, M_ab)
         >>> states
         (|a>, <b|)
 
-        If a,b are coupled to form a dual state, this is reflected in the
+        Although it does not show in the representation, also the states
+        contain dummy symbols if they are subject to summation:
+
+        >>> [ s._m for s in states ]
+        [_m_a, _m_b]
+
+        If you know what you are doing and would prefer an expression without dummy
+        symbols, you can supply the keyword use_dummies=False.
+
+        >>> coeff, states = SphFermKet('ab',a,b).as_coeff_sp_states(use_dummies=False)
+        >>> coeff
+        (-1)**(j_b - m_b)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, M_ab)
+        >>> [ s._m for s in states ]
+        [m_a, m_b]
+
+        If |a> and <b| are coupled to form a dual state, this is reflected in the
         coupling coefficient:
 
         >>> bra_ab = SphFermBra('ab',a,b)
-        >>> coeff, states = bra_ab.as_coeff_sp_states()
+        >>> coeff, states = bra_ab.as_coeff_sp_states(use_dummies=False)
         >>> coeff
         (-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, m_a, j_b, -m_b|J_ab, -M_ab)
         >>> states
@@ -558,7 +573,7 @@ class SphericalQuantumState(QuantumState):
         coefficients.
 
         >>> bra_ab = SphFermBra('ab',Dagger(a), b)
-        >>> coeff, states = bra_ab.as_coeff_sp_states()
+        >>> coeff, states = bra_ab.as_coeff_sp_states(use_dummies=False)
         >>> coeff
         Sum(m_a, m_b)*(j_a, m_a, j_b, m_b|J_ab, M_ab)
         >>> states
@@ -570,9 +585,9 @@ class SphericalQuantumState(QuantumState):
         |abc(ab(a, <b|), c)>
         >>> coeff_abc, states = abc.as_coeff_sp_states()
         >>> coeff_abc
-        (-1)**(j_b - m_b)*Sum(M_ab, m_a, m_b, m_c)*(J_ab, M_ab, j_c, m_c|J_abc, M_abc)*(j_a, m_a, j_b, -m_b|J_ab, M_ab)
-        >>> states
-        (|a>, <b|, |c>)
+         (-1)**(j_b - _m_b)*Sum(_M_ab, _m_a, _m_b, _m_c)*(J_ab, _M_ab, j_c, _m_c|J_abc, M_abc)*(j_a, _m_a, j_b, -_m_b|J_ab, _M_ab)
+        >>> [ s._m for s in states ]
+        [_m_a, _m_b, _m_c]
 
 
         """
@@ -731,9 +746,9 @@ class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
     ((-1)**(J_c - M_c), T(J_c, -M_c))
 
     >>> C.as_direct_product()
-    Sum(m_a, m_b)*(j_a, m_a, j_b, m_b|J_c, M_c)*<a|*<b|
+    Sum(_m_a, _m_b)*(j_a, _m_a, j_b, _m_b|J_c, M_c)*<a|*<b|
     >>> C.as_direct_product(strict_bra_coupling=True)
-    (-1)**(j_a - m_a)*(-1)**(j_b - m_b)*(-1)**(J_c - M_c)*Sum(m_a, m_b)*(j_a, -m_a, j_b, -m_b|J_c, -M_c)*<a|*<b|
+    (-1)**(j_a - _m_a)*(-1)**(j_b - _m_b)*(-1)**(J_c - M_c)*Sum(_m_a, _m_b)*(j_a, -_m_a, j_b, -_m_b|J_c, -M_c)*<a|*<b|
 
     """
     _hermitian_conjugate = SphFermKet
@@ -993,22 +1008,29 @@ class ReducedMatrixElement(MatrixElement):
     >>> ReducedMatrixElement(bra, T, ket)._get_reduction_factor()
     (j_b, m_b, k, q|j_a, m_a)
 
-    You can also formulate the direct product (corresponding to a full decomposition
-    of all states) in terms of (ito) the ReducedMatrixElement:
-    Note that those expressions are not equal to the ReducedMatrixElement,
-    but rather to the corresponding uncoupled matrix element.
+    You can also formulate the direct product (corresponding to a full
+    decomposition of all states) in terms of (ito) the ReducedMatrixElement:
+    Note that those expressions are not equal to the ReducedMatrixElement, but
+    rather to the corresponding uncoupled matrix element.
 
     >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
     (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
     >>> ReducedMatrixElement(bra, T, SphFermKet('bc',ket,'c')).get_direct_product_ito_self()
-    Sum(J_bc, M_bc)*(J_bc, M_bc, k, q|j_a, m_a)*(j_b, m_b, j_c, m_c|J_bc, M_bc)*<a|| T(k) ||bc(b, c)>
+    Sum(_J_bc, _M_bc)*(j_b, m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(b, c)>
 
-    The ReducedMatrixElement can also express itself in terms of a direct product.
+    The ReducedMatrixElement can also express itself in terms of a direct
+    product.
 
     >>> ReducedMatrixElement(bra, T, ket).as_direct_product()
-    Sum(m_b, q)*(j_b, m_b, k, q|j_a, m_a)*<a| T(k, q) |b>
+    Sum(_m_b, _q)*(j_b, _m_b, k, _q|j_a, m_a)*<a| T(k, _q) |b>
     >>> ReducedMatrixElement(bra, T, SphFermKet('bc',ket,'c')).as_direct_product()
-    Sum(M_bc, m_b, m_c, q)*(J_bc, M_bc, k, q|j_a, m_a)*(j_b, m_b, j_c, m_c|J_bc, M_bc)*<a| T(k, q) |b, c>
+    Sum(_M_bc, _m_b, _m_c, _q)*(J_bc, _M_bc, k, _q|j_a, m_a)*(j_b, _m_b, j_c, _m_c|J_bc, _M_bc)*<a| T(k, _q) |b, c>
+
+    Note that in the above expression, the summation over _M_bc and _q
+    originates from the inverted clebsch gordan coefficient, and the sum over
+    _m_b and _m_c from the coupling in the state |bc(b, c)>.  The angular
+    momenta of |bc(b, c)> are not dummy symbols, hence not subject to the
+    summation.
 
 
     Alternative definitions
@@ -1119,11 +1141,11 @@ class ReducedMatrixElement(MatrixElement):
         >>> ket = SphFermKet('b')
         >>> T = SphericalTensorOperator('T',k,q)
         >>> ReducedMatrixElement(bra, T, ket)._get_inverse_reduction_factor()
-        Sum(m_b, q)*(j_b, m_b, k, q|j_a, m_a)
-        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler')._get_inverse_reduction_factor()
+        Sum(_m_b, _q)*(j_b, _m_b, k, _q|j_a, m_a)
+        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler')._get_inverse_reduction_factor(use_dummies=False)
         (-1)**(-2*k)*Sum(m_b, q)*(j_b, m_b, k, q|j_a, m_a)
         >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_inverse_reduction_factor()
-        (-1)**(m_a - j_a)*(1 + 2*j_a)*Sum(m_b, q)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
+        (-1)**(m_a - j_a)*(1 + 2*j_a)*Sum(_m_b, _q)*ThreeJSymbol(j_a, j_b, k, m_a, -_m_b, -_q)
         """
         left,op,right = self.args
         c_ket, t_ket = right.as_coeff_tensor()
@@ -1196,6 +1218,8 @@ class ReducedMatrixElement(MatrixElement):
         >>> T = SphericalTensorOperator('T',k,q)
         >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
         (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
+        >>> ReducedMatrixElement(bra, T, SphFermKet('bc','b','c')).get_direct_product_ito_self()
+        Sum(_J_bc, _M_bc)*(j_b, m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(b, c)>
 
         """
         matel = self._get_ThreeTensorMatrixElement()
@@ -1216,6 +1240,21 @@ class ReducedMatrixElement(MatrixElement):
         Returns the reduced matrix element in terms of direct product
         matrices.
 
+        >>> from sympy.physics.braket import (
+        ...         ReducedMatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator, MatrixElement
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+
+        >>> bra = SphFermBra('a')
+        >>> ket = SphFermKet('b')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> m = ReducedMatrixElement(bra, T, ket).as_direct_product(); m
+        Sum(_m_b, _q)*(j_b, _m_b, k, _q|j_a, m_a)*<a| T(k, _q) |b>
+        >>> m = m.atoms(MatrixElement).pop()
+        >>> m.right._m
+        _m_b
         """
         invcgc = self._get_inverse_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
@@ -1397,19 +1436,30 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> b = SphFermBra('b')
         >>> bra_ab = SphFermBra('ab',a,b)
         >>> MatrixElement(bra_ab, T, ket).get_direct_product_ito_self()
-        Sum(J_ab, M_ab)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*<ab(a, b)| T(k, q) |c>
+        Sum(_J_ab, _M_ab)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*<ab(a, b)| T(k, q) |c>
+
+        The matrix element also contains dummy symbols now,
+        >>> m = MatrixElement(bra_ab, T, ket)
+        >>> m_dummy = m.get_direct_product_ito_self()
+        >>> m_dummy = m_dummy.atoms(MatrixElement).pop()
+        >>> m_dummy == m
+        False
+        >>> m_dummy.left._j
+        _J_ab
+        >>> m_dummy.left._m
+        _M_ab
 
         Now a cross coupled matrix element:
 
         >>> c = SphFermKet('c')
         >>> ket_bc = SphFermKet('bc',b,c)
         >>> MatrixElement(a, T, ket_bc).get_direct_product_ito_self()
-        (-1)**(m_b - j_b)*Sum(J_bc, M_bc)*(j_b, -m_b, j_c, m_c|J_bc, M_bc)*<a| T(k, q) |bc(<b|, c)>
+        (-1)**(m_b - j_b)*Sum(_J_bc, _M_bc)*(j_b, -m_b, j_c, m_c|_J_bc, _M_bc)*<a| T(k, q) |bc(<b|, c)>
 
         ...and in combination with the Wigner-Eckard theorem:
 
         >>> MatrixElement(a, T, ket_bc).get_direct_product_ito_self(wigner_eckardt=True)
-        (-1)**(m_b - j_b)*Sum(J_bc, M_bc)*(J_bc, M_bc, k, q|j_a, m_a)*(j_b, -m_b, j_c, m_c|J_bc, M_bc)*<a|| T(k) ||bc(<b|, c)>
+        (-1)**(m_b - j_b)*Sum(_J_bc, _M_bc)*(j_b, -m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(<b|, c)>
         """
         if kw_args.get('wigner_eckardt'):
             redmat = self.get_related_redmat(**kw_args)
@@ -1448,22 +1498,30 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> b = SphFermBra('b')
         >>> bra_ab = SphFermBra('ab',a,b)
         >>> MatrixElement(bra_ab, T, ket).as_direct_product()
-        Sum(m_a, m_b)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*<a, b| T(k, q) |c>
+        Sum(_m_a, _m_b)*(j_a, _m_a, j_b, _m_b|J_ab, M_ab)*<a, b| T(k, q) |c>
 
         >>> MatrixElement(bra_ab, T, ket).as_direct_product(strict_bra_coupling=1)
-        (-1)**(j_a - m_a)*(-1)**(j_b - m_b)*(-1)**(J_ab - M_ab)*Sum(m_a, m_b)*(j_a, -m_a, j_b, -m_b|J_ab, -M_ab)*<a, b| T(k, q) |c>
+        (-1)**(j_b - _m_b)*(-1)**(J_ab - M_ab)*(-1)**(j_a - _m_a)*Sum(_m_a, _m_b)*(j_a, -_m_a, j_b, -_m_b|J_ab, -M_ab)*<a, b| T(k, q) |c>
+
+        The matrix element also contain dummy symbols:
+
+        >>> m = MatrixElement(bra_ab, T, ket).as_direct_product()
+        >>> m = m.atoms(MatrixElement).pop(); m
+        <a, b| T(k, q) |c>
+        >>> [ s._m for s in m.left.single_particle_states ]
+        [_m_a, _m_b]
 
         The keyword wigner_eckardt=True gives you an expression for the reduced
         matrix element in terms of the direct product matrix.
         For the above expression we obtain:
 
-        >>> MatrixElement(bra_ab, T, ket).as_direct_product(wigner_eckardt=True)
+        >>> MatrixElement(bra_ab, T, ket).as_direct_product(wigner_eckardt=True, use_dummies=False)
         Sum(m_a, m_b, m_c, q)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, k, q|J_ab, M_ab)*<a, b| T(k, q) |c>
 
         To express everything with a different ReducedMatrixElement definition
         supply the definition with a keyword:
 
-        >>> MatrixElement(bra_ab, T, ket).as_direct_product(wigner_eckardt=True, definition='brink_satchler')
+        >>> MatrixElement(bra_ab, T, ket).as_direct_product(wigner_eckardt=True, definition='brink_satchler', use_dummies=False)
         (-1)**(-2*k)*Sum(m_a, m_b, m_c, q)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, k, q|J_ab, M_ab)*<a, b| T(k, q) |c>
         """
 
