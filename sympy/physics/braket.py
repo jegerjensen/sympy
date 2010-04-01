@@ -605,14 +605,21 @@ class SphericalRegularQuantumState(SphericalQuantumState, RegularQuantumState):
         ((-1)**(j_a - m_a), t(j_a, -m_a))
         """
         obj = SphericalQuantumState.__new__(cls, *args, **kw_args)
-        if obj.is_hole:
-            obj._tensor_phase = (-1)**(obj._j - obj._m)
-            obj._tensor_proj = Mul(S.NegativeOne, obj._m)
-        else:
-            obj._tensor_phase = S.One
-            obj._tensor_proj = obj._m
         return obj
 
+    @property
+    def _tensor_phase(self):
+        if self.is_hole:
+            return (-1)**(self._j - self._m)
+        else:
+            return S.One
+
+    @property
+    def _tensor_proj(self):
+        if self.is_hole:
+            return Mul(S.NegativeOne, self._m)
+        else:
+            return self._m
 
 class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
     """
@@ -629,13 +636,21 @@ class SphericalDualQuantumState(SphericalQuantumState, DualQuantumState):
         ((-1)**(2*j_a), t(j_a, m_a))
         """
         obj = SphericalQuantumState.__new__(cls, *args, **kw_args)
-        if obj.is_hole:
-            obj._tensor_phase = (-1)**(2*obj._j)
-            obj._tensor_proj = obj._m
-        else:
-            obj._tensor_phase = (-1)**(obj._j - obj._m)
-            obj._tensor_proj = Mul(S.NegativeOne, obj._m)
         return obj
+
+    @property
+    def _tensor_phase(self):
+        if self.is_hole:
+            return (-1)**(2*self._j)
+        else:
+            return (-1)**(self._j - self._m)
+
+    @property
+    def _tensor_proj(self):
+        if self.is_hole:
+            return self._m
+        else:
+            return Mul(S.NegativeOne, self._m)
 
 
     def _eval_as_coeff_sp_states(self, **kw_args):
