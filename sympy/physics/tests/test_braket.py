@@ -11,6 +11,7 @@ from sympy.physics.braket import (
         )
 
 from sympy.utilities import raises
+from sympy.utilities.pytest import XFAIL
 
 
 def test_SphericalTensorOperator():
@@ -121,6 +122,14 @@ def test_SphericalQuantumState():
     assert SphFermKet('a') < SphFermKet('b')
 
     assert SphFermKet(-SphFermKet('a')) == SphFermKet('a', hole=True)
+
+    assert SphFermKet('a').subs(j_a, J_c)._j == J_c
+
+@XFAIL
+def test_SphFermKet_func():
+    # FIXME: this should work.
+    a_mod = SphFermKet('a').subs(j_a, J_c)
+    assert a_mod.func(*a_mod.args) == a_mod
 
 def test_as_coeff_tensor():
     t, T, j_a, m_a = symbols('t T j_a m_a')
