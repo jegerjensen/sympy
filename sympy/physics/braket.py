@@ -402,6 +402,19 @@ class SphericalQuantumState(QuantumState):
 
         return obj
 
+    def _eval_subs(self, old, new):
+        if self == old: return new
+        obj = QuantumState._eval_subs(self, old, new)
+        obj._j = self._j._eval_subs(old, new)
+        obj._m = self._m._eval_subs(old, new)
+        if not obj.is_coupled:
+            braket_assumptions.add(Assume(obj._j,obj.spin_assume))
+            braket_assumptions.add(Assume(obj._m,obj.spin_assume))
+        return obj
+
+    def _hashable_content(self):
+        return QuantumState._hashable_content(self) + (self._j, self._m)
+
     def _str_nobraket_(self, contained_in=None):
         """
         Coupling and hole states must show in represetantion.
