@@ -1,4 +1,4 @@
-from sympy import symbols, C, S
+from sympy import symbols, C, S, global_assumptions
 
 from sympy.physics.braket import (
         SphericalTensorOperator, Dagger, BosonState, FermionState, Ket, Bra,
@@ -132,6 +132,7 @@ def test_SphFermKet_func():
     assert a_mod.func(*a_mod.args) == a_mod
 
 def test_as_coeff_tensor():
+    global_assumptions.clear()
     t, T, j_a, m_a = symbols('t T j_a m_a')
     j_b, m_b = symbols('j_b m_b')
     J_c, M_c = symbols('J_c M_c')
@@ -149,6 +150,7 @@ def test_as_coeff_tensor():
     assert SphFermBra('c', SphFermBra('a'), SphFermBra('b')).as_coeff_tensor() == ((-1)**(J_c-M_c), SphericalTensor(T, J_c, -M_c))
 
 def test_as_coeff_sp_states():
+    global_assumptions.clear()
     t, T, j_a, m_a = symbols('t T j_a m_a')
     j_b, m_b = symbols('j_b m_b')
     J_c, M_c = symbols('J_c M_c')
@@ -181,6 +183,7 @@ def test_as_coeff_sp_states():
     assert SphFermBra('c', a, b).as_coeff_sp_states(use_dummies=False) == ((-1)**(j_a-m_a)*ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,-m_a,j_b,m_b,J_c,M_c), (a,b))
 
 def test_nested_coupling():
+    global_assumptions.clear()
     j_a, m_a = symbols('j_a m_a')
     j_b, m_b = symbols('j_b m_b')
     j_c, m_c = symbols('j_c m_c')
@@ -200,6 +203,7 @@ def test_nested_coupling():
     assert Bra('abc',Bra('ab',a,b),c).as_coeff_sp_states(use_dummies=False) == (ASigma(M_ab, m_c, m_a,m_b)*ClebschGordanCoefficient(J_ab,M_ab,j_c,m_c,J_abc,M_abc)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b,c))
 
 def test_MatrixElement_construction():
+    global_assumptions.clear()
     bra_a = SphFermBra('a')
     ket_b = SphFermKet('b')
     bra_ac = FermBra(bra_a, SphFermBra('c'))
@@ -219,6 +223,7 @@ def test_MatrixElement_construction():
     assert MatrixElement(bra_ac,Op,(-ket_b,)) == MatrixElement(bra_ac,Op,ket_b.get_antiparticle())
 
 def test_MatrixElement_subs():
+    global_assumptions.clear()
     j_a, m_a = symbols('j_a m_a')
     j_b, m_b = symbols('j_b m_b')
     j_c, m_c = symbols('j_c m_c')
@@ -251,6 +256,7 @@ def test_MatrixElement_subs():
     assert M.subs(j_d, x).right.state2._j == x
 
 def test_ReducedMatrixElement():
+    global_assumptions.clear()
     k, q, j_a, m_a = symbols('k q j_a m_a')
     j_b, m_b = symbols('j_b m_b')
     j_c, m_c = symbols('j_c m_c')
@@ -281,6 +287,7 @@ def test_ReducedMatrixElement():
 
 
 def test_DirectMatrixElement():
+    global_assumptions.clear()
     Op = SphericalTensorOperator('T','k','q')
     a = SphFermBra('a')
     b = SphFermBra('b')
@@ -308,6 +315,7 @@ def test_DirectMatrixElement():
     assert M.shift_vacuum([a,b,c,d])==M.shift_vacuum([b,a,c,d])
 
 def test_ThreeTensorMatrixElement():
+    global_assumptions.clear()
     j_a, m_a = symbols('j_a m_a')
     j_b, m_b = symbols('j_b m_b')
     j_c, m_c = symbols('j_c m_c')
@@ -342,6 +350,7 @@ def test_ThreeTensorMatrixElement():
 
 
 def test_MatrixElement_recoupling():
+    global_assumptions.clear()
     j_a, m_a = symbols('j_a m_a')
     j_b, m_b = symbols('j_b m_b')
     j_c, m_c = symbols('j_c m_c')
