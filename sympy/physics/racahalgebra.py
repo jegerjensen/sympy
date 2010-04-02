@@ -611,19 +611,28 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
     (A, a, B, b|C, c)
     >>> ClebschGordanCoefficient(A, a, B, b, C, c).get_as_ThreeJSymbol()
     (-1)**(A + c - B)*(1 + 2*C)**(1/2)*ThreeJSymbol(A, B, C, a, b, -c)
+
+    >>> ClebschGordanCoefficient(A, a, B, b, 0, c).get_as_ThreeJSymbol()
+    (-1)**(A - a)*Dij(A, B)*Dij(a, -b)/(1 + 2*A)**(1/2)
+    >>> ClebschGordanCoefficient(A, a, 0, b, C, c).get_as_ThreeJSymbol()
+    Dij(A, C)*Dij(a, c)
+    >>> ClebschGordanCoefficient(0, a, B, b, C, c).get_as_ThreeJSymbol()
+    Dij(B, C)*Dij(b, c)
+
     """
     nargs = 6
     is_commutative=True
 
-    # @classmethod
-    # def eval(cls, j1, m1, j2, m2, J, M):
-        # pass
-
     def get_as_ThreeJSymbol(self):
         """
         Rewrites to a 3j-symbol on canonical form
+
+        Check if we have a zero components first.
         """
         j1, m1, j2, m2, J, M = self.args
+        if j1 is S.Zero: return Dij(j2, J)*Dij(m2, M)
+        if j2 is S.Zero: return Dij(j1, J)*Dij(m1, M)
+        if J  is S.Zero: return (-1)**(j1-m1)*(2*j1+1)**(S.NegativeOne/2)*Dij(j1, j2)*Dij(m1, -m2)
         return (Pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
                 *ThreeJSymbol(j1, j2, J, m1, m2, -M))
 
