@@ -1687,11 +1687,14 @@ def refine_tjs2sjs(expr, **kw_args):
         # get rid of any projection symbols in the phase
         try:
             expr = refine_phases(expr, M_symbols, strict=True, identity_sources=threejs)
+            break
         except UnableToComplyWithForbiddenAndMandatorySymbols:
-            raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+            pass
+    else:
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol
 
 
-    return expr
+    return refine_phases(expr, keep_local_cache=True)
 
 def is_equivalent(expr1, expr2, verbosity=0):
     """
