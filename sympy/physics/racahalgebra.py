@@ -1582,27 +1582,36 @@ def refine_tjs2sjs(expr, **kw_args):
 
     >>> global_assumptions.clear()
 
-    FIXME: need to call refine_phases() before returning.
     """
 
     expr = combine_ASigmas(expr)
 
     for permut in _iter_tjs_permutations(expr, 4, ThreeJSymbol):
-
         summations, phases, factors, threejs, ignorables = permut
-        # FIXME: check sensibility of tjs!
 
+        # find 6j-symbol, expand as 3j-symbols and try to match with original
         sjs = _identify_SixJSymbol(threejs)
 
-        # expand 6j-symbol i.t.o. 3j-symbols and try to match with original
-        M_symbols = []
+        # Determine projection symbols for expansion
+        M_symbols = {}
+        conflicts = []
         for J in sjs.args:
             for tjs in threejs:
                 M = tjs.get_projection_symbol(J)
                 if M:
-                    M_symbols.append(M)
-                    break
-        assert len(M_symbols)==6
+                    if J not in M_symbols:
+                        M_symbols[J] = M
+                    elif M_symbols[J] != M:
+                        conflicts.append((tjs, J))
+
+        # if expr has different projection symbols for the same J, it cannot
+        # be identified as equal to the 6js.  We must rewrite it first.
+        for tjs, J in conflicts:
+            M = M_symbols[J]
+            alt = tjs.get_projection_symbol(J)
+            raise ValueError("FIXME: conflicting Ms: %s, %s" %(M, alt))
+
+
         new_tjs_expr = sjs.get_ito_ThreeJSymbols(M_symbols, **kw_args)
 
         # There is only one permutation here but we want to split new_tjs_expr:
@@ -1643,6 +1652,7 @@ def refine_tjs2sjs(expr, **kw_args):
 
 
         # make sure there is summation over all projections
+        M_symbols = [ M_symbols[key] for key in sjs.args ]
         for m in [ m for m in M_symbols if not (m in summations.args)]:
             # ... {}{}{}{} ... => ...( sum_abcdef {}{}{}{}/C ) ...
             # C is a factor to compensate for the summations we introduce.
