@@ -386,30 +386,31 @@ class SphericalQuantumState(QuantumState):
             obj._j = Symbol("j_"+str(obj.label))
             obj._m = Symbol("m_"+str(obj.label))
 
-        # register spin assumptions
+        cls._register_spin_assumptions(obj)
+
+        return obj
+
+    @classmethod
+    def _register_spin_assumptions(cls, obj):
         if obj.is_coupled:
-            if ask(state1._j + state2._j,Q.integer):
+            if ask(obj.state1._j + obj.state2._j,Q.integer):
                 spin_assume = Q.integer
-            elif ask(state1._j + state2._j,'half_integer'):
+            elif ask(obj.state1._j + obj.state2._j,'half_integer'):
                 spin_assume = 'half_integer'
             else:
-                raise ValueError("Couldn't determine spin assumptions")
+                raise ValueError("Couldn't determine spin assumptions of %s and %s"% (obj.state1._j, obj.state2._j))
         else:
             spin_assume = obj.spin_assume
         braket_assumptions.add(Assume(obj._j,spin_assume))
         braket_assumptions.add(Assume(obj._m,spin_assume))
 
 
-        return obj
-
     def _eval_subs(self, old, new):
         if self == old: return new
         obj = QuantumState._eval_subs(self, old, new)
         obj._j = self._j._eval_subs(old, new)
         obj._m = self._m._eval_subs(old, new)
-        if not obj.is_coupled:
-            braket_assumptions.add(Assume(obj._j,obj.spin_assume))
-            braket_assumptions.add(Assume(obj._m,obj.spin_assume))
+        self._register_spin_assumptions(obj)
         return obj
 
     def _hashable_content(self):
