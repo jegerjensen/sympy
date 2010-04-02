@@ -1229,17 +1229,20 @@ class ReducedMatrixElement(MatrixElement):
 
         """
         matel = self._get_ThreeTensorMatrixElement()
-        dirprod = matel.get_direct_product_ito_self()
+        kw = kw_args.copy()
+        kw['wigner_eckardt']=False
+        dirprod = matel.get_direct_product_ito_self(**kw)
         subsdict = extract_symbol2dummy_dict(dirprod)
 
         matel = matel.subs(subsdict)
         redmat = self.subs(subsdict)
         cgc = redmat._get_reduction_factor(**kw_args)
 
+        result = cgc * dirprod.subs(matel, self)
+
         if kw_args.get('tjs'):
-            return refine_phases(convert_cgc2tjs(cgc * dirprod.subs(matel, self)))
-        else:
-            return cgc * dirprod.subs(matel, self)
+            result = refine_phases(convert_cgc2tjs(result))
+        return result
 
     def as_direct_product(self, **kw_args):
         """
@@ -1267,7 +1270,9 @@ class ReducedMatrixElement(MatrixElement):
 
         subsdict = extract_symbol2dummy_dict(invcgc)
         matel = matel.subs(subsdict)
-        matel = matel.as_direct_product(**kw_args)
+        new_kw = kw_args.copy()
+        new_kw['wigner_eckardt'] = False
+        matel = matel.as_direct_product(**new_kw)
 
         return combine_ASigmas(matel*invcgc)
 
@@ -1471,7 +1476,9 @@ class ThreeTensorMatrixElement(MatrixElement):
             redmat = self.get_related_redmat(**kw_args)
             return redmat.get_direct_product_ito_self(**kw_args)
 
-        coeffs_inv = self.as_direct_product(only_coeffs=True, use_dummies=False)
+        kw = kw_args.copy()
+        kw['use_dummies'] = False
+        coeffs_inv = self.as_direct_product(only_coeffs=True, **kw)
         coeffs = invert_clebsch_gordans(coeffs_inv)
         matrix = self
 
@@ -1531,6 +1538,9 @@ class ThreeTensorMatrixElement(MatrixElement):
         (-1)**(-2*k)*Sum(m_a, m_b, m_c, q)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, k, q|J_ab, M_ab)*<a, b| T(k, q) |c>
         """
 
+        if kw_args.get('wigner_eckardt'):
+            return self.get_related_redmat(**kw_args).as_direct_product(**kw_args)
+
         matrix = self.get_related_direct_matrix(**kw_args)
         cbra, bra = self.left.as_coeff_sp_states(**kw_args)
         cket, ket = self.right.as_coeff_sp_states(**kw_args)
@@ -1539,15 +1549,10 @@ class ThreeTensorMatrixElement(MatrixElement):
             subsdict = extract_symbol2dummy_dict(cbra*cket)
             matrix = matrix.subs(subsdict)
 
-        if kw_args.get('wigner_eckardt'):
-            cgc = self.get_related_redmat(**kw_args)._get_inverse_reduction_factor(**kw_args)
-        else:
-            cgc = S.One
-
         if kw_args.get('only_coeffs'):
-            return combine_ASigmas(cbra*cket*cgc)
+            return combine_ASigmas(cbra*cket)
         else:
-            return combine_ASigmas(cbra*cket*cgc)*matrix
+            return combine_ASigmas(cbra*cket)*matrix
 
 
     def get_related_direct_matrix(self, **kw_args):
@@ -1603,9 +1608,13 @@ class ThreeTensorMatrixElement(MatrixElement):
         """
         assert isinstance(other, ThreeTensorMatrixElement)
         assert self.operator == other.operator
-        self_as_direct = self.as_direct_product(only_particle_states=True, **kw_args)
-        direct_as_other = other.get_direct_product_ito_self(**kw_args)
 
+        self_as_direct = self.as_direct_product(only_particle_states=True, strict_bra_coupling=True, **kw_args)
+        my_direct = self_as_direct.atoms(DirectMatrixElement).pop()
+        subsdict = extract_symbol2dummy_dict(self_as_direct)
+
+        other = other.subs(subsdict)
+        direct_as_other = other.get_direct_product_ito_self(only_particle_states=True, strict_bra_coupling=True, **kw_args)
         others_direct = other.get_related_direct_matrix(only_particle_states=True)
 
         # if other_direct matrix comes with a sign, the substitution would fail
@@ -1616,6 +1625,7 @@ class ThreeTensorMatrixElement(MatrixElement):
             raise ValueError("The matrices are not compatible: %s, %s" %(t[0],self.get_related_direct_matrix()))
 
         result =  self_as_direct.subs(t[0],c*direct_as_other)
+        result = refine_phases(result)
         return combine_ASigmas(result)
 
     def get_related_redmat(self, **kw_args):
