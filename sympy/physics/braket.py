@@ -1661,24 +1661,33 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> expr = M2.as_other_coupling(M1); expr
         (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<ab(a, b)| T(k, q) |cd(c, d)>
 
-        If T happens to be a rank 0 tensor, we can write
-
-        >>> M1 = M1.subs({k: S(0), q: S(0)})
-        >>> M2 = M2.subs({k: S(0), q: S(0)})
-        >>> expr = M2.as_other_coupling(M1, wigner_eckardt=True); expr
-        (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*(J_db, _M_db, 0, 0|J_ca, M_ca)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, _M_db)*(_J_cd, _M_cd, 0, 0|_J_ab, _M_ab)*<ab(a, b)|| T(0) ||cd(c, d)>
+        If T happens to be a rank 0 tensor (k=q=0), we can write the relation
+        between the reduced matrix elements in terms of a 6j-symbol.  In order
+        to compare with the result of Kuo & al. we use Edmonds definition of
+        reduced matrix elements.
 
         >>> from sympy.physics.racahalgebra import (
         ...         refine_tjs2sjs, convert_cgc2tjs,
-        ...         refine_phases, evaluate_sums )
-        >>> expr = convert_cgc2tjs(expr)
-        >>> expr = refine_phases(expr); expr
-        (-1)**(1 + J_ca + J_db - j_b - j_c + 2*_M_ab + _J_ab + _J_cd + _M_cd + _M_db)*((1 + 2*J_ca)*(1 + 2*J_db)*(1 + 2*_J_ab)*(1 + 2*_J_cd))**(1/2)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*Dij(J_ca, J_db)*Dij(M_ca, _M_db)*Dij(_J_ab, _J_cd)*Dij(_M_ab, _M_cd)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_ca, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, _M_db, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_cd, _m_c, _m_d, -_M_cd)
-        >>> expr = evaluate_sums(expr, all_deltas=1); expr
-        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + 3*_M_ab)*((1 + 2*J_db)**2*(1 + 2*_J_ab)**2)**(1/2)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
+        ...         refine_phases, evaluate_sums,
+        ...         SixJSymbol )
+        >>> M1 = M1.subs({k: S(0), q: S(0)})
+        >>> M2 = M2.subs({k: S(0), q: S(0)})
+        >>> expr = M2.as_other_coupling(M1, wigner_eckardt=True, definition='edmonds'); expr
+        (-1)**(J_db + M_ca + _J_cd + _M_ab)*(1 + 2*J_ca)**(1/2)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, _M_db)*Dij(J_ca, J_db)*Dij(M_ca, _M_db)*Dij(_J_ab, _J_cd)*Dij(_M_ab, _M_cd)*<ab(a, b)|| T(0) ||cd(c, d)>/(1 + 2*_J_ab)**(1/2)
 
-        >>> refine_tjs2sjs(expr)
-        (-1)**(J_db - j_a - j_d + 5*_J_ab)*((1 + 2*J_db)**2*(1 + 2*_J_ab)**2)**(1/2)*Sum(_J_ab)*<ab(a, b)|| T(0) ||cd(c, d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)/(1 + 2*J_db)
+        >>> expr = convert_cgc2tjs(expr)
+        >>> expr = refine_phases(expr)
+        >>> expr = evaluate_sums(expr, all_deltas=1); expr
+        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + _M_ab)*((1 + 2*J_db)*(1 + 2*_J_ab))**(1/2)*(1 + 2*J_db)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
+
+        >>> expr = refine_tjs2sjs(expr); expr
+        (-1)**(J_db - j_a - j_d + _J_ab)*((1 + 2*J_db)*(1 + 2*_J_ab))**(1/2)*Sum(_J_ab)*<ab(a, b)|| T(0) ||cd(c, d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
+
+        Kuo & al. arrive at another 6j symbol, but we can easily check the equivalence:
+
+        >>> (j_c, j_a, J_db, j_d, j_b, J_ab) = map(S, "j_c j_a J_db j_d j_b J_ab".split())
+        >>> SixJSymbol(j_c, j_a, J_db, j_b, j_d, J_ab.as_dummy())
+        SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
 
         """
         assert isinstance(other, ThreeTensorMatrixElement)
