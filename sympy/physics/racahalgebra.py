@@ -507,6 +507,10 @@ class SixJSymbol(AngularMomentumSymbol):
         """
 
         (j1, j2, J12, j3, J, J23) = self.args
+        if isinstance(projection_labels, dict):
+            d = projection_labels
+            projection_labels = [ d[key] for key in self.args ]
+
         (m1, m2, M12, m3, M, M23) = projection_labels
 
         definition = kw_args.get('definition') or 'brink_satchler'
