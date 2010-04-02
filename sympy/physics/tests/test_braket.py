@@ -218,6 +218,38 @@ def test_MatrixElement_construction():
     assert MatrixElement(bra_ac,Op,-ket_b) == -MatrixElement(bra_ac,Op,ket_b)
     assert MatrixElement(bra_ac,Op,(-ket_b,)) == MatrixElement(bra_ac,Op,ket_b.get_antiparticle())
 
+def test_MatrixElement_subs():
+    j_a, m_a = symbols('j_a m_a')
+    j_b, m_b = symbols('j_b m_b')
+    j_c, m_c = symbols('j_c m_c')
+    j_d, m_d = symbols('j_d m_d')
+    k, q = symbols('k q')
+    J_ab, M_ab = symbols('J_ab M_ab')
+    J_cd, M_cd = symbols('J_cd M_cd')
+    J_ad, M_ad = symbols('J_ad M_ad')
+    J_cb, M_cb = symbols('J_cb M_cb')
+    Op = SphericalTensorOperator('T',k,q)
+    Bra = SphFermBra
+    Ket = SphFermKet
+    a,b = Bra('a'), Bra('b')
+    c,d = Ket('c'), Ket('d')
+    x, y, z = symbols('x y z')
+    M = MatrixElement(Bra('ab', a, b), Op, Ket('cd', c, d))
+    assert M.subs(M_ab, x).left._m == x
+    assert M.subs(J_ab, x).left._j == x
+    assert M.subs(m_a, x).left.state1._m == x
+    assert M.subs(j_a, x).left.state1._j == x
+    assert M.subs(m_b, x).left.state2._m == x
+    assert M.subs(j_b, x).left.state2._j == x
+    assert M.subs(q, x).operator.projection == x
+    assert M.subs(k, x).operator.rank == x
+    assert M.subs(M_cd, x).right._m == x
+    assert M.subs(J_cd, x).right._j == x
+    assert M.subs(m_c, x).right.state1._m == x
+    assert M.subs(j_c, x).right.state1._j == x
+    assert M.subs(m_d, x).right.state2._m == x
+    assert M.subs(j_d, x).right.state2._j == x
+
 def test_ReducedMatrixElement():
     k, q, j_a, m_a = symbols('k q j_a m_a')
     j_b, m_b = symbols('j_b m_b')
