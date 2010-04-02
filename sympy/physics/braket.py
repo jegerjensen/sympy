@@ -1264,6 +1264,8 @@ class ReducedMatrixElement(MatrixElement):
         >>> m = m.atoms(MatrixElement).pop()
         >>> m.right._m
         _m_b
+        >>> m = ReducedMatrixElement(bra, T, SphFermKet('bc', 'b', 'c')).as_direct_product(); m
+        Sum(_M_bc, _m_b, _m_c, _q)*(J_bc, _M_bc, k, _q|j_a, m_a)*(j_b, _m_b, j_c, _m_c|J_bc, _M_bc)*<a| T(k, _q) |b, c>
         """
         invcgc = self._get_inverse_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
@@ -1448,6 +1450,8 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> bra_ab = SphFermBra('ab',a,b)
         >>> MatrixElement(bra_ab, T, ket).get_direct_product_ito_self()
         Sum(_J_ab, _M_ab)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*<ab(a, b)| T(k, q) |c>
+        >>> MatrixElement(bra_ab, T, ket).get_direct_product_ito_self(strict_bra_coupling=True)
+        (-1)**(m_a - j_a)*(-1)**(m_b - j_b)*(-1)**(-_J_ab + _M_ab)*Sum(_J_ab, _M_ab)*(j_a, -m_a, j_b, -m_b|_J_ab, -_M_ab)*<ab(a, b)| T(k, q) |c>
 
         The matrix element also contains dummy symbols now,
         >>> m = MatrixElement(bra_ab, T, ket)
@@ -1530,6 +1534,8 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         >>> MatrixElement(bra_ab, T, ket).as_direct_product(wigner_eckardt=True, use_dummies=False)
         Sum(m_a, m_b, m_c, q)*(j_a, m_a, j_b, m_b|J_ab, M_ab)*(j_c, m_c, k, q|J_ab, M_ab)*<a, b| T(k, q) |c>
+        >>> MatrixElement(a, T, SphFermKet('cd','c','d')).as_direct_product(wigner_eckardt=True)
+        Sum(_M_cd, _m_c, _m_d, _q)*(J_cd, _M_cd, k, _q|j_a, m_a)*(j_c, _m_c, j_d, _m_d|J_cd, _M_cd)*<a| T(k, _q) |c, d>
 
         To express everything with a different ReducedMatrixElement definition
         supply the definition with a keyword:
@@ -1605,6 +1611,74 @@ class ThreeTensorMatrixElement(MatrixElement):
     def as_other_coupling(self, other, **kw_args):
         """
         Expresses self in terms of other
+
+        This is done by rewriting self in terms of a direct product matrix,
+        and then expressing the direct product matrix in terms of the other.
+
+        >>> from sympy.physics.braket import (
+        ...         MatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator, S
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> a = SphFermBra('a')
+        >>> b = SphFermBra('b')
+        >>> c = SphFermKet('c')
+        >>> d = SphFermKet('d')
+
+        A straightforward coupling of two-particle states gives the following
+        ThreeTensorMatrixElement:
+
+        >>> bra_ab = SphFermBra('ab',a,b)
+        >>> ket_cd = SphFermKet('cd',c,d)
+        >>> M1 = MatrixElement(bra_ab, T, ket_cd); M1
+        <ab(a, b)| T(k, q) |cd(c, d)>
+        >>> M1.as_direct_product()
+        Sum(_m_a, _m_b, _m_c, _m_d)*(j_a, _m_a, j_b, _m_b|J_ab, M_ab)*(j_c, _m_c, j_d, _m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
+
+        But we can also create ``cross-coupled'' matrix elements.
+        (See Kuo & al. 1981, eq.(20))
+
+        >>> bra_ca = SphFermBra('ca',c,a)
+        >>> ket_db = SphFermKet('db',d,b)
+        >>> M2 = MatrixElement(bra_ca, T, ket_db); M2
+        <ca(|c>, a)| T(k, q) |db(d, <b|)>
+        >>> expr = M2.as_direct_product(); expr
+        (-1)**(j_a - _m_a)*(-1)**(J_ca - M_ca)*(-1)**(j_b - _m_b)*Sum(_m_a, _m_b, _m_c, _m_d)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<a, b| T(k, q) |c, d>
+
+        Note that the cross coupled ThreeTensorMatrixElement M2 associates
+        itself with the same DirectMatrixElement as M1 above.  Now, in order to
+        get M2 in terms of M1, we need to put together the above expression with
+        the direct product matrix expressed in terms of M1:
+
+        >>> M1.get_direct_product_ito_self()
+        Sum(_J_ab, _J_cd, _M_ab, _M_cd)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*(j_c, m_c, j_d, m_d|_J_cd, _M_cd)*<ab(a, b)| T(k, q) |cd(c, d)>
+
+        Inserted we get the long expression:  (where strict bra coupling have been used.)
+
+        >>> expr = M2.as_other_coupling(M1); expr
+        (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<ab(a, b)| T(k, q) |cd(c, d)>
+
+        If T happens to be a rank 0 tensor, we can write
+
+        >>> M1 = M1.subs({k: S(0), q: S(0)})
+        >>> M2 = M2.subs({k: S(0), q: S(0)})
+        >>> expr = M2.as_other_coupling(M1, wigner_eckardt=True); expr
+        (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*(J_db, _M_db, 0, 0|J_ca, M_ca)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, _M_db)*(_J_cd, _M_cd, 0, 0|_J_ab, _M_ab)*<ab(a, b)|| T(0) ||cd(c, d)>
+
+        >>> from sympy.physics.racahalgebra import (
+        ...         refine_tjs2sjs, convert_cgc2tjs,
+        ...         refine_phases, evaluate_sums )
+        >>> expr = convert_cgc2tjs(expr)
+        >>> expr = refine_phases(expr); expr
+        (-1)**(1 + J_ca + J_db - j_b - j_c + 2*_M_ab + _J_ab + _J_cd + _M_cd + _M_db)*((1 + 2*J_ca)*(1 + 2*J_db)*(1 + 2*_J_ab)*(1 + 2*_J_cd))**(1/2)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*Dij(J_ca, J_db)*Dij(M_ca, _M_db)*Dij(_J_ab, _J_cd)*Dij(_M_ab, _M_cd)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_ca, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, _M_db, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_cd, _m_c, _m_d, -_M_cd)
+        >>> expr = evaluate_sums(expr, all_deltas=1); expr
+        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + 3*_M_ab)*((1 + 2*J_db)**2*(1 + 2*_J_ab)**2)**(1/2)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
+
+        >>> refine_tjs2sjs(expr)
+        (-1)**(J_db - j_a - j_d + 5*_J_ab)*((1 + 2*J_db)**2*(1 + 2*_J_ab)**2)**(1/2)*Sum(_J_ab)*<ab(a, b)|| T(0) ||cd(c, d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)/(1 + 2*J_db)
+
         """
         assert isinstance(other, ThreeTensorMatrixElement)
         assert self.operator == other.operator
