@@ -1136,9 +1136,7 @@ class ASigma(Basic):
         newargs = list(self.args)
         for i in indices:
             newargs.remove(i)
-        if not newargs:
-            return S.One
-        elif len(newargs) < len(self.args):
+        if len(newargs) < len(self.args):
             return ASigma(*newargs)
         else:
             return self
