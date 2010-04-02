@@ -1124,7 +1124,7 @@ class ReducedMatrixElement(MatrixElement):
         elif self.definition == 'brink_satchler':
             factor = (-1)**(2*j2)*c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
 
-        if kw_args.get('3j'):
+        if kw_args.get('tjs'):
             return refine_phases(convert_cgc2tjs(factor))
         else:
             return factor
