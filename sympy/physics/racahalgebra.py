@@ -1083,16 +1083,24 @@ class ASigma(Basic):
         >>> a,b,c = symbols('abc')
         >>> ASigma(b,a)
         Sum(a, b)
+        >>> ASigma(0,a)
+        Sum(a)
+        >>> ASigma(0,1)
+        1
         """
+        indices = map(sympify, indices)
         unsigned = []
         for i in indices:
             c,t = i.as_coeff_terms()
             if len(t)==1:
                 unsigned.append(t[0])
-            else:
+            elif len(t)>1:
                 raise ValueError("ASigma doesn't accept products of symbols: %s"%i)
         unsigned.sort()
-        obj = Basic.__new__(cls,*unsigned)
+        if unsigned:
+            obj = Basic.__new__(cls,*unsigned)
+        else:
+            obj = S.One
         return obj
 
     def combine(self, other):
