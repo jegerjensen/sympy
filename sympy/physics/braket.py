@@ -415,6 +415,12 @@ class SphericalQuantumState(QuantumState):
     def _hashable_content(self):
         return QuantumState._hashable_content(self) + (self._j, self._m)
 
+    def _dagger_(self):
+        obj = QuantumState._dagger_(self)
+        obj._j = self._j
+        obj._m = self._m
+        return obj
+
     def _str_nobraket_(self, contained_in=None):
         """
         Coupling and hole states must show in represetantion.
