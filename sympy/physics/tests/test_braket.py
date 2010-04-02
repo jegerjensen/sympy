@@ -164,21 +164,21 @@ def test_as_coeff_sp_states():
     # coupled states
     a = SphFermKet('a')
     b = SphFermKet('b')
-    assert SphFermKet('c', a, b).as_coeff_sp_states() == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_c,M_c), (a,b))
+    assert SphFermKet('c', a, b).as_coeff_sp_states(use_dummies=False) == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_c,M_c), (a,b))
     a = SphFermBra('a')
     b = SphFermBra('b')
-    assert SphFermBra('c', a, b).as_coeff_sp_states() == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_c,M_c), (a,b))
+    assert SphFermBra('c', a, b).as_coeff_sp_states(use_dummies=False) == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_c,M_c), (a,b))
 
     # strict bra coupling
-    assert SphFermBra('c', a, b).as_coeff_sp_states(strict_bra_coupling=True) == ((-1)**(J_c-M_c)*(-1)**(j_a - m_a)*(-1)**(j_b - m_b)*ASigma(m_a, m_b)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_c, -M_c), (a,b))
+    assert SphFermBra('c', a, b).as_coeff_sp_states(strict_bra_coupling=True, use_dummies=False) == ((-1)**(J_c-M_c)*(-1)**(j_a - m_a)*(-1)**(j_b - m_b)*ASigma(m_a, m_b)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_c, -M_c), (a,b))
 
     # hole couplings
     a = SphFermKet('a', hole=True)
     b = SphFermKet('b')
-    assert SphFermKet('c', a, b).as_coeff_sp_states() == ((-1)**(j_a-m_a)*ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,-m_a,j_b,m_b,J_c,M_c), (a,b))
+    assert SphFermKet('c', a, b).as_coeff_sp_states(use_dummies=False) == ((-1)**(j_a-m_a)*ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,-m_a,j_b,m_b,J_c,M_c), (a,b))
     a = SphFermBra('a', hole=True)
     b = SphFermBra('b')
-    assert SphFermBra('c', a, b).as_coeff_sp_states() == ((-1)**(j_a-m_a)*ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,-m_a,j_b,m_b,J_c,M_c), (a,b))
+    assert SphFermBra('c', a, b).as_coeff_sp_states(use_dummies=False) == ((-1)**(j_a-m_a)*ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,-m_a,j_b,m_b,J_c,M_c), (a,b))
 
 def test_nested_coupling():
     j_a, m_a = symbols('j_a m_a')
@@ -190,14 +190,14 @@ def test_nested_coupling():
     Ket = SphFermKet
     a,b = Ket('a'), Ket('b')
     c,d = Ket('c'), Ket('d')
-    assert Ket('ab',a,b).as_coeff_sp_states() == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b))
-    assert Ket('abc',Ket('ab',a,b),c).as_coeff_sp_states() == (ASigma(M_ab, m_c, m_a,m_b)*ClebschGordanCoefficient(J_ab,M_ab,j_c,m_c,J_abc,M_abc)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b,c))
+    assert Ket('ab',a,b).as_coeff_sp_states(use_dummies=False) == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b))
+    assert Ket('abc',Ket('ab',a,b),c).as_coeff_sp_states(use_dummies=False) == (ASigma(M_ab, m_c, m_a,m_b)*ClebschGordanCoefficient(J_ab,M_ab,j_c,m_c,J_abc,M_abc)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b,c))
 
     Bra = SphFermBra
     a,b = Bra('a'), Bra('b')
     c,d = Bra('c'), Bra('d')
-    assert Bra('ab',a,b).as_coeff_sp_states() == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b))
-    assert Bra('abc',Bra('ab',a,b),c).as_coeff_sp_states() == (ASigma(M_ab, m_c, m_a,m_b)*ClebschGordanCoefficient(J_ab,M_ab,j_c,m_c,J_abc,M_abc)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b,c))
+    assert Bra('ab',a,b).as_coeff_sp_states(use_dummies=False) == (ASigma(m_a,m_b)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b))
+    assert Bra('abc',Bra('ab',a,b),c).as_coeff_sp_states(use_dummies=False) == (ASigma(M_ab, m_c, m_a,m_b)*ClebschGordanCoefficient(J_ab,M_ab,j_c,m_c,J_abc,M_abc)*ClebschGordanCoefficient(j_a,m_a,j_b,m_b,J_ab,M_ab), (a,b,c))
 
 def test_MatrixElement_construction():
     bra_a = SphFermBra('a')
@@ -265,8 +265,8 @@ def test_ReducedMatrixElement():
     assert ReducedMatrixElement(bra_ac, Op, ket_b)._get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)
     assert ReducedMatrixElement(bra_ac, Op, ket_b)._get_ThreeTensorMatrixElement()==ThreeTensorMatrixElement(bra_ac, Op, ket_b)
 
-    assert ReducedMatrixElement(bra_ac, Op, ket_b).as_direct_product()==ASigma(m_b, q, m_a, m_c)*ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)*ClebschGordanCoefficient(j_a, m_a, j_c, m_c, J_ac, M_ac)*DirectMatrixElement((bra_a, SphFermBra('c')), Op, ket_b)
-    assert ReducedMatrixElement(bra_ac, Op, ket_b).get_direct_product_ito_self()==ASigma(J_ac, M_ac)*ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)*ClebschGordanCoefficient(j_a, m_a, j_c, m_c, J_ac, M_ac)*ReducedMatrixElement(bra_ac, Op, ket_b)
+    assert ReducedMatrixElement(bra_ac, Op, ket_b).as_direct_product(use_dummies=False)==ASigma(m_b, q, m_a, m_c)*ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)*ClebschGordanCoefficient(j_a, m_a, j_c, m_c, J_ac, M_ac)*DirectMatrixElement((bra_a, SphFermBra('c')), Op, ket_b)
+    assert ReducedMatrixElement(bra_ac, Op, ket_b).get_direct_product_ito_self(use_dummies=False)==ASigma(J_ac, M_ac)*ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)*ClebschGordanCoefficient(j_a, m_a, j_c, m_c, J_ac, M_ac)*ReducedMatrixElement(bra_ac, Op, ket_b)
 
     redmat = ReducedMatrixElement(bra_a,Op,ket_b,'brink_satchler')
     assert redmat.definition == 'brink_satchler'
@@ -327,18 +327,19 @@ def test_ThreeTensorMatrixElement():
 
     # test coupling and decoupling
     assert DirectMatrixElement((a,b),Op,(c,d)) == ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).get_related_direct_matrix()
-    assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).get_direct_product_ito_self() == ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d))
-    assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product() == ASigma(m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*DirectMatrixElement((a,b),Op,(c,d))
+    assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).get_direct_product_ito_self(use_dummies=False) == ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d))
+    assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(use_dummies=False) == ASigma(m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*DirectMatrixElement((a,b),Op,(c,d))
 
     #test wigner_eckardt
-    assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).get_direct_product_ito_self(wigner_eckardt=True) == ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).use_wigner_eckardt()
-    assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True) == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))
-    assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True, definition='brink_satchler') == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))*(-1)**(-2*k)
+    assert ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).get_direct_product_ito_self(wigner_eckardt=True, use_dummies=False) == ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).use_wigner_eckardt()
+    assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True, use_dummies=False) == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))
+    assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True, definition='brink_satchler', use_dummies=False) == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))*(-1)**(-2*k)
 
     # test vacuum-shifted coupling and decoupling
     assert DirectMatrixElement((a,-b),Op,(c,-d)) == ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).get_related_direct_matrix()
-    assert ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).get_direct_product_ito_self() == (-1)**(m_b-j_b)*(-1)**(m_d-j_d)*ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, -m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, -m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d))
-    assert ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).as_direct_product() == (-1)**(j_b-m_b)*(-1)**(j_d-m_d)*ASigma(m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_b, -m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, -m_d,J_cd, M_cd)*DirectMatrixElement((a,-b),Op,(c,-d))
+    assert ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).get_direct_product_ito_self(use_dummies=False) == (-1)**(m_b-j_b)*(-1)**(m_d-j_d)*ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, -m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, -m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d))
+    assert ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).as_direct_product(use_dummies=False) == (-1)**(j_b-m_b)*(-1)**(j_d-m_d)*ASigma(m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_b, -m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, -m_d,J_cd, M_cd)*DirectMatrixElement((a,-b),Op,(c,-d))
+
 
 def test_MatrixElement_recoupling():
     j_a, m_a = symbols('j_a m_a')
@@ -367,10 +368,10 @@ def test_MatrixElement_recoupling():
     assert straight.get_related_direct_matrix() == DirectMatrixElement((a,b),Op,(c,d))
 
     # verify equations
-    assert shifted.as_other_coupling(straight) == -(-1)**(j_b - m_b)*(-1)**(j_d - m_d)*ASigma(J_ab, J_cd, M_ab, M_cd, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b, J_ab, M_ab)*ClebschGordanCoefficient(j_a, m_a, j_d, -m_d, J_ad, M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*straight
-    assert straight.as_other_coupling(shifted) == -(-1)**(m_b - j_b)*(-1)**(m_d - j_d)*ASigma(J_ad, J_cb, M_ad, M_cb, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b, J_ab, M_ab)*ClebschGordanCoefficient(j_a, m_a, j_d, -m_d, J_ad, M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*shifted
+    assert shifted.as_other_coupling(straight, use_dummies=False) == (-1)**(J_ad + M_ab - J_ab - M_ad)*ASigma(J_ab, J_cd, M_ab, M_cd, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*straight
+    assert straight.as_other_coupling(shifted, use_dummies=False) == (-1)**(J_ab + M_ad - J_ad - M_ab)*ASigma(J_ad, J_cb, M_ad, M_cb, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*shifted
 
     # relate reduced matrix elements
-    assert shifted.as_other_coupling(straight, wigner_eckardt=True) == -(-1)**(j_b - m_b)*(-1)**(j_d - m_d)*ASigma(J_ab, J_cd, M_ab, M_cd, M_cb, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b, J_ab, M_ab)*ClebschGordanCoefficient(j_a, m_a, j_d, -m_d, J_ad, M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*ClebschGordanCoefficient(J_cb, M_cb, k, q, J_ad, M_ad)*ClebschGordanCoefficient(J_cd, M_cd, k, q, J_ab, M_ab)*ReducedMatrixElement(straight.left, straight.operator, straight.right)
-    assert straight.as_other_coupling(shifted, wigner_eckardt=True) ==  -(-1)**(m_b - j_b)*(-1)**(m_d - j_d)*ASigma(J_ad, J_cb, M_ad, M_cb, M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b, J_ab, M_ab)*ClebschGordanCoefficient(j_a, m_a, j_d, -m_d, J_ad, M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*ClebschGordanCoefficient(J_cb, M_cb, k, q, J_ad, M_ad)*ClebschGordanCoefficient(J_cd, M_cd, k, q, J_ab, M_ab)*ReducedMatrixElement(shifted.left, shifted.operator, shifted.right)
+    assert shifted.as_other_coupling(straight, wigner_eckardt=True, use_dummies=False) == (-1)**(J_ad + M_ab - J_ab - M_ad)*ASigma(J_ab, J_cd, M_ab, M_cd, M_cb, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*ClebschGordanCoefficient(J_cb, M_cb, k, q, J_ad, M_ad)*ClebschGordanCoefficient(J_cd, M_cd, k, q, J_ab, M_ab)*straight.get_related_redmat()
+    assert straight.as_other_coupling(shifted, wigner_eckardt=True, use_dummies=False) == (-1)**(-J_ad - M_ab + J_ab + M_ad)*ASigma(J_ad, J_cb, M_ad, M_cb, M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*ClebschGordanCoefficient(J_cb, M_cb, k, q, J_ad, M_ad)*ClebschGordanCoefficient(J_cd, M_cd, k, q, J_ab, M_ab)*shifted.get_related_redmat()
 
