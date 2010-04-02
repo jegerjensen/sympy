@@ -2265,3 +2265,38 @@ def convert_sumindex2nondummy(expr, subslist=[]):
                 new_subslist.append((nondummies[old], new))
 
     return (expr).subs(new_subslist)
+
+def evaluate_sums(expr, **kw_args):
+    """
+    Tries to evaluate the sums using any KroneckerDeltas.
+
+    >>> from sympy.physics.racahalgebra import evaluate_sums, ASigma, Dij
+    >>> from sympy import symbols, Function
+
+    >>> a,b,c,d = symbols('a b c d')
+    >>> f = Function('f')
+    >>> evaluate_sums(ASigma(a, b)*f(a)*Dij(a,c))
+    Sum(b)*f(c)
+    >>> evaluate_sums(ASigma(a, b)*f(c)*Dij(a,c))
+    Sum(b)*f(c)
+    >>> evaluate_sums(ASigma(a, b)*f(a)*Dij(a,b))
+    Sum(a)*f(a)
+    >>> evaluate_sums(ASigma(a, b)*f(a)*Dij(b,c))
+    Sum(a)*f(a)
+    """
+    expr = combine_ASigmas(expr)
+    summations = expr.atoms(ASigma).pop()
+    deltas = expr.atoms(Dij)
+    for d in deltas:
+        i,j = d.args
+        s,t = i.as_coeff_terms(); i = t[0]
+        s,t = j.as_coeff_terms(); j = t[0]
+        if j in summations.args:
+            expr = remove_summation_indices(expr, [j])
+            expr = expr.subs(d.args[1], d.args[0])
+        elif i in summations.args:
+            expr = remove_summation_indices(expr, [i])
+            expr = expr.subs(d.args[0], d.args[1])
+        elif kw_args.get('all_deltas'):
+            expr = expr.subs(d.args[0], d.args[1])
+    return expr
