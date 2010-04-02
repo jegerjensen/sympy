@@ -579,9 +579,9 @@ class SphericalQuantumState(QuantumState):
         coefficients.
 
         >>> bra_ab = SphFermBra('ab',Dagger(a), b)
-        >>> coeff, states = bra_ab.as_coeff_sp_states(use_dummies=False)
+        >>> coeff, states = bra_ab.as_coeff_sp_states()
         >>> coeff
-        Sum(m_a, m_b)*(j_a, m_a, j_b, m_b|J_ab, M_ab)
+        Sum(_m_a, _m_b)*(j_a, _m_a, j_b, _m_b|J_ab, M_ab)
         >>> states
         (<a|, <b|)
 
