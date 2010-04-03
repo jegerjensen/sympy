@@ -266,15 +266,62 @@ class stringPict(object):
         i = 0
         svals = []
         while i < self.width():
-            svals.extend([ sval[i:i+ncols] for sval in self.picture ])
+            width = self._pretty_width(i, ncols)
+            svals.extend([ sval[i:i+width] for sval in self.picture ])
             if (self.height() > 1):
                 svals.append("") # a vertical spacer
-            i += ncols
+            i += width
 
         if svals[-1] == '':
             del svals[-1] #  Get rid of the last spacer
 
         return "\n".join(svals)
+
+    def _pretty_width(self, startpos, maxwidth):
+        """
+        Determine a good breakpoint <= maxwidth
+
+        We locate the main line and search for operators + - *
+        If we cannot locate the main line, we suggest breaking
+        on maxwidth.
+        """
+
+        if self.width() - startpos <= maxwidth:
+            return maxwidth
+
+        lengths = map(len, [line.strip() for line in self.picture])
+        maxl = -1
+        for i,l in enumerate(lengths):
+            if l == maxl:
+                return maxwidth
+            if l > maxl:
+                ind = i
+                maxl = l
+
+        main = self.picture[ind][startpos : startpos + maxwidth]
+
+        MUL = xsym('*')
+        ADD = '+'
+        SUB = '-'
+
+        delims = (ADD, SUB, MUL)
+        min_width = {
+                ADD: 20,
+                SUB: 20,
+                MUL: 40
+                }
+
+        dpos = {}
+        for op in delims:
+            ind = main.rfind(op)
+            if ind > min_width[op]:
+                dpos[op] = ind
+            else:
+                dpos[op] = 0
+
+        best_pos = max(dpos[ADD], dpos[SUB], dpos[MUL])
+
+        return best_pos or maxwidth
 
     def terminal_width(self):
         """Return the terminal width if possible, otherwise return 0.
