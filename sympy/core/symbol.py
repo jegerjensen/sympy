@@ -71,7 +71,9 @@ class Symbol(AtomicExpr, Boolean):
         return (self.is_commutative, self.name)
 
     def as_dummy(self):
-        return Dummy(self.name, self.is_commutative, **self.assumptions0)
+        kw = self.assumptions0.copy()
+        kw['commutative'] = self.is_commutative
+        return Dummy(self.name, **kw)
 
     def __call__(self, *args):
         from function import Function
@@ -134,7 +136,9 @@ class Dummy(Symbol):
         >>> x1.as_nondummy() == Symbol('x')
         True
         """
-        return Symbol(self.name, self.is_commutative, **self.assumptions0)
+        kw = self.assumptions0.copy()
+        kw['commutative'] = self.is_commutative
+        return Symbol(self.name, **kw)
 
     def _hashable_content(self):
         return Symbol._hashable_content(self) + (self.dummy_index,)
