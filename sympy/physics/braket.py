@@ -1678,10 +1678,10 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> expr = convert_cgc2tjs(expr)
         >>> expr = refine_phases(expr)
         >>> expr = evaluate_sums(expr, all_deltas=1); expr
-        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + _M_ab)*((1 + 2*J_db)*(1 + 2*_J_ab))**(1/2)*(1 + 2*J_db)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
+        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + _M_ab)*(1 + 2*J_db)**(3/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
 
         >>> expr = refine_tjs2sjs(expr); expr
-        (-1)**(J_db - j_a - j_d + _J_ab)*((1 + 2*J_db)*(1 + 2*_J_ab))**(1/2)*Sum(_J_ab)*<ab(a, b)|| T(0) ||cd(c, d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
+        (-1)**(J_db - j_a - j_d + _J_ab)*(1 + 2*J_db)**(1/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab)*<ab(a, b)|| T(0) ||cd(c, d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
 
         Kuo & al. arrive at another 6j symbol, but we can easily check the equivalence:
 
