@@ -1519,7 +1519,7 @@ class ThreeTensorMatrixElement(MatrixElement):
         Sum(_m_a, _m_b)*(j_a, _m_a, j_b, _m_b|J_ab, M_ab)*<a, b| T(k, q) |c>
 
         >>> MatrixElement(bra_ab, T, ket).as_direct_product(strict_bra_coupling=1)
-        (-1)**(j_b - _m_b)*(-1)**(J_ab - M_ab)*(-1)**(j_a - _m_a)*Sum(_m_a, _m_b)*(j_a, -_m_a, j_b, -_m_b|J_ab, -M_ab)*<a, b| T(k, q) |c>
+        (-1)**(j_a - _m_a)*(-1)**(J_ab - M_ab)*(-1)**(j_b - _m_b)*Sum(_m_a, _m_b)*(j_a, -_m_a, j_b, -_m_b|J_ab, -M_ab)*<a, b| T(k, q) |c>
 
         The matrix element also contain dummy symbols:
 
