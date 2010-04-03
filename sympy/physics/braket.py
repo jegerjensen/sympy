@@ -378,12 +378,12 @@ class SphericalQuantumState(QuantumState):
             obj.state1 = state1
             obj.state2 = state2
             obj.is_coupled = True
-            obj._j = Symbol("J_"+str(obj.label))
+            obj._j = Symbol("J_"+str(obj.label), nonnegative=True)
             obj._m = Symbol("M_"+str(obj.label))
         else:
             obj = QuantumState.__new__(cls, symbol, **kw_args)
             obj.is_coupled = False
-            obj._j = Symbol("j_"+str(obj.label))
+            obj._j = Symbol("j_"+str(obj.label), nonnegative=True)
             obj._m = Symbol("m_"+str(obj.label))
 
         cls._register_spin_assumptions(obj)
