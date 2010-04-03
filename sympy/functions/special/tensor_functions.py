@@ -9,9 +9,16 @@ class Dij(Function):
     """
     Represents the Kronecker Delta Function
 
-    if i == j, Dij(i, j) = 1
-    otherwise Dij(i, j) = 0
-    where i, j are usually integers
+    >>> from sympy import Dij, symbols
+    >>> i,j = symbols('ij')
+    >>> Dij(-j, -2*i)
+    Dij(j, 2*i)
+    >>> Dij(j, i)
+    Dij(i, j)
+    >>> Dij(i, j).subs(j,i)
+    1
+    >>> Dij(1, 2)
+    0
     """
     nargs = (1, 2)
 
@@ -22,6 +29,12 @@ class Dij(Function):
             return S.One
         elif i.is_number and j.is_number:
             return S.Zero
+        elif i.is_Mul and j.is_Mul:
+            ci, ti = i.as_coeff_terms()
+            cj, tj = i.as_coeff_terms()
+            if ci.is_negative and cj.is_negative:
+                return cls(-i, -j)
+        if i > j: return cls(j, i)
 
 class Eijk(Function):
     """

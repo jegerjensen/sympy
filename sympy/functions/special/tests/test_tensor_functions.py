@@ -3,6 +3,7 @@ from sympy import symbols, Dij, Eijk
 x, y = symbols('xy')
 
 def test_Dij():
+    assert Dij(x, y) == Dij(y, x)
     assert Dij(1, 1) == 1
     assert Dij(1, 2) == 0
     assert Dij(x, x) == 1
