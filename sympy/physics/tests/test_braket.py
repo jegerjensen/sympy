@@ -151,9 +151,9 @@ def test_as_coeff_tensor():
 
 def test_as_coeff_sp_states():
     global_assumptions.clear()
-    t, T, j_a, m_a = symbols('t T j_a m_a')
-    j_b, m_b = symbols('j_b m_b')
-    J_c, M_c = symbols('J_c M_c')
+    t, T = symbols('t T')
+    j_a, j_b, J_c = symbols('j_a j_b J_c', nonnegative=True)
+    m_a, m_b, M_c = symbols('m_a m_b M_c')
 
     # sp states
     assert SphFermKet('a').as_coeff_sp_states() == (1, (SphFermKet('a'),))
@@ -316,13 +316,11 @@ def test_DirectMatrixElement():
 
 def test_ThreeTensorMatrixElement():
     global_assumptions.clear()
-    j_a, m_a = symbols('j_a m_a')
-    j_b, m_b = symbols('j_b m_b')
-    j_c, m_c = symbols('j_c m_c')
-    j_d, m_d = symbols('j_d m_d')
+    j_a, j_b, j_c, j_d = symbols('j_a j_b j_c j_d', nonnegative=True)
+    m_a, m_b, m_c, m_d = symbols('m_a m_b m_c m_d')
+    J_ab, J_cd, J_ad, J_cb = symbols('J_ab J_cd J_ad J_cb', nonnegative=True)
+    M_ab, M_cd, M_ad, M_cb = symbols('M_ab M_cd M_ad M_cb')
     k, q = symbols('k q')
-    J_ab, M_ab = symbols('J_ab M_ab')
-    J_cd, M_cd = symbols('J_cd M_cd')
     Op = SphericalTensorOperator('T',k,q)
     Bra = SphFermBra
     Ket = SphFermKet
@@ -351,15 +349,11 @@ def test_ThreeTensorMatrixElement():
 
 def test_MatrixElement_recoupling():
     global_assumptions.clear()
-    j_a, m_a = symbols('j_a m_a')
-    j_b, m_b = symbols('j_b m_b')
-    j_c, m_c = symbols('j_c m_c')
-    j_d, m_d = symbols('j_d m_d')
+    j_a, j_b, j_c, j_d = symbols('j_a j_b j_c j_d', nonnegative=True)
+    m_a, m_b, m_c, m_d = symbols('m_a m_b m_c m_d')
+    J_ab, J_cd, J_ad, J_cb = symbols('J_ab J_cd J_ad J_cb', nonnegative=True)
+    M_ab, M_cd, M_ad, M_cb = symbols('M_ab M_cd M_ad M_cb')
     k, q = symbols('k q')
-    J_ab, M_ab = symbols('J_ab M_ab')
-    J_cd, M_cd = symbols('J_cd M_cd')
-    J_ad, M_ad = symbols('J_ad M_ad')
-    J_cb, M_cb = symbols('J_cb M_cb')
     Op = SphericalTensorOperator('T',k,q)
     Bra = SphFermBra
     Ket = SphFermKet
