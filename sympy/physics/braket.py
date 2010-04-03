@@ -1003,16 +1003,16 @@ class ReducedMatrixElement(MatrixElement):
     ...         )
     >>> from sympy import symbols
     >>> k,q = symbols('k q')
-    >>> bra = SphFermBra('a')
-    >>> ket = SphFermKet('b')
+    >>> a = SphFermBra('a')
+    >>> b = SphFermKet('b')
     >>> T = SphericalTensorOperator('T',k,q)
-    >>> ReducedMatrixElement(bra, T, ket)
+    >>> ReducedMatrixElement(a, T, b)
     <a|| T(k) ||b>
 
     The geometrical factor is available through the method
     ._get_reduction_factor():
 
-    >>> ReducedMatrixElement(bra, T, ket)._get_reduction_factor()
+    >>> ReducedMatrixElement(a, T, b)._get_reduction_factor()
     (j_b, m_b, k, q|j_a, m_a)
 
     You can also formulate the direct product (corresponding to a full
@@ -1020,17 +1020,17 @@ class ReducedMatrixElement(MatrixElement):
     Note that those expressions are not equal to the ReducedMatrixElement, but
     rather to the corresponding uncoupled matrix element.
 
-    >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
+    >>> ReducedMatrixElement(a, T, b).get_direct_product_ito_self()
     (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
-    >>> ReducedMatrixElement(bra, T, SphFermKet('bc',ket,'c')).get_direct_product_ito_self()
+    >>> ReducedMatrixElement(a, T, SphFermKet('bc',b,'c')).get_direct_product_ito_self()
     Sum(_J_bc, _M_bc)*(j_b, m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(b, c)>
 
     The ReducedMatrixElement can also express itself in terms of a direct
     product.
 
-    >>> ReducedMatrixElement(bra, T, ket).as_direct_product()
+    >>> ReducedMatrixElement(a, T, b).as_direct_product()
     Sum(_m_b, _q)*(j_b, _m_b, k, _q|j_a, m_a)*<a| T(k, _q) |b>
-    >>> ReducedMatrixElement(bra, T, SphFermKet('bc',ket,'c')).as_direct_product()
+    >>> ReducedMatrixElement(a, T, SphFermKet('bc',b,'c')).as_direct_product()
     Sum(_M_bc, _m_b, _m_c, _q)*(J_bc, _M_bc, k, _q|j_a, m_a)*(j_b, _m_b, j_c, _m_c|J_bc, _M_bc)*<a| T(k, _q) |b, c>
 
     Note that in the above expression, the summation over _M_bc and _q
@@ -1048,14 +1048,14 @@ class ReducedMatrixElement(MatrixElement):
 
     >>> default_redmat_definition
     'wikipedia'
-    >>> type(ReducedMatrixElement(bra, T, ket)).__name__
+    >>> type(ReducedMatrixElement(a, T, b)).__name__
     'ReducedMatrixElement_wikipedia'
 
     Other definitions currently available are 'edmonds' and 'brink_satchler':
 
-    >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_reduction_factor()
+    >>> ReducedMatrixElement(a, T, b, 'edmonds')._get_reduction_factor()
     (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
-    >>> ReducedMatrixElement(bra, T, ket, 'brink_satchler')._get_reduction_factor()
+    >>> ReducedMatrixElement(a, T, b, 'brink_satchler')._get_reduction_factor()
     (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)
 
     If you want to introduce yet another definition, all you have to do is
@@ -1085,7 +1085,7 @@ class ReducedMatrixElement(MatrixElement):
                 return ReducedMatrixElement_wikipedia(left, op, right, **kw_args)
             else:
                 raise ValueError(
-                        "Incomprehensible reduced matrix definition: %s"%definition)
+                        "Unknown reduced matrix definition: %s"%definition)
         else:
             obj = MatrixElement.__new__(cls, left,op,right, **kw_args)
             return obj
