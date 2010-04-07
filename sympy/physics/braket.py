@@ -1221,6 +1221,10 @@ class ReducedMatrixElement(MatrixElement):
         """
         return ThreeTensorMatrixElement(*self.args)
 
+    def get_related_direct_matrix(self, **kw_args):
+        ttm =  self._get_ThreeTensorMatrixElement()
+        return ttm.get_related_direct_matrix(**kw_args)
+
     def __str__(self):
         return "%s| %s |%s" %(
                 self.left,
