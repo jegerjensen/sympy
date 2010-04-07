@@ -377,12 +377,15 @@ class SphericalQuantumState(QuantumState):
                 raise ValueError("Only single particle states can be anti-particles (FIXME?)")
             obj.state1 = state1
             obj.state2 = state2
-            obj.is_coupled = True
+            if kw_args.get('reverse'):
+                obj.is_coupled = -1
+            else:
+                obj.is_coupled = 1
             obj._j = Symbol("J_"+str(obj.label), nonnegative=True)
             obj._m = Symbol("M_"+str(obj.label))
         else:
             obj = QuantumState.__new__(cls, symbol, **kw_args)
-            obj.is_coupled = False
+            obj.is_coupled = 0
             obj._j = Symbol("j_"+str(obj.label), nonnegative=True)
             obj._m = Symbol("m_"+str(obj.label))
 
@@ -408,16 +411,18 @@ class SphericalQuantumState(QuantumState):
     def _eval_subs(self, old, new):
         if self == old: return new
         obj = QuantumState._eval_subs(self, old, new)
+        obj.is_coupled = self.is_coupled
         obj._j = self._j._eval_subs(old, new)
         obj._m = self._m._eval_subs(old, new)
         self._register_spin_assumptions(obj)
         return obj
 
     def _hashable_content(self):
-        return QuantumState._hashable_content(self) + (self._j, self._m)
+        return QuantumState._hashable_content(self) + (self._j, self._m, self.is_coupled)
 
     def _dagger_(self):
         obj = QuantumState._dagger_(self)
+        obj.is_coupled = self.is_coupled
         obj._j = self._j
         obj._m = self._m
         return obj
@@ -430,8 +435,13 @@ class SphericalQuantumState(QuantumState):
         if contained_in and not contained_in.is_dual is None:
             if contained_in.is_dual != self.is_dual:
                 return str(self)
-        if self.is_coupled:
-            return "%s(%s, %s)"%(self.symbol_str,
+        if self.is_coupled == 1:
+            return "%s(%s --> %s)"%(self.symbol_str,
+                    self.state1._str_nobraket_(self),
+                    self.state2._str_nobraket_(self)
+                    )
+        if self.is_coupled == -1:
+            return "%s(%s <-- %s)"%(self.symbol_str,
                     self.state1._str_nobraket_(self),
                     self.state2._str_nobraket_(self)
                     )
@@ -508,8 +518,12 @@ class SphericalQuantumState(QuantumState):
         # get top-level coupling
         c1, t1 = self.state1.as_coeff_tensor()
         c2, t2 = self.state2.as_coeff_tensor()
-        cgc, t = SphericalTensor('T', j, m, t1, t2
-                ).as_coeff_direct_product(deep=True, **kw_args)
+        if self.is_coupled == 1:
+            t = SphericalTensor('T', j, m, t1, t2)
+        elif self.is_coupled == -1:
+            t = SphericalTensor('T', j, m, t2, t1)
+
+        cgc, t = t.as_coeff_direct_product(deep=True, **kw_args)
         cgc = phase*cgc*c1*c2
 
         # call deep to get coefficients for internal structure
@@ -604,6 +618,8 @@ class SphericalQuantumState(QuantumState):
     def single_particle_states(self):
         """
         A tuple containing all s.p. states of this QuantumState
+
+        The states are ordered as the state was created from left to right
         """
         if self.is_coupled:
             return (self.state1.single_particle_states
@@ -845,7 +861,7 @@ class QuantumVacuum(DirectQuantumState, SphericalQuantumState):
             # Note: Do not call SphericalQuantumState.__new__() from here. It
             # creates an infinite loop!
             obj = QuantumState.__new__(cls, None)
-            obj.is_coupled = False
+            obj.is_coupled = 0
             obj._j = S.Zero
             obj._m = S.Zero
             obj._tensor_proj = S.Zero
