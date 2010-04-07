@@ -1364,6 +1364,30 @@ class DirectMatrixElement(MatrixElement):
             + self.right.single_particle_states) if h.is_hole ]
         return self.shift_vacuum(holes)
 
+    def as_other_coupling(self, other, **kw_args):
+        """
+        Returns this direct matrix element in terms of other.
+
+        Raises ValueError if not compatible
+        """
+        c, t = other.as_coeff_terms(MatrixElement)
+
+        if len(t) != 1:
+            raise ValueError("Only one MatrixElement object allowed")
+        t = t[0]
+        if isinstance(t, DirectMatrixElement):
+            if t.as_only_particles() == self.as_only_particles():
+                return c*t
+            else:
+                raise ValueError("Not compatible: %s != %s" % (self, t))
+        if isinstance(t, (ThreeTensorMatrixElement, ReducedMatrixElement)):
+            if t.get_related_direct_matrix(only_particle_states=True) == self.as_only_particles():
+                return c*t.get_direct_product_ito_self(**kw_args)
+            else:
+                raise ValueError("Not compatible: %s != %s" % (self, t))
+        raise ValueError("Unknown coupling order requested.")
+
+
     def shift_vacuum(self, states):
         """
         We rewrite this matrix element by a change of vacuum.
