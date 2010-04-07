@@ -542,7 +542,10 @@ class SphericalQuantumState(QuantumState):
 
     def as_direct_product(self, **kw_args):
         c,p = self._eval_as_coeff_sp_states(**kw_args)
-        return Mul(c,*p)
+        result = Mul(c,*p)
+        if kw_args.get('tjs'):
+            result = refine_phases(convert_cgc2tjs(result))
+        return result
 
     def as_coeff_sp_states(self, **kw_args):
         """
@@ -1293,7 +1296,10 @@ class ReducedMatrixElement(MatrixElement):
         new_kw['wigner_eckardt'] = False
         matel = matel.as_direct_product(**new_kw)
 
-        return combine_ASigmas(matel*invcgc)
+        result = combine_ASigmas(matel*invcgc)
+        if kw_args.get('tjs'):
+            result = refine_phases(convert_cgc2tjs(result))
+        return result
 
 class ReducedMatrixElement_edmonds(ReducedMatrixElement):
     _definition = 'edmonds'
@@ -1573,9 +1579,14 @@ class ThreeTensorMatrixElement(MatrixElement):
             matrix = matrix.subs(subsdict)
 
         if kw_args.get('only_coeffs'):
-            return combine_ASigmas(cbra*cket)
+            result = combine_ASigmas(cbra*cket)
         else:
-            return combine_ASigmas(cbra*cket)*matrix
+            result =  combine_ASigmas(cbra*cket)*matrix
+
+        if kw_args.get('tjs'):
+            result = refine_phases(convert_cgc2tjs(result))
+
+        return result
 
 
     def get_related_direct_matrix(self, **kw_args):
