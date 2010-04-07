@@ -1754,8 +1754,10 @@ class ThreeTensorMatrixElement(MatrixElement):
         SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
 
         """
-        assert isinstance(other, ThreeTensorMatrixElement)
-        assert self.operator == other.operator
+        if not isinstance(other, ThreeTensorMatrixElement):
+            raise ValueError("Only ThreeTensorMatrixElements accepted")
+        if not self.operator == other.operator:
+            raise ValueError("MatrixElements not compatible")
 
         self_as_direct = self.as_direct_product(only_particle_states=True, strict_bra_coupling=True, **kw_args)
         my_direct = self_as_direct.atoms(DirectMatrixElement).pop()
