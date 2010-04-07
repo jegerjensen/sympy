@@ -968,12 +968,16 @@ class MatrixElement(Basic):
             c,t = right.as_coeff_terms()
             coeff *= c
             right = t[0]
+        if isinstance(operator, Mul):
+            c,t = operator.as_coeff_terms(QuantumOperator)
+            coeff *= c
+            operator = t[0]
 
         if cls is MatrixElement:
             return coeff*_get_matrix_element(left, operator, right, **kw_args)
         else:
             assert isinstance(left, DualQuantumState), "not dual: %s" %left
-            assert isinstance(operator, QuantumOperator)
+            assert isinstance(operator, QuantumOperator), "not operator: %s" %operator
             assert isinstance(right, RegularQuantumState)
             obj = Basic.__new__(cls, left, operator, right, **kw_args)
             return coeff*obj
@@ -990,6 +994,11 @@ class MatrixElement(Basic):
     def operator(self):
         return self.args[1]
 
+    def _dagger_(self):
+        l = Dagger(self.right)
+        op = Dagger(self.operator)
+        r = Dagger(self.left)
+        return type(self)(l,op,r)
 
     def __str__(self):
         return "%s %s %s" %self.args[:4]
