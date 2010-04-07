@@ -1802,6 +1802,22 @@ def rewrite_as_direct_product(expr, **kw_args):
         subslist.append((m,m.get_self_ito_direct_product(**kw_args)))
     return expr.subs(subslist)
 
+def rewrite_coupling(expr, other, **kw_args):
+    """
+    Tries to rewrite every MatrixElement in terms of the MatrixElement ``other''.
+    """
+    matels = expr.atoms(MatrixElement)
+    subsdict = {}
+    for m in matels:
+        try:
+            subsdict[m] = m.as_other_coupling(other)
+        except ValueError:
+            pass
+    if subsdict:
+        return expr.subs(subsdict)
+    else:
+        return expr
+
 class InjectionFailureException(Exception):
     def __init__(self, failures):
         self.failures = failures
