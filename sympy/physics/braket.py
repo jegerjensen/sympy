@@ -204,7 +204,7 @@ class QuantumState(Basic):
         >>> B = SphFermKet('b')
         >>> C = SphFermKet('c',A,B)
         >>> Dagger(C)
-        <c(a, b)|
+        <c(a --> b)|
 
         >>> C.single_particle_states
         (|a>, |b>)
@@ -468,7 +468,7 @@ class SphericalQuantumState(QuantumState):
         properties of ab:
 
         >>> ab = SphFermKet('ab',a,b); ab
-        |ab(a, <b|)>
+        |ab(a --> <b|)>
         >>> ab.as_coeff_tensor()
         (1, T(J_ab, M_ab))
 
@@ -492,7 +492,7 @@ class SphericalQuantumState(QuantumState):
         >>> a = SphFermKet('a')
         >>> b = SphFermBra('b')
         >>> ab = SphFermBra('ab',a,b); ab
-        <ab(|a>, b)|
+        <ab(|a> --> b)|
         >>> ab.as_coeff_tensor()
         ((-1)**(J_ab - M_ab), T(J_ab, -M_ab))
 
@@ -606,7 +606,7 @@ class SphericalQuantumState(QuantumState):
         Nested couplings are also decomposed:
 
         >>> abc = SphFermKet('abc', SphFermKet('ab', a,b), 'c'); abc
-        |abc(ab(a, <b|), c)>
+        |abc(ab(a --> <b|) --> c)>
         >>> coeff_abc, states = abc.as_coeff_sp_states()
         >>> coeff_abc
          (-1)**(j_b - _m_b)*Sum(_M_ab, _m_a, _m_b, _m_c)*(J_ab, _M_ab, j_c, _m_c|J_abc, M_abc)*(j_a, _m_a, j_b, -_m_b|J_ab, _M_ab)
@@ -724,9 +724,9 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
     m_a
     >>> A, B = SphFermKet('a'), SphFermKet('b')
     >>> C = SphFermKet('c',A,B); C
-    |c(a, b)>
+    |c(a --> b)>
     >>> SphFermKet('z','x','y')
-    |z(x, y)>
+    |z(x --> y)>
     >>> SphFermKet('z','x','y').state1
     |x>
     >>> SphFermKet('z','x','y').state2
@@ -735,7 +735,9 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
     Single particle states return tensors with symbol 't', coupled states 'T'
 
     >>> C = SphFermKet('c',A,Dagger(B)); C
-    |c(a, <b|)>
+    |c(a --> <b|)>
+    >>> C = SphFermKet('c',A,B, reverse=True); C
+    |c(a <-- b)>
 
     """
     pass
@@ -756,13 +758,13 @@ class SphFermBra(SphericalDualQuantumState, FermionState, Bra):
     m_a
     >>> A, B = SphFermBra('a'), SphFermBra('b')
     >>> C = SphFermBra('c',A,B); C
-    <c(a, b)|
+    <c(a --> b)|
     >>> isinstance(C, SphericalTensor)
     False
     >>> isinstance(C, SphericalQuantumState)
     True
     >>> SphFermBra('z','x','y')
-    <z(x, y)|
+    <z(x --> y)|
 
     Single particle states return tensors with symbol 't', coupled states 'T'
 
@@ -1051,7 +1053,7 @@ class ReducedMatrixElement(MatrixElement):
     >>> ReducedMatrixElement(a, T, b).get_direct_product_ito_self()
     (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
     >>> ReducedMatrixElement(a, T, SphFermKet('bc',b,'c')).get_direct_product_ito_self()
-    Sum(_J_bc, _M_bc)*(j_b, m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(b, c)>
+    Sum(_J_bc, _M_bc)*(j_b, m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(b --> c)>
 
     The ReducedMatrixElement can also express itself in terms of a direct
     product.
@@ -1258,7 +1260,7 @@ class ReducedMatrixElement(MatrixElement):
         >>> ReducedMatrixElement(bra, T, ket).get_direct_product_ito_self()
         (j_b, m_b, k, q|j_a, m_a)*<a|| T(k) ||b>
         >>> ReducedMatrixElement(bra, T, SphFermKet('bc','b','c')).get_direct_product_ito_self()
-        Sum(_J_bc, _M_bc)*(j_b, m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(b, c)>
+        Sum(_J_bc, _M_bc)*(j_b, m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(b --> c)>
 
         """
         matel = self._get_ThreeTensorMatrixElement()
@@ -1509,9 +1511,9 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> b = SphFermBra('b')
         >>> bra_ab = SphFermBra('ab',a,b)
         >>> MatrixElement(bra_ab, T, ket).get_direct_product_ito_self()
-        Sum(_J_ab, _M_ab)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*<ab(a, b)| T(k, q) |c>
+        Sum(_J_ab, _M_ab)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*<ab(a --> b)| T(k, q) |c>
         >>> MatrixElement(bra_ab, T, ket).get_direct_product_ito_self(strict_bra_coupling=True)
-        (-1)**(m_a - j_a)*(-1)**(m_b - j_b)*(-1)**(-_J_ab + _M_ab)*Sum(_J_ab, _M_ab)*(j_a, -m_a, j_b, -m_b|_J_ab, -_M_ab)*<ab(a, b)| T(k, q) |c>
+        (-1)**(m_a - j_a)*(-1)**(m_b - j_b)*(-1)**(-_J_ab + _M_ab)*Sum(_J_ab, _M_ab)*(j_a, -m_a, j_b, -m_b|_J_ab, -_M_ab)*<ab(a --> b)| T(k, q) |c>
 
         The matrix element also contains dummy symbols now,
         >>> m = MatrixElement(bra_ab, T, ket)
@@ -1529,12 +1531,12 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> c = SphFermKet('c')
         >>> ket_bc = SphFermKet('bc',b,c)
         >>> MatrixElement(a, T, ket_bc).get_direct_product_ito_self()
-        (-1)**(m_b - j_b)*Sum(_J_bc, _M_bc)*(j_b, -m_b, j_c, m_c|_J_bc, _M_bc)*<a| T(k, q) |bc(<b|, c)>
+        (-1)**(m_b - j_b)*Sum(_J_bc, _M_bc)*(j_b, -m_b, j_c, m_c|_J_bc, _M_bc)*<a| T(k, q) |bc(<b| --> c)>
 
         ...and in combination with the Wigner-Eckard theorem:
 
         >>> MatrixElement(a, T, ket_bc).get_direct_product_ito_self(wigner_eckardt=True)
-        (-1)**(m_b - j_b)*Sum(_J_bc, _M_bc)*(j_b, -m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(<b|, c)>
+        (-1)**(m_b - j_b)*Sum(_J_bc, _M_bc)*(j_b, -m_b, j_c, m_c|_J_bc, _M_bc)*(_J_bc, _M_bc, k, q|j_a, m_a)*<a|| T(k) ||bc(<b| --> c)>
         """
         if kw_args.get('wigner_eckardt'):
             redmat = self.get_related_redmat(**kw_args)
@@ -1645,14 +1647,14 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> bra = SphFermBra('ab',a,b)
         >>> ket = SphFermKet('cd',c,d)
         >>> m=MatrixElement(bra, T, ket); m
-        <ab(a, b)| T(k, q) |cd(c, d)>
+        <ab(a --> b)| T(k, q) |cd(c --> d)>
         >>> m.get_related_direct_matrix()
         <a, b| T(k, q) |c, d>
 
         >>> bra = SphFermBra('ab',a,-b)
         >>> ket = SphFermKet('cd',c,-d)
         >>> m=MatrixElement(bra, T, ket); m
-        <ab(a, -b)| T(k, q) |cd(c, -d)>
+        <ab(a --> -b)| T(k, q) |cd(c --> -d)>
         >>> m.get_related_direct_matrix()
         <a, -b| T(k, q) |c, -d>
         >>> m.get_related_direct_matrix(only_particle_states=True)
@@ -1698,7 +1700,7 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> bra_ab = SphFermBra('ab',a,b)
         >>> ket_cd = SphFermKet('cd',c,d)
         >>> M1 = MatrixElement(bra_ab, T, ket_cd); M1
-        <ab(a, b)| T(k, q) |cd(c, d)>
+        <ab(a --> b)| T(k, q) |cd(c --> d)>
         >>> M1.as_direct_product()
         Sum(_m_a, _m_b, _m_c, _m_d)*(j_a, _m_a, j_b, _m_b|J_ab, M_ab)*(j_c, _m_c, j_d, _m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
 
@@ -1708,7 +1710,7 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> bra_ca = SphFermBra('ca',c,a)
         >>> ket_db = SphFermKet('db',d,b)
         >>> M2 = MatrixElement(bra_ca, T, ket_db); M2
-        <ca(|c>, a)| T(k, q) |db(d, <b|)>
+        <ca(|c> --> a)| T(k, q) |db(d --> <b|)>
         >>> expr = M2.as_direct_product(); expr
         (-1)**(j_a - _m_a)*(-1)**(J_ca - M_ca)*(-1)**(j_b - _m_b)*Sum(_m_a, _m_b, _m_c, _m_d)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<a, b| T(k, q) |c, d>
 
@@ -1718,12 +1720,12 @@ class ThreeTensorMatrixElement(MatrixElement):
         the direct product matrix expressed in terms of M1:
 
         >>> M1.get_direct_product_ito_self()
-        Sum(_J_ab, _J_cd, _M_ab, _M_cd)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*(j_c, m_c, j_d, m_d|_J_cd, _M_cd)*<ab(a, b)| T(k, q) |cd(c, d)>
+        Sum(_J_ab, _J_cd, _M_ab, _M_cd)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*(j_c, m_c, j_d, m_d|_J_cd, _M_cd)*<ab(a --> b)| T(k, q) |cd(c --> d)>
 
         Inserted we get the long expression:  (where strict bra coupling have been used.)
 
         >>> expr = M2.as_other_coupling(M1); expr
-        (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<ab(a, b)| T(k, q) |cd(c, d)>
+        (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<ab(a --> b)| T(k, q) |cd(c --> d)>
 
         If T happens to be a rank 0 tensor (k=q=0), we can write the relation
         between the reduced matrix elements in terms of a 6j-symbol.  In order
@@ -1737,15 +1739,15 @@ class ThreeTensorMatrixElement(MatrixElement):
         >>> M1 = M1.subs({k: S(0), q: S(0)})
         >>> M2 = M2.subs({k: S(0), q: S(0)})
         >>> expr = M2.as_other_coupling(M1, wigner_eckardt=True, definition='edmonds'); expr
-        (-1)**(J_db + M_ca + _J_cd + _M_ab)*(1 + 2*J_ca)**(1/2)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, _M_db)*Dij(J_ca, J_db)*Dij(M_ca, _M_db)*Dij(_J_ab, _J_cd)*Dij(_M_ab, _M_cd)*<ab(a, b)|| T(0) ||cd(c, d)>/(1 + 2*_J_ab)**(1/2)
+        (-1)**(J_db + M_ca + _J_cd + _M_ab)*(1 + 2*J_ca)**(1/2)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, _M_db)*Dij(J_ca, J_db)*Dij(M_ca, _M_db)*Dij(_J_ab, _J_cd)*Dij(_M_ab, _M_cd)*<ab(a --> b)|| T(0) ||cd(c --> d)>/(1 + 2*_J_ab)**(1/2)
 
         >>> expr = convert_cgc2tjs(expr)
         >>> expr = refine_phases(expr)
         >>> expr = evaluate_sums(expr, all_deltas=1); expr
-        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + _M_ab)*(1 + 2*J_db)**(3/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a, b)|| T(0) ||cd(c, d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
+        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + _M_ab)*(1 + 2*J_db)**(3/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a --> b)|| T(0) ||cd(c --> d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
 
         >>> expr = refine_tjs2sjs(expr); expr
-        (-1)**(J_db - j_a - j_d + _J_ab)*(1 + 2*J_db)**(1/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab)*<ab(a, b)|| T(0) ||cd(c, d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
+        (-1)**(J_db - j_a - j_d + _J_ab)*(1 + 2*J_db)**(1/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab)*<ab(a --> b)|| T(0) ||cd(c --> d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
 
         Kuo & al. arrive at another 6j symbol, but we can easily check the equivalence:
 
