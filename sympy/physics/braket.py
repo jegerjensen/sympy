@@ -1870,7 +1870,7 @@ def inject_every_symbol_globally(expr, force=False, quiet=False, strict=False):
                 injections.append(k)
                 replaced_items.append(v)
             _report()
-            return replaced
+            return replaced_items
         return injections
     finally:
         # we should explicitly break cyclic dependencies as stated in inspect doc
