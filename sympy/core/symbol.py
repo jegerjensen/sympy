@@ -143,6 +143,18 @@ class Dummy(Symbol):
     def _hashable_content(self):
         return Symbol._hashable_content(self) + (self.dummy_index,)
 
+    def compare(self, other):
+        if self is other: return 0
+        c = cmp(self.__class__, other.__class__)
+        if c: return c
+
+        # see if we can sort without considering dummy enumeration first
+        c = cmp(Symbol._hashable_content(self), Symbol._hashable_content(other))
+        if c: return c
+
+        return Symbol.compare(self, other)
+
+
 class Wild(Symbol):
     """
     Wild() matches any expression but another Wild().
