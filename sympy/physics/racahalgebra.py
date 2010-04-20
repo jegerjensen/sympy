@@ -20,6 +20,8 @@ from sympy.assumptions.handlers import AskHandler
 def pretty_hash(expr):
     return expr._pretty_key_()
 
+sortkey = pretty_hash
+
 __all__ = [
         'ThreeJSymbol',
         'ClebschGordanCoefficient',
@@ -271,15 +273,15 @@ class ThreeJSymbol(AngularMomentumSymbol):
         """
 
         # We search for even permuations first, to avoid phases if possible
-        if pretty_hash(j1) > pretty_hash(J):
+        if sortkey(j1) > sortkey(J):
             return ThreeJSymbol(j2,J,j1,m2,M,m1)
 
-        if pretty_hash(j1) > pretty_hash(j2):
+        if sortkey(j1) > sortkey(j2):
             phase=pow(S.NegativeOne,j1+j2+J)
             expr = ThreeJSymbol(j2,j1,J,m2,m1,M)
             return cls._determine_phase(phase, expr)
 
-        if pretty_hash(j2) > pretty_hash(J):
+        if sortkey(j2) > sortkey(J):
             phase=pow(S.NegativeOne,j1+j2+J)
             expr = ThreeJSymbol(j1,J,j2,m1,M,m2)
             return cls._determine_phase(phase, expr)
@@ -444,7 +446,7 @@ class SixJSymbol(AngularMomentumSymbol):
 
         """
         args = [j1, j2, J12, j3, J, J23]
-        maxind = args.index(max(args, key=pretty_hash))
+        maxind = args.index(max(args, key=sortkey))
 
         # get maxJ in correct column
         if maxind != 4 and maxind != 1:
