@@ -11,6 +11,7 @@ from sympy import (
 
 from sympy.core.cache import cacheit
 from sympy.functions import Dij
+from sympy.printing.pretty.stringpict import  prettyForm
 from sympy.assumptions import (
         register_handler, remove_handler, Q, ask, Assume, refine
         )
@@ -696,6 +697,9 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
 
         return "(%s, %s, %s, %s|%s, %s)" % self.args
 
+    def _pretty_(self, p, *args):
+        return prettyForm(self._sympystr_())
+
 def get_spherical_tensor(symbol, rank, projection, tensor1=None, tensor2=None):
     """
     Creates a new spherical tensor (ST) with the given rank and
@@ -860,6 +864,9 @@ class SphericalTensor(Basic):
         symbol = str(self.symbol)
 
         return symbol,rank
+
+    def _latex_(self, p, *args):
+        return "%s(%s, %s)" % tuple([p._print(a) for a in self.args])
 
 
 class CompositeSphericalTensor(SphericalTensor):
@@ -1153,6 +1160,10 @@ class ASigma(Basic):
     def _sympystr_(self, p, *args):
         l = [p.doprint(o) for o in self.args]
         return "Sum" + "(%s)"%", ".join(l)
+
+    def _latex_(self, p, *args):
+        labels = " ".join([ p._print(i) for i in self.args ])
+        return r"\Sigma_{%s}" % labels
 
 class TriangularInequality(Function):
     nargs = 3
