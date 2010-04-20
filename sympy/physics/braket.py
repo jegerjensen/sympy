@@ -1618,6 +1618,7 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         kw = kw_args.copy()
         kw['use_dummies'] = False
+        kw['tjs'] = False
         coeffs_inv = self.as_direct_product(only_coeffs=True, **kw)
         coeffs = invert_clebsch_gordans(coeffs_inv)
         matrix = self
