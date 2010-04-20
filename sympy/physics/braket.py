@@ -107,6 +107,27 @@ class BraKet(QuantumState):
     def _sympystr_(self, p, *args):
         return str(self)
 
+    def _latex_(self, p, *args):
+        return r"\left%s %s \right%s" % (
+                self.left_braket,
+                self._latex_nobraket_(p),
+                self.right_braket
+                )
+
+    def _latex_nobraket_(self, p, contained_in=None):
+        if contained_in and not contained_in.is_dual is None:
+            if self.is_dual != contained_in.is_dual:
+                return p._print(self)
+        str_args = []
+        for s in self.args:
+            if s is blank_symbol: continue
+            try:
+                str_args.append(s._latex_nobraket_(p, self))
+            except AttributeError:
+                str_args.append(p._print(s))
+        return ", ".join([ s for s in str_args])
+
+
 class Ket(BraKet):
     left_braket = '|'
     right_braket = '>'
@@ -448,6 +469,27 @@ class SphericalQuantumState(QuantumState):
         else:
             return self.symbol_str
 
+    def _latex_nobraket_(self, p, contained_in=None):
+        """
+        Coupling and hole states must show in represetantion.
+        """
+
+        if contained_in and not contained_in.is_dual is None:
+            if contained_in.is_dual != self.is_dual:
+                return p._print(self)
+        if self.is_coupled == 1:
+            return r"%s(%s \rightarrow %s)"%(self.symbol_str,
+                    self.state1._latex_nobraket_(p, self),
+                    self.state2._latex_nobraket_(p, self)
+                    )
+        if self.is_coupled == -1:
+            return r"%s(%s \leftarrow %s)"%(self.symbol_str,
+                    self.state1._latex_nobraket_(p, self),
+                    self.state2._latex_nobraket_(p, self)
+                    )
+        else:
+            return self.symbol_str
+
     def as_coeff_tensor(self, **kw_args):
         """
         Returns the coefficient and tensor corresponding to this state.
@@ -714,7 +756,7 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
     Represents a spherical fermion ket.
 
     >>> from sympy.physics.braket import SphFermKet, Dagger
-    >>> from sympy import symbols
+    >>> from sympy import symbols, latex
     >>> a,b,c = symbols('a b c')
     >>> SphFermKet(a)
     |a>
@@ -736,8 +778,13 @@ class SphFermKet(SphericalRegularQuantumState, FermionState, Ket):
 
     >>> C = SphFermKet('c',A,Dagger(B)); C
     |c(a --> <b|)>
+    >>> latex(C)
+    '\\\\left| c(a \\\\rightarrow \\\\left< b \\\\right|) \\\\right>'
+
     >>> C = SphFermKet('c',A,B, reverse=True); C
     |c(a <-- b)>
+    >>> latex(C)
+    '\\\\left| c(a \\\\leftarrow b) \\\\right>'
 
     """
     pass
@@ -928,7 +975,7 @@ class MatrixElement(Basic):
     >>> from sympy.physics.braket import ThreeTensorMatrixElement
     >>> from sympy.physics.braket import ReducedMatrixElement
     >>> from sympy.physics.braket import DirectMatrixElement
-    >>> from sympy import symbols
+    >>> from sympy import symbols, latex
     >>> a,b,c,d,e,f,g,h,D = symbols('abcdefghD')
 
     >>> bra_a = SphFermBra(a)
@@ -949,6 +996,10 @@ class MatrixElement(Basic):
     <a, c| Op(D, d) |b>
     >>> isinstance(m, DirectMatrixElement)
     True
+
+    >>> latex(MatrixElement(bra_a,Op,ket_b))
+    '\\left\\langle a \\middle| Op(D, d) \\middle| b \\right\\rangle'
+
     """
 
     is_commutative=True
@@ -1007,6 +1058,13 @@ class MatrixElement(Basic):
 
     def _sympystr_(self, p, *args):
         return str(self)
+
+    def _latex_(self, p):
+        left = self.left._latex_nobraket_(p)
+        right = self.right._latex_nobraket_(p)
+        op = p._print(self.operator)
+        return r"\left\langle %s \middle| %s \middle| %s \right\rangle" %(
+                left, op, right )
 
 
 class ReducedMatrixElement(MatrixElement):
