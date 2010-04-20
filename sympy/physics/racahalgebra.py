@@ -2344,6 +2344,32 @@ def convert_sumindex2nondummy(expr, subslist=[]):
 
     return (expr).subs(new_subslist)
 
+def apply_deltas(expr, **kw_args):
+    """
+    Applies the KroneckerDeltas without removing them
+
+    >>> from sympy.physics.racahalgebra import apply_deltas
+    >>> from sympy import symbols, Function, Dij
+
+    >>> a,b,c,d = symbols('a b c d')
+    >>> f = Function('f')
+    >>> apply_deltas(f(c)*f(a)*Dij(a,c))
+    f(a)**2*Dij(a, c)
+    """
+    deltas = expr.atoms(Dij)
+    d2dum = {}
+    dum2d = {}
+    for d in deltas:
+        dum = Symbol('x', dummy=True)
+        d2dum[d] = dum
+        dum2d[dum] = d
+    expr = expr.subs(d2dum)
+    for d in deltas:
+        i, j = d.args
+        expr = expr.subs(j, i)
+    expr = expr.subs(dum2d)
+    return expr
+
 def evaluate_sums(expr, **kw_args):
     """
     Tries to evaluate the sums using any KroneckerDeltas.
