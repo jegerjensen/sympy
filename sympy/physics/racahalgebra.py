@@ -686,6 +686,30 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
                         return M[0]
         return None
 
+    def get_triangular_inequalities(self):
+        """
+        Returns the triangular inequality implied by this ClebschGordanCoefficient
+
+        >>> from sympy.physics.racahalgebra import ThreeJSymbol
+        >>> from sympy import symbols
+        >>> A,B,C,a,b,c = symbols('ABCabc')
+        >>> ThreeJSymbol(A, B, C, a, b, c).get_triangular_inequalities()
+        set([TriangularInequality(A, B, C)])
+
+        """
+        return set([TriangularInequality(*self.magnitudes)])
+
+    def get_magnitude_projection_dict(self):
+        """
+        Returns a dict with magnitudes and projections stored as key, value pairs.
+        """
+        result = dict([])
+        for i in range(3):
+            J = self.magnitudes[i]
+            M = self.projections[i]
+            result[J] = M
+        return result
+
     def _sympystr_(self, *args):
         """
         >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
@@ -1311,13 +1335,15 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     identity_sources = set(kw_args.get('identity_sources', []))
     identity_sources.update(expr.atoms(AngularMomentumSymbol))
     for njs in identity_sources:
-        if isinstance(njs, ThreeJSymbol):
-            projections.add(Add(*njs.projections))
+        if isinstance(njs, (ThreeJSymbol, ClebschGordanCoefficient)):
             jm = njs.get_magnitude_projection_dict()
             jm_list = [ Add(2*j,2*m) for j,m in jm.items() ]
             jm_pairs.update(jm_list)
-        else:
-            triags.update(njs.get_triangular_inequalities())
+        if isinstance(njs, ThreeJSymbol):
+            projections.add(Add(*njs.projections))
+        elif isinstance(njs, ClebschGordanCoefficient):
+            projections.add(Add(*(njs.projections[0:2] + (-njs.projections[2],))))
+        triags.update(njs.get_triangular_inequalities())
 
     triags = set([2*Add(*t.args) for t in triags])
 
