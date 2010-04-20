@@ -2368,7 +2368,12 @@ def apply_deltas(expr, **kw_args):
     expr = expr.subs(d2dum)
     for d in deltas:
         i, j = d.args
-        expr = expr.subs(j, i)
+        ci, i = i.as_coeff_terms(); i = Mul(*i)
+        cj, j = j.as_coeff_terms(); j = Mul(*j)
+        if sortkey(i) > sortkey(j):
+            expr = expr.subs(i, cj*j/ci)
+        else:
+            expr = expr.subs(j, ci*i/cj)
     expr = expr.subs(dum2d)
     return expr
 
