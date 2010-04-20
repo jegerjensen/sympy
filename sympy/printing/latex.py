@@ -621,6 +621,10 @@ class LatexPrinter(Printer):
 
         return name
 
+    def _print_Dummy(self, expr):
+        dumstr = expr.name + '(' + str(expr.dummy_index) + ')'
+        return self._print_Symbol(C.Symbol(dumstr))
+
     def _print_Relational(self, expr):
         if self._settings['itex']:
             lt = r"\lt"
