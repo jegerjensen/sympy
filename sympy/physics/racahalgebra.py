@@ -2245,7 +2245,11 @@ def remove_summation_indices(expr, indices):
     if expr.is_Add:
         return Add(*[ remove_summation_indices(arg, indices) for arg in expr.args ])
     expr = combine_ASigmas(expr)
-    sigma = expr.atoms(ASigma).pop()
+    sigma = expr.atoms(ASigma)
+    if sigma:
+        sigma = sigma.pop()
+    else:
+        return expr
     new = sigma.remove_indices(indices)
     return expr.subs(sigma,new)
 
