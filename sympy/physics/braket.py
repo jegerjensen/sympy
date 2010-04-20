@@ -1709,7 +1709,7 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         >>> from sympy.physics.braket import (
         ...         MatrixElement, SphFermKet, SphFermBra,
-        ...         SphericalTensorOperator
+        ...         SphericalTensorOperator, FermKet
         ...         )
         >>> from sympy import symbols
         >>> k,q = symbols('k q')
@@ -1734,6 +1734,29 @@ class ThreeTensorMatrixElement(MatrixElement):
         <a, -b| T(k, q) |c, -d>
         >>> m.get_related_direct_matrix(only_particle_states=True)
         <a, d| T(k, q) |b, c>
+
+        For cross coupled matrix elements the direct product matrix is
+        determined by placing all s.p. kets in a direct broduct ket, and all
+        s.p. bras in a direct product bra.
+
+        >>> m = MatrixElement(SphFermBra('ac',a, c), T, SphFermKet('bd', b, d)); m
+        <ac(a --> |c>)| T(k, q) |bd(<b| --> d)>
+        >>> m.get_related_direct_matrix()
+        <a, b| T(k, q) |c, d>
+
+        The direct product states are ordered strictly as the s.p. states
+        appear in the coupled matrix element, so if we swap c and d, the related
+        direct matrix element is
+
+        >>> m = MatrixElement(SphFermBra('ad',a, d), T, SphFermKet('bc', b, c)); m
+        <ad(a --> |d>)| T(k, q) |bc(<b| --> c)>
+        >>> m.get_related_direct_matrix()
+        -<a, b| T(k, q) |c, d>
+
+        The sign comes form the canonical form of the direct state |d, c>
+        >>> FermKet(d, c)
+        -|c, d>
+
         """
 
         sp_states = list(self.left.single_particle_states +
