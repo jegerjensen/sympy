@@ -17,6 +17,8 @@ from sympy.assumptions import (
         )
 from sympy.assumptions.handlers import AskHandler
 
+def pretty_hash(expr):
+    return expr._pretty_key_()
 
 __all__ = [
         'ThreeJSymbol',
@@ -269,15 +271,15 @@ class ThreeJSymbol(AngularMomentumSymbol):
         """
 
         # We search for even permuations first, to avoid phases if possible
-        if j1 > J:
+        if pretty_hash(j1) > pretty_hash(J):
             return ThreeJSymbol(j2,J,j1,m2,M,m1)
 
-        if j1 > j2:
+        if pretty_hash(j1) > pretty_hash(j2):
             phase=pow(S.NegativeOne,j1+j2+J)
             expr = ThreeJSymbol(j2,j1,J,m2,m1,M)
             return cls._determine_phase(phase, expr)
 
-        if j2 > J:
+        if pretty_hash(j2) > pretty_hash(J):
             phase=pow(S.NegativeOne,j1+j2+J)
             expr = ThreeJSymbol(j1,J,j2,m1,M,m2)
             return cls._determine_phase(phase, expr)
@@ -442,7 +444,7 @@ class SixJSymbol(AngularMomentumSymbol):
 
         """
         args = [j1, j2, J12, j3, J, J23]
-        maxind = args.index(max(args))
+        maxind = args.index(max(args, key=pretty_hash))
 
         # get maxJ in correct column
         if maxind != 4 and maxind != 1:
