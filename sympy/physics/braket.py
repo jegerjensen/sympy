@@ -1374,6 +1374,12 @@ class ReducedMatrixElement(MatrixElement):
             result = refine_phases(convert_cgc2tjs(result))
         return result
 
+    def as_other_coupling(self, other, **kw_args):
+        ttm = self._get_ThreeTensorMatrixElement()
+        kw = kw_args.copy()
+        kw['wigner_eckardt'] = True
+        return ttm.as_other_coupling(other, **kw)
+
 class ReducedMatrixElement_edmonds(ReducedMatrixElement):
     _definition = 'edmonds'
 class ReducedMatrixElement_brink_satchler(ReducedMatrixElement):
@@ -1447,6 +1453,16 @@ class DirectMatrixElement(MatrixElement):
                 raise ValueError("Not compatible: %s != %s" % (self, t))
         raise ValueError("Unknown coupling order requested.")
 
+    def get_direct_product_ito_self(self, **kw_args):
+        return self
+
+    def as_direct_product(self, **kw_args):
+        return self
+
+    def get_related_direct_matrix(self, **kw_args):
+        if kw_args.get('only_particle_states'):
+            return self.as_only_particles()
+        return self
 
     def shift_vacuum(self, states):
         """
