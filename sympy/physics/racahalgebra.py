@@ -2113,6 +2113,8 @@ def _identify_SixJSymbol(threejs, **kw_args):
     connections = dict([])
     for tjs in threejs:
         keys_J.update(tjs.magnitudes)
+    if len(keys_J) != 6:
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol
 
     # j1 and J are given by canonical form of SixJSymbol
     totJ  = maxJ = max(keys_J)
@@ -2133,8 +2135,14 @@ def _identify_SixJSymbol(threejs, **kw_args):
             raise ThreeJSymbolsNotCompatibleWithSixJSymbol
 
     # Two elements in a column of the sjs never appear in the same 3j-symbol
-    j3 = keys_J - connections[  j1]; j3 = j3.pop()
-    j2 = keys_J - connections[totJ]; j2 = j2.pop()
+    j3 = keys_J - connections[  j1]
+    j2 = keys_J - connections[totJ]
+    if not (len(j3) == len(j2) == 1):
+        if kw_args.get('verbose'):
+            print j2, j3
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+    j2 = j2.pop()
+    j3 = j3.pop()
 
     # J12 is always in a 3j-symbol together with j1 and j2.  J23 ditto.
     J12, J23 = None, None
