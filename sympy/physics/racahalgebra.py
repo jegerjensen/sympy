@@ -1632,13 +1632,17 @@ def refine_tjs2sjs(expr, **kw_args):
 
     """
 
+    expr = convert_cgc2tjs(expr)
     expr = combine_ASigmas(expr)
 
     for permut in _iter_tjs_permutations(expr, 4, ThreeJSymbol):
         summations, phases, factors, threejs, ignorables = permut
 
         # find 6j-symbol, expand as 3j-symbols and try to match with original
-        sjs = _identify_SixJSymbol(threejs)
+        try:
+            sjs = _identify_SixJSymbol(threejs, **kw_args)
+        except ThreeJSymbolsNotCompatibleWithSixJSymbol:
+            continue
 
         # Determine projection symbols for expansion
         M_symbols = {}
@@ -1684,7 +1688,12 @@ def refine_tjs2sjs(expr, **kw_args):
             # now we need to process the list of alternative projection inversions
             # in order to find combinations that are consistent for all 3js
             # simultaneously
-            alternative_phases = _get_phase_subslist_dict(projdict)
+            try:
+                alternative_phases = _get_phase_subslist_dict(projdict)
+            except ThreeJSymbolsNotCompatibleWithSixJSymbol:
+                if kw_args.get('verbose'):
+                    print projdict
+                raise
 
             # choose the simplest phase
             orig = phases
@@ -1728,6 +1737,12 @@ def refine_tjs2sjs(expr, **kw_args):
             expr = refine_phases(expr, M_symbols, strict=True, identity_sources=threejs)
             break
         except UnableToComplyWithForbiddenAndMandatorySymbols:
+            if kw_args.get('verbose'):
+                print "Unable to remove all projection symbols from phase"
+                print "result was ",expr
+            if kw_args.get('let_pass'):
+                print "WARNING: Unable to remove all projection symbols from phase"
+                return expr
             pass
     else:
         raise ThreeJSymbolsNotCompatibleWithSixJSymbol
@@ -2073,7 +2088,7 @@ def _iter_tjs_permutations(expr, how_many=None, which_objects=AngularMomentumSym
         yield tuple([summations, phases, factors, threejs, ignorables])
 
 
-def _identify_SixJSymbol(threejs):
+def _identify_SixJSymbol(threejs, **kw_args):
     """
     Identify and construct the 6j-symbol available for the 3j-symbols.
 
