@@ -9,6 +9,7 @@ from sympy.physics.braket import (
         BraKet, WignerEckardDoesNotApply, QuantumVacuumKet, QuantumVacuumBra,
         ThreeJSymbol
         )
+from sympy.physics.racahalgebra import is_equivalent
 
 from sympy.utilities import raises
 from sympy.utilities.pytest import XFAIL
@@ -318,8 +319,8 @@ def test_ThreeTensorMatrixElement():
     global_assumptions.clear()
     j_a, j_b, j_c, j_d = symbols('j_a j_b j_c j_d', nonnegative=True)
     m_a, m_b, m_c, m_d = symbols('m_a m_b m_c m_d')
-    J_ab, J_cd, J_ad, J_cb = symbols('J_ab J_cd J_ad J_cb', nonnegative=True)
-    M_ab, M_cd, M_ad, M_cb = symbols('M_ab M_cd M_ad M_cb')
+    J_ab, J_cd, J_ca, J_db = symbols('J_ab J_cd J_ca J_db', nonnegative=True)
+    M_ab, M_cd, M_ca, M_db = symbols('M_ab M_cd M_ca M_db')
     k, q = symbols('k q')
     Op = SphericalTensorOperator('T',k,q)
     Bra = SphFermBra
@@ -341,11 +342,56 @@ def test_ThreeTensorMatrixElement():
     assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True, use_dummies=False) == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))
     assert  ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d)).as_direct_product(wigner_eckardt=True, definition='brink_satchler', use_dummies=False) == ASigma(M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, m_a, j_b, m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d,J_cd, M_cd)*ClebschGordanCoefficient(J_cd, M_cd, k, q,J_ab, M_ab)*DirectMatrixElement((a,b),Op,(c,d))*(-1)**(-2*k)
 
+
+
+def test_coupling_order():
+    global_assumptions.clear()
+    j_a, j_b, j_c, j_d = symbols('j_a j_b j_c j_d', nonnegative=True)
+    m_a, m_b, m_c, m_d = symbols('m_a m_b m_c m_d')
+    J_ab, J_cd, J_ad, J_cb, J_ca, J_db = symbols('J_ab J_cd J_ad J_cb J_ca J_db', nonnegative=True)
+    M_ab, M_cd, M_ad, M_cb, M_ca, M_db = symbols('M_ab M_cd M_ad M_cb M_ca M_db')
+    k, q = symbols('k q')
+    Op = SphericalTensorOperator('T',k,q)
+    Bra = SphFermBra
+    Ket = SphFermKet
+    a,b = Bra('a'), Bra('b')
+    c,d = Ket('c'), Ket('d')
+
+    braAB = Bra('ab',a,b)
+    braBA = Bra('ab',a,b,reverse=True)
+    assert is_equivalent(braAB.as_direct_product(tjs=1, use_dummies=0),
+            (-1)**(j_a + j_b - J_ab)*braBA.as_direct_product(tjs=1, use_dummies=0))
+    assert is_equivalent(Dagger(braAB).as_direct_product(tjs=1, use_dummies=0),
+            (-1)**(j_a + j_b - J_ab)*Dagger(braBA).as_direct_product(tjs=1, use_dummies=0))
+
+    c,d = Ket('c'), Ket('d')
+    ketCD = Ket('cd',c,d)
+    ketDC = Ket('cd',c,d,reverse=True)
+    assert is_equivalent(ketCD.as_direct_product(tjs=1, use_dummies=0),
+            (-1)**(j_c + j_d - J_cd)*ketDC.as_direct_product(tjs=1, use_dummies=0))
+    assert is_equivalent(Dagger(ketCD).as_direct_product(tjs=1, use_dummies=0),
+            (-1)**(j_c + j_d - J_cd)*Dagger(ketDC).as_direct_product(tjs=1, use_dummies=0))
+
+    AB_op_CD = MatrixElement(braAB, Op, ketCD)
+    BA_op_DC = MatrixElement(braBA, Op, ketDC)
+    assert is_equivalent(
+            AB_op_CD.as_direct_product(tjs=1, use_dummies=0),
+            BA_op_DC.as_direct_product(tjs=1, use_dummies=0)*(-1)**(j_a+j_b-J_ab+j_c+j_d-J_cd),
+            verbosity = 1)
+
     # test vacuum-shifted coupling and decoupling
     assert DirectMatrixElement((a,-b),Op,(c,-d)) == ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).get_related_direct_matrix()
     assert ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).get_direct_product_ito_self(use_dummies=False) == (-1)**(m_b-j_b)*(-1)**(m_d-j_d)*ASigma(J_ab, J_cd, M_ab, M_cd)*ClebschGordanCoefficient(j_a, m_a, j_b, -m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, -m_d,J_cd, M_cd)*ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d))
-    assert ThreeTensorMatrixElement(Bra('ab',a,-b),Op,Ket('cd',c,-d)).as_direct_product(use_dummies=False) == (-1)**(j_b-m_b)*(-1)**(j_d-m_d)*ASigma(m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_b, -m_b,J_ab, M_ab)*ClebschGordanCoefficient(j_c, m_c, j_d, -m_d,J_cd, M_cd)*DirectMatrixElement((a,-b),Op,(c,-d))
+    # Kuo & al. eq (38)
+    assert ThreeTensorMatrixElement(Bra('ad',a,-Dagger(d)),Op,Ket('cb',c,-Dagger(b))).as_direct_product(use_dummies=False, only_particle_states=True) == (-1)**(j_b-m_b)*(-1)**(j_d-m_d)*ASigma(m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, m_a, j_d, -m_d,J_ad, M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b,J_cb, M_cb)*DirectMatrixElement((a,b),Op,(c,d))*(-1) #FIXME (-1) ???
+    # FIXME: Kuo & al. do not have the (-1) above, but they choose to ignore
+    # phases from "contractions of fermionic operators".  Is this consistent then?
 
+    # test cross coupled matrix element
+    crossmat = ThreeTensorMatrixElement(Bra('ca',a,c,reverse=True),Op,Ket('db',b,d,reverse=True))
+    assert DirectMatrixElement((a,b),Op,(c,d)) == crossmat.get_related_direct_matrix()
+    # Kuo & al. eq (20)
+    assert crossmat.as_direct_product(use_dummies=False) == (-1)**(J_ca - M_ca)*(-1)**(j_b-m_b)*(-1)**(j_a-m_a)*ASigma(m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_c,  m_c, j_a,-m_a,J_ca, -M_ca)*ClebschGordanCoefficient(j_d, m_d, j_b, -m_b,J_db, M_db)*DirectMatrixElement((a,b),Op,(c,d))
 
 def test_MatrixElement_recoupling():
     global_assumptions.clear()

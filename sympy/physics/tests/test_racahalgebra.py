@@ -56,6 +56,15 @@ def test_tjs_methods():
 
     assert tjs.get_as_ClebschGordanCoefficient() == (-1)**(A-B-3*c)*ClebschGordanCoefficient(A, a, B, -b, C, -3*c)/sqrt(2*C+1)
 
+def test_coupling_direction():
+    a,b,c = symbols('abc')
+    A,B,C = symbols('ABC')
+
+    assert ThreeJSymbol(A,B,C,a,b,c) == powsimp((-1)**(-A-B-C)*ThreeJSymbol(B,A,C,b,a,c))
+
+
+
+
 def test_determine_best_phase():
     from sympy.physics.racahalgebra import _determine_best_phase, __all_phases_seen_in_search
     a,b,c,d,e,f = symbols('a b c d e f')
