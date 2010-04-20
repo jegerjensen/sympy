@@ -1854,8 +1854,8 @@ class ThreeTensorMatrixElement(MatrixElement):
         SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
 
         """
-        if not isinstance(other, ThreeTensorMatrixElement):
-            raise ValueError("Only ThreeTensorMatrixElements accepted")
+        if not isinstance(other, MatrixElement):
+            raise ValueError("argument ``other'' must be a MatrixElement object")
         if not self.operator == other.operator:
             raise ValueError("MatrixElements not compatible")
 
@@ -1906,13 +1906,19 @@ def rewrite_coupling(expr, other, **kw_args):
     """
     Tries to rewrite every MatrixElement in terms of the MatrixElement ``other''.
     """
+    coeff, t = other.as_coeff_terms(MatrixElement)
+    assert len(t) == 1;
+    other = t[0]
     matels = expr.atoms(MatrixElement)
     subsdict = {}
     for m in matels:
         try:
-            subsdict[m] = m.as_other_coupling(other)
+            subsdict[m] = coeff*m.as_other_coupling(other)
         except ValueError:
-            pass
+            if kw_args.get('verbose'):
+                print "ValueError:", m, other
+            if kw_args.get('strict'):
+                raise
     if subsdict:
         return expr.subs(subsdict)
     else:
