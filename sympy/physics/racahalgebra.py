@@ -2389,18 +2389,27 @@ def evaluate_sums(expr, **kw_args):
     Sum(a)*f(a)
     """
     expr = combine_ASigmas(expr)
-    summations = expr.atoms(ASigma).pop()
+    summations = expr.atoms(ASigma)
+    if not summations:
+        return expr
+    summations = summations.pop()
     deltas = expr.atoms(Dij)
     for d in deltas:
         i,j = d.args
-        s,t = i.as_coeff_terms(); i = t[0]
-        s,t = j.as_coeff_terms(); j = t[0]
+        c1,t = i.as_coeff_terms(); i = t[0]
+        c2,t = j.as_coeff_terms(); j = t[0]
         if j in summations.args:
-            expr = remove_summation_indices(expr, [j])
-            expr = expr.subs(d.args[1], d.args[0])
+            try:
+                expr = remove_summation_indices(expr, [j])
+            except ValueError:
+                continue
+            expr = expr.subs(j, i*c1/c2)
         elif i in summations.args:
-            expr = remove_summation_indices(expr, [i])
-            expr = expr.subs(d.args[0], d.args[1])
+            try:
+                expr = remove_summation_indices(expr, [i])
+            except ValueError:
+                continue
+            expr = expr.subs(i, j*c2/c1)
         elif kw_args.get('all_deltas'):
-            expr = expr.subs(d.args[0], d.args[1])
+            expr = expr.subs(j, i*c1/c2)
     return expr
