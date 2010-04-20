@@ -2420,3 +2420,174 @@ def evaluate_sums(expr, **kw_args):
         elif kw_args.get('all_deltas'):
             expr = expr.subs(j, i*c1/c2)
     return expr
+
+def apply_orthogonality(expr, summations):
+    """
+    Tries to simplify by applying orthogonality relations of angular momentum symbols.
+
+    ``summations'' -- list of summation symbols to evaluate.
+
+    >>> from sympy.physics.racahalgebra import (ThreeJSymbol,
+    ...         ClebschGordanCoefficient, apply_orthogonality, ASigma)
+    >>> from sympy import symbols
+    >>> A,B,C,D,E,a,b,c,d,e = symbols('A B C D E a b c d e')
+    >>> expr = ClebschGordanCoefficient(A, a, B, b, C, c)*ClebschGordanCoefficient(A, a, B, b, D, d)
+    >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
+    Dij(C, D)*Dij(c, d)
+    >>> expr = ClebschGordanCoefficient(A, a, B, b, E, e)*ClebschGordanCoefficient(A, c, B, d, E, e)
+    >>> apply_orthogonality(expr*ASigma(E, e), [E, e])
+    Dij(a, c)*Dij(b, d)
+
+    We canonize the symbols, so that we can recognize
+
+    >>> expr = ClebschGordanCoefficient(A, -a, B, -b, C, c)*ClebschGordanCoefficient(A, a, B, b, D, d)
+    >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
+    Dij(C, D)*Dij(c, -d)
+
+    We can also treat orthogonality of the ThreeJSymbol:
+
+    >>> expr = (2*C+1)*ThreeJSymbol(B, A, C, -b, -a, c)*ThreeJSymbol(A, B, D, a, b, d)
+    >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
+    Dij(C, D)*Dij(d, -c)
+    """
+    summations = map(sympify, summations)
+    sumlabels = []
+    sigmas = expr.atoms(ASigma)
+    for s in sigmas:
+        sumlabels.extend(s.args)
+    valids = [ s for s in summations if s in sumlabels ]
+    if not valids:
+        return expr
+
+
+    angmoms = expr.atoms(AngularMomentumSymbol)
+
+    indices = {}
+    for njs in angmoms:
+        hits = [ s for s in valids if njs.has(s) ]
+        if len(hits) >= 2:
+            for k in hits:
+                if k in indices:
+                    indices[k].add(njs)
+                else:
+                    indices[k] = set([njs])
+
+    items = list(indices.iteritems())
+    for k,v in items:
+        # relations involve exactly two symbols
+        if len(v) != 2:
+            del indices[k]
+
+    # indices maps indices -> njs
+    # we need to find two indices that map to the same two nj-symbols
+    candidates = []
+    for label1, njs1 in indices.iteritems():
+        for label2, njs2 in indices.iteritems():
+            if label1 != label2 and njs1 == njs2:
+                candidates.append((label1, label2, njs1))
+
+    sum_removals = []
+    subsdict = {}
+    coeff = S.One
+    for s1, s2, njs in candidates:
+        key1, key2 = njs1, njs2 = tuple(njs)
+        if key1 in subsdict: continue
+        if key2 in subsdict: continue
+        if isinstance(njs1, ClebschGordanCoefficient):
+            c1, njs1 = njs1.get_as_ThreeJSymbol().as_coeff_terms(ThreeJSymbol)
+            njs1 = njs1[0]
+            coeff *= c1
+        if isinstance(njs2, ClebschGordanCoefficient):
+            c2, njs2 = njs2.get_as_ThreeJSymbol().as_coeff_terms(ThreeJSymbol)
+            njs2 = njs2[0]
+            coeff *= c2
+
+        if isinstance(njs1, ThreeJSymbol) and isinstance(njs2, ThreeJSymbol):
+
+            ranks1 = njs1.magnitudes
+            ranks2 = njs2.magnitudes
+            matching_ranks = [ ranks1[i] for i in range(3) if ranks1[i] == ranks2[i] ]
+
+            if len(matching_ranks) == 3:
+
+                # (jmjnJM)(jkjlJM) -> d_mk d_nl
+
+                nosum_ranks = []
+                for r in matching_ranks:
+                    if r == s1:
+                        j = s1
+                        m = s2
+                    elif r == s2:
+                        j = s2
+                        m = s1
+                    else:
+                        nosum_ranks.append(r)
+
+                if len(nosum_ranks) == 2 and njs1.get_projection_symbol(j) == m:
+                    ratio = njs1.get_projection(j)/njs2.get_projection(j)
+                    j1, j2 = nosum_ranks
+                    m11, m21 = njs1.get_projection(j1), njs1.get_projection(j2)
+                    m12, m22 = njs2.get_projection(j1), njs2.get_projection(j2)
+                    if ratio is S.One:
+                        sum_removals.append(s1)
+                        sum_removals.append(s2)
+                        subsdict[key1] = Dij(m11, m12)
+                        subsdict[key2] = Dij(m21, m22)/(2*j + 1)
+                        continue
+                    elif ratio is S.NegativeOne:
+                        sum_removals.append(s1)
+                        sum_removals.append(s2)
+                        subsdict[key1] = Dij(m11, -m12)*(-1)**(-Add(*ranks1))
+                        subsdict[key2] = Dij(m21, -m22)/(2*j + 1)
+                        continue
+
+            if len(matching_ranks) >= 2:
+
+                # (jmjmIM)(jmjmJN) -> d_IJ d_MN
+
+                hit_ranks = []
+                for r in matching_ranks:
+                    m1 = njs1.get_projection_symbol(r)
+                    m2 = njs2.get_projection_symbol(r)
+
+                    if m1 == m2 == s1:
+                        hit_ranks.append(r)
+                    elif m1 == m2 == s2:
+                        hit_ranks.append(r)
+
+                if len(hit_ranks) == 2:
+
+                    J1 = [ r for r in ranks1 if r not in hit_ranks][0]
+                    M1 = njs1.get_projection(J1)
+                    J2 = [ r for r in ranks2 if r not in hit_ranks][0]
+                    M2 = njs2.get_projection(J2)
+
+                    ratio1 = njs1.get_projection(hit_ranks[0])/njs2.get_projection(hit_ranks[0])
+                    ratio2 = njs1.get_projection(hit_ranks[1])/njs2.get_projection(hit_ranks[1])
+                    if ratio1 == ratio2 == S.One:
+                        sum_removals.append(s1)
+                        sum_removals.append(s2)
+                        subsdict[key1] = Dij(J1, J2)/(2*J1 + 1)
+                        subsdict[key2] = Dij(M1, M2)
+                        continue
+                    if ratio1 == ratio2 == S.NegativeOne:
+                        sum_removals.append(s1)
+                        sum_removals.append(s2)
+                        subsdict[key1] = Dij(J1, J2)/(2*J1 + 1)
+                        subsdict[key2] = Dij(M1, -M2)*(-1)**(-Add(*ranks1))
+                        continue
+
+        else:
+            raise NotImplementedError
+
+    if subsdict:
+        expr = remove_summation_indices(expr, sum_removals)
+        expr *= coeff
+        expr = expr.subs(subsdict)
+        # We must be able to clean out all evaluated summation indices from phases
+        # else, the orthogonality cannot be applied
+        expr = refine_phases(expr, sum_removals, identity_sources=subsdict.keys(),
+                strict=True)
+        expr = apply_deltas(expr)
+
+    return expr
