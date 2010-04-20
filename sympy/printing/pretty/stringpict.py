@@ -267,7 +267,10 @@ class stringPict(object):
         svals = []
         while i < self.width():
             width = self._pretty_width(i, ncols)
-            svals.extend([ sval[i:i+width] for sval in self.picture ])
+            if i>0:
+                svals.extend([ sval[i:i+width].rjust(ncols) for sval in self.picture ])
+            else:
+                svals.extend([ sval[i:i+width] for sval in self.picture ])
             if (self.height() > 1):
                 svals.append("") # a vertical spacer
             i += width
@@ -290,7 +293,7 @@ class stringPict(object):
             return maxwidth
 
         lengths = map(len, [line.strip() for line in self.picture])
-        maxl = -1
+        maxl = -10
         for i,l in enumerate(lengths):
             if l == maxl:
                 return maxwidth
@@ -301,16 +304,18 @@ class stringPict(object):
         main = self.picture[ind][startpos : startpos + maxwidth]
 
         MUL = xsym('*')
-        ADD = '+'
-        SUB = '-'
+        ADD = ' + '
+        SUB = ' - '
+        EQU = ' ='
 
-        delims = (ADD, SUB, MUL)
         min_width = {
-                ADD: 20,
-                SUB: 20,
-                MUL: 40
+                ADD: maxwidth/4,
+                SUB: maxwidth/4,
+                MUL: maxwidth/2,
+                EQU: maxwidth/4,
                 }
 
+        delims = min_width.keys()
         dpos = {}
         for op in delims:
             ind = main.rfind(op)
@@ -319,7 +324,7 @@ class stringPict(object):
             else:
                 dpos[op] = 0
 
-        best_pos = max(dpos[ADD], dpos[SUB], dpos[MUL])
+        best_pos = max(dpos[ADD], dpos[SUB], dpos[MUL], dpos[EQU])
 
         return best_pos or maxwidth
 
