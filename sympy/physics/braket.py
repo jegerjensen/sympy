@@ -1906,14 +1906,14 @@ def rewrite_coupling(expr, other, **kw_args):
     """
     Tries to rewrite every MatrixElement in terms of the MatrixElement ``other''.
     """
-    coeff, t = other.as_coeff_terms(MatrixElement)
+    junk, t = other.as_coeff_terms(MatrixElement)
     assert len(t) == 1;
     other = t[0]
     matels = expr.atoms(MatrixElement)
     subsdict = {}
     for m in matels:
         try:
-            subsdict[m] = coeff*m.as_other_coupling(other)
+            subsdict[m] = m.as_other_coupling(other)
         except ValueError:
             if kw_args.get('verbose'):
                 print "ValueError:", m, other
