@@ -25,36 +25,48 @@ class QuantumOperator(Basic):
     Base class for all objects representing a quantum operator.
     """
     is_commutative=False
+    def __new__(cls, *args, **kw_args):
+        args = map(sympify, args)
+        return Basic.__new__(cls, *args, **kw_args)
 
 class SphericalTensorOperator(QuantumOperator, SphericalTensor):
     """
-    An Operator that transforms like a spherical tensor
+    An Operator that transforms like a spherical tensor T(j,m)
 
     fulfills certain commutation relations with J_+- and J_z.
     """
-    def __new__(cls, symbol, rank, projection):
-        return SphericalTensor.__new__(cls, symbol, rank, projection)
+    def __new__(cls, symbol, rank, projection, **kw_args):
+        obj = SphericalTensor.__new__(cls, symbol, rank, projection, **kw_args)
+        obj._tensor_proj = projection
+        obj._tensor_phase = S.One
+        return obj
+
+    def as_coeff_tensor(self, **kw_args):
+        tensor = SphericalTensor(self.symbol, self.rank, self._tensor_proj)
+        return self._tensor_phase, tensor
+
+    @property
+    def projection(self):
+        raise TypeError("Use: SphericalTensorOperator.as_coeff_tensor()")
 
     def _dagger_(self):
-        """
-        Hermitian conjugate of a SphericalTensorOperator.
+        return DualSphericalTensorOperator(*self.args)
 
-        We follow the definition of Edmonds (1974).
+class DualSphericalTensorOperator(SphericalTensorOperator):
+    """
+    An Operator that transforms like a spherical tensor (-1)**(j-m)*T(j,-m)
 
-        >>> from sympy.physics.braket import SphericalTensorOperator, Dagger
-        >>> from sympy import symbols
-        >>> k,q,T = symbols('k q T')
-        >>> SphericalTensorOperator(T, k, q)
-        T(k, q)
-        >>> Dagger(SphericalTensorOperator(T, k, q))
-        (-1)**(k + q)*T(k, -q)
+    fulfills certain commutation relations with J_+- and J_z.
+    """
 
-        """
-        k = self.rank
-        q = self.projection
-        T = self.symbol
-        cls = type(self)
-        return (-1)**(k + q)*self.__new__(cls, T, k, -q)
+    def __new__(cls, symbol, rank, projection, **kw_args):
+        obj = SphericalTensorOperator.__new__(cls, symbol, rank, projection, **kw_args)
+        obj._tensor_proj = -projection
+        obj._tensor_phase = S.NegativeOne**(rank - projection)
+        return obj
+
+    def _dagger_(self):
+        return SphericalTensorOperator(*self.args)
 
 class BosonState(QuantumState):
     @property
@@ -1185,7 +1197,7 @@ class ReducedMatrixElement(MatrixElement):
 
         >>> from sympy.physics.braket import (
         ...         ReducedMatrixElement, SphFermKet, SphFermBra,
-        ...         SphericalTensorOperator
+        ...         SphericalTensorOperator, DualSphericalTensorOperator
         ...         )
         >>> from sympy import symbols
         >>> k,q = symbols('k q')
@@ -1199,18 +1211,26 @@ class ReducedMatrixElement(MatrixElement):
         (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)
         >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_reduction_factor()
         (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
+
+        If the spherical tensor operator has tensor properties related to dual
+        states, this will be treated correctly in the coupling coefficient:
+
+        >>> L = DualSphericalTensorOperator('L',k,q)
+        >>> ReducedMatrixElement(bra, L, ket)._get_reduction_factor()
+        (-1)**(k - q)*(j_b, m_b, k, -q|j_a, m_a)
         """
         left,op,right = self.args
         c_ket, t_ket = right.as_coeff_tensor()
         j1, m1 = t_ket.get_rank_proj()
-        j2, m2 = op.get_rank_proj()
+        c_op, t_op = op.as_coeff_tensor()
+        j2, m2 = t_op.get_rank_proj()
         J, M = left._j, left._m
         if self.definition == 'wikipedia':
-            factor = c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
+            factor = c_op*c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
         elif self.definition == 'edmonds':
-            factor = c_ket*(-1)**(J-M)*ThreeJSymbol(J, j2, j1, -M, m2, m1)
+            factor = c_op*c_ket*(-1)**(J-M)*ThreeJSymbol(J, j2, j1, -M, m2, m1)
         elif self.definition == 'brink_satchler':
-            factor = (-1)**(2*j2)*c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
+            factor = (-1)**(2*j2)*c_op*c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
 
         if kw_args.get('tjs'):
             return refine_phases(convert_cgc2tjs(factor))
@@ -1245,14 +1265,15 @@ class ReducedMatrixElement(MatrixElement):
         left,op,right = self.args
         c_ket, t_ket = right.as_coeff_tensor()
         j1, m1 = t_ket.get_rank_proj()
-        j2, m2 = op.get_rank_proj()
+        c_op, t_op = op.as_coeff_tensor()
+        j2, m2 = t_op.get_rank_proj()
         J, M = left._j, left._m
         if self.definition == 'wikipedia':
-            factor = ASigma(m1, m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket
+            factor = ASigma(m1, m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket/c_op
         elif self.definition == 'edmonds':
-            factor = (-1)**(M-J)*ASigma(m1, m2)*(2*J+1)*ThreeJSymbol(J, j2, j1, -M, m2, m1)/c_ket
+            factor = (-1)**(M-J)*ASigma(m1, m2)*(2*J+1)*ThreeJSymbol(J, j2, j1, -M, m2, m1)/c_ket/c_op
         elif self.definition == 'brink_satchler':
-            factor = (-1)**(-2*j2)*ASigma(m1,m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket
+            factor = (-1)**(-2*j2)*ASigma(m1,m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket/c_op
 
         if kw_args.get('use_dummies', True):
             factor = convert_sumindex2dummy(factor)

@@ -832,11 +832,32 @@ class SphericalTensor(Expr):
         return self.args[2]
 
     def get_rank_proj(self):
-        return self.args[1:3]
+        return self.rank, self.projection
 
     @property
     def symbol(self):
         return self.args[0]
+
+    def _dagger_(self):
+        """
+        Hermitian conjugate of a SphericalTensor.
+
+        We follow the definition of Edmonds (1974).
+
+        >>> from sympy.physics.braket import SphericalTensor, Dagger
+        >>> from sympy import symbols
+        >>> k,q,T = symbols('k q T')
+        >>> SphericalTensor(T, k, q)
+        T(k, q)
+        >>> Dagger(SphericalTensor(T, k, q))
+        (-1)**(k + q)*T(k, -q)
+
+        """
+        k = self.rank
+        q = self.projection
+        T = self.symbol
+        cls = type(self)
+        return (-1)**(k + q)*self.__new__(cls, T, k, -q)
 
     def get_direct_product_ito_self(self, **kw_args):
         """
