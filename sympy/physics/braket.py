@@ -1010,7 +1010,7 @@ class MatrixElement(Basic):
     True
 
     >>> latex(MatrixElement(bra_a,Op,ket_b))
-    '\\left\\langle a \\middle| Op(D, d) \\middle| b \\right\\rangle'
+    '\\\\left\\\\langle a \\\\middle| Op(D, d) \\\\middle| b \\\\right\\\\rangle'
 
     """
 
