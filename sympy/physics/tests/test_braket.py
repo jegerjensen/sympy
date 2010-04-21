@@ -7,7 +7,7 @@ from sympy.physics.braket import (
         MatrixElement, SphericalTensorOperator, ThreeTensorMatrixElement,
         ReducedMatrixElement, DirectMatrixElement, SphericalQuantumState,
         BraKet, WignerEckardDoesNotApply, QuantumVacuumKet, QuantumVacuumBra,
-        ThreeJSymbol
+        ThreeJSymbol, DualSphericalTensorOperator
         )
 from sympy.physics.racahalgebra import is_equivalent
 
@@ -17,7 +17,8 @@ from sympy.utilities.pytest import XFAIL
 
 def test_SphericalTensorOperator():
     k,q,T = symbols('k q T')
-    assert Dagger(SphericalTensorOperator(T,k,q))==(-1)**(k+q)*SphericalTensorOperator(T, k, -q)
+    assert Dagger(SphericalTensor(T,k,q))==(-1)**(k+q)*SphericalTensor(T, k, -q)
+    assert Dagger(SphericalTensorOperator(T,k,q))==DualSphericalTensorOperator(T, k, q)
 
 def test_Fermion_Boson():
     assert BosonState('a').spin_assume == 'integer'
@@ -247,8 +248,9 @@ def test_MatrixElement_subs():
     assert M.subs(j_a, x).left.state1._j == x
     assert M.subs(m_b, x).left.state2._m == x
     assert M.subs(j_b, x).left.state2._j == x
-    assert M.subs(q, x).operator.projection == x
+    assert M.subs(q, x).operator.as_coeff_tensor() == (S.One, SphericalTensor('T', k, x))
     assert M.subs(k, x).operator.rank == x
+    assert M.subs(k, x).operator.as_coeff_tensor() == (S.One, SphericalTensor('T', x, q))
     assert M.subs(M_cd, x).right._m == x
     assert M.subs(J_cd, x).right._j == x
     assert M.subs(m_c, x).right.state1._m == x
