@@ -1078,6 +1078,111 @@ class MatrixElement(Basic):
         return r"\left\langle %s \middle| %s \middle| %s \right\rangle" %(
                 left, op, right )
 
+    def as_other_coupling(self, other, **kw_args):
+        """
+        Expresses the MatrixElement ``self'' in terms of ``other''
+
+        This is done by rewriting self in terms of a direct product matrix,
+        and then expressing the direct product matrix in terms of the other.
+
+        >>> from sympy.physics.braket import (
+        ...         MatrixElement, SphFermKet, SphFermBra,
+        ...         SphericalTensorOperator, S
+        ...         )
+        >>> from sympy import symbols
+        >>> k,q = symbols('k q')
+        >>> T = SphericalTensorOperator('T',k,q)
+        >>> a = SphFermBra('a')
+        >>> b = SphFermBra('b')
+        >>> c = SphFermKet('c')
+        >>> d = SphFermKet('d')
+
+        A straightforward coupling of two-particle states gives the following
+        ThreeTensorMatrixElement:
+
+        >>> bra_ab = SphFermBra('ab',a,b)
+        >>> ket_cd = SphFermKet('cd',c,d)
+        >>> M1 = MatrixElement(bra_ab, T, ket_cd); M1
+        <ab(a --> b)| T(k, q) |cd(c --> d)>
+        >>> M1.as_direct_product()
+        Sum(_m_a, _m_b, _m_c, _m_d)*(j_a, _m_a, j_b, _m_b|J_ab, M_ab)*(j_c, _m_c, j_d, _m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
+
+        But we can also create ``cross-coupled'' matrix elements.
+        (See Kuo & al. 1981, eq.(20))
+
+        >>> bra_ca = SphFermBra('ca',c,a)
+        >>> ket_db = SphFermKet('db',d,b)
+        >>> M2 = MatrixElement(bra_ca, T, ket_db); M2
+        <ca(|c> --> a)| T(k, q) |db(d --> <b|)>
+        >>> expr = M2.as_direct_product(); expr
+        (-1)**(j_a - _m_a)*(-1)**(J_ca - M_ca)*(-1)**(j_b - _m_b)*Sum(_m_a, _m_b, _m_c, _m_d)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<a, b| T(k, q) |c, d>
+
+        Note that the cross coupled ThreeTensorMatrixElement M2 associates
+        itself with the same DirectMatrixElement as M1 above.  Now, in order to
+        get M2 in terms of M1, we need to put together the above expression with
+        the direct product matrix expressed in terms of M1:
+
+        >>> M1.get_direct_product_ito_self()
+        Sum(_J_ab, _J_cd, _M_ab, _M_cd)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*(j_c, m_c, j_d, m_d|_J_cd, _M_cd)*<ab(a --> b)| T(k, q) |cd(c --> d)>
+
+        Inserted we get the long expression:  (where strict bra coupling have been used.)
+
+        >>> expr = M2.as_other_coupling(M1); expr
+        (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<ab(a --> b)| T(k, q) |cd(c --> d)>
+
+        If T happens to be a rank 0 tensor (k=q=0), we can write the relation
+        between the reduced matrix elements in terms of a 6j-symbol.  In order
+        to compare with the result of Kuo & al. we use Edmonds definition of
+        reduced matrix elements.
+
+        >>> from sympy.physics.racahalgebra import (
+        ...         refine_tjs2sjs, convert_cgc2tjs,
+        ...         refine_phases, evaluate_sums,
+        ...         SixJSymbol )
+        >>> M1 = M1.subs({k: S(0), q: S(0)})
+        >>> M2 = M2.subs({k: S(0), q: S(0)})
+
+        >>> expr = M2.as_other_coupling(M1, wigner_eckardt=True, definition='edmonds'); expr
+        (-1)**(J_db + M_ca + _J_cd + _M_ab)*(1 + 2*J_ca)**(1/2)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, _M_db)*Dij(J_ca, J_db)*Dij(M_ca, _M_db)*Dij(_J_ab, _J_cd)*Dij(_M_ab, _M_cd)*<ab(a --> b)|| T(0) ||cd(c --> d)>/(1 + 2*_J_ab)**(1/2)
+
+        >>> expr = convert_cgc2tjs(expr)
+        >>> expr = refine_phases(expr)
+        >>> expr = evaluate_sums(expr, all_deltas=1); expr
+        (-1)**(1 + M_ca + j_a + j_d + 2*J_ca + _M_ab)*(1 + 2*J_ca)**(3/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a --> b)|| T(0) ||cd(c --> d)>*ThreeJSymbol(J_ca, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_ca, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(_J_ab, j_a, j_b, _M_ab, -_m_a, -_m_b)*ThreeJSymbol(_J_ab, j_c, j_d, _M_ab, -_m_c, -_m_d)
+
+        >>> expr = refine_tjs2sjs(expr); expr
+        (-1)**(1 + J_ca + j_a + j_d - _J_ab)*(1 + 2*J_ca)**(1/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab)*<ab(a --> b)|| T(0) ||cd(c --> d)>*SixJSymbol(J_ca, j_a, j_c, _J_ab, j_d, j_b)
+
+        Kuo & al. arrive at another 6j symbol, but we can easily check the equivalence:
+
+        >>> (j_c, j_a, J_ca, j_d, j_b, J_ab) = map(S, "j_c j_a J_ca j_d j_b J_ab".split())
+        >>> SixJSymbol(j_c, j_a, J_ca, j_b, j_d, J_ab.as_dummy())
+        SixJSymbol(J_ca, j_a, j_c, _J_ab, j_d, j_b)
+
+        """
+        if not isinstance(other, MatrixElement):
+            raise ValueError("argument ``other'' must be a MatrixElement object")
+        if not self.operator == other.operator:
+            raise ValueError("MatrixElements not compatible")
+
+        self_as_direct = self.as_direct_product(only_particle_states=True, strict_bra_coupling=True, **kw_args)
+        my_direct = self_as_direct.atoms(DirectMatrixElement).pop()
+        subsdict = extract_symbol2dummy_dict(self_as_direct)
+
+        other = other.subs(subsdict)
+        direct_as_other = other.get_direct_product_ito_self(only_particle_states=True, strict_bra_coupling=True, **kw_args)
+        others_direct = other.get_related_direct_matrix(only_particle_states=True)
+
+        # if other_direct matrix comes with a sign, the substitution would fail
+        c,t = others_direct.as_coeff_terms(MatrixElement)
+        if len(t) != 1: raise Error
+
+        if not self_as_direct.has(t[0]):
+            raise ValueError("The matrices are not compatible: %s, %s" %(t[0],self.get_related_direct_matrix()))
+
+        result =  self_as_direct.subs(t[0],c*direct_as_other)
+        result = refine_phases(result)
+        return combine_ASigmas(result)
 
 class ReducedMatrixElement(MatrixElement):
     """
@@ -1395,11 +1500,6 @@ class ReducedMatrixElement(MatrixElement):
             result = refine_phases(convert_cgc2tjs(result))
         return result
 
-    def as_other_coupling(self, other, **kw_args):
-        ttm = self._get_ThreeTensorMatrixElement()
-        kw = kw_args.copy()
-        kw['wigner_eckardt'] = True
-        return ttm.as_other_coupling(other, **kw)
 
 class ReducedMatrixElement_edmonds(ReducedMatrixElement):
     _definition = 'edmonds'
@@ -1450,29 +1550,6 @@ class DirectMatrixElement(MatrixElement):
         holes = [ h for h in (self.left.single_particle_states
             + self.right.single_particle_states) if h.is_hole ]
         return self.shift_vacuum(holes)
-
-    def as_other_coupling(self, other, **kw_args):
-        """
-        Returns this direct matrix element in terms of other.
-
-        Raises ValueError if not compatible
-        """
-        c, t = other.as_coeff_terms(MatrixElement)
-
-        if len(t) != 1:
-            raise ValueError("Only one MatrixElement object allowed")
-        t = t[0]
-        if isinstance(t, DirectMatrixElement):
-            if t.as_only_particles() == self.as_only_particles():
-                return c*t
-            else:
-                raise ValueError("Not compatible: %s != %s" % (self, t))
-        if isinstance(t, (ThreeTensorMatrixElement, ReducedMatrixElement)):
-            if t.get_related_direct_matrix(only_particle_states=True) == self.as_only_particles():
-                return c*t.get_direct_product_ito_self(**kw_args)
-            else:
-                raise ValueError("Not compatible: %s != %s" % (self, t))
-        raise ValueError("Unknown coupling order requested.")
 
     def get_direct_product_ito_self(self, **kw_args):
         return self
@@ -1794,110 +1871,6 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         return DirectMatrixElement(bra, self.operator, ket)
 
-    def as_other_coupling(self, other, **kw_args):
-        """
-        Expresses self in terms of other
-
-        This is done by rewriting self in terms of a direct product matrix,
-        and then expressing the direct product matrix in terms of the other.
-
-        >>> from sympy.physics.braket import (
-        ...         MatrixElement, SphFermKet, SphFermBra,
-        ...         SphericalTensorOperator, S
-        ...         )
-        >>> from sympy import symbols
-        >>> k,q = symbols('k q')
-        >>> T = SphericalTensorOperator('T',k,q)
-        >>> a = SphFermBra('a')
-        >>> b = SphFermBra('b')
-        >>> c = SphFermKet('c')
-        >>> d = SphFermKet('d')
-
-        A straightforward coupling of two-particle states gives the following
-        ThreeTensorMatrixElement:
-
-        >>> bra_ab = SphFermBra('ab',a,b)
-        >>> ket_cd = SphFermKet('cd',c,d)
-        >>> M1 = MatrixElement(bra_ab, T, ket_cd); M1
-        <ab(a --> b)| T(k, q) |cd(c --> d)>
-        >>> M1.as_direct_product()
-        Sum(_m_a, _m_b, _m_c, _m_d)*(j_a, _m_a, j_b, _m_b|J_ab, M_ab)*(j_c, _m_c, j_d, _m_d|J_cd, M_cd)*<a, b| T(k, q) |c, d>
-
-        But we can also create ``cross-coupled'' matrix elements.
-        (See Kuo & al. 1981, eq.(20))
-
-        >>> bra_ca = SphFermBra('ca',c,a)
-        >>> ket_db = SphFermKet('db',d,b)
-        >>> M2 = MatrixElement(bra_ca, T, ket_db); M2
-        <ca(|c> --> a)| T(k, q) |db(d --> <b|)>
-        >>> expr = M2.as_direct_product(); expr
-        (-1)**(j_a - _m_a)*(-1)**(J_ca - M_ca)*(-1)**(j_b - _m_b)*Sum(_m_a, _m_b, _m_c, _m_d)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<a, b| T(k, q) |c, d>
-
-        Note that the cross coupled ThreeTensorMatrixElement M2 associates
-        itself with the same DirectMatrixElement as M1 above.  Now, in order to
-        get M2 in terms of M1, we need to put together the above expression with
-        the direct product matrix expressed in terms of M1:
-
-        >>> M1.get_direct_product_ito_self()
-        Sum(_J_ab, _J_cd, _M_ab, _M_cd)*(j_a, m_a, j_b, m_b|_J_ab, _M_ab)*(j_c, m_c, j_d, m_d|_J_cd, _M_cd)*<ab(a --> b)| T(k, q) |cd(c --> d)>
-
-        Inserted we get the long expression:  (where strict bra coupling have been used.)
-
-        >>> expr = M2.as_other_coupling(M1); expr
-        (-1)**(J_ca - M_ca - _J_ab + _M_ab)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, M_db)*<ab(a --> b)| T(k, q) |cd(c --> d)>
-
-        If T happens to be a rank 0 tensor (k=q=0), we can write the relation
-        between the reduced matrix elements in terms of a 6j-symbol.  In order
-        to compare with the result of Kuo & al. we use Edmonds definition of
-        reduced matrix elements.
-
-        >>> from sympy.physics.racahalgebra import (
-        ...         refine_tjs2sjs, convert_cgc2tjs,
-        ...         refine_phases, evaluate_sums,
-        ...         SixJSymbol )
-        >>> M1 = M1.subs({k: S(0), q: S(0)})
-        >>> M2 = M2.subs({k: S(0), q: S(0)})
-        >>> expr = M2.as_other_coupling(M1, wigner_eckardt=True, definition='edmonds'); expr
-        (-1)**(J_db + M_ca + _J_cd + _M_ab)*(1 + 2*J_ca)**(1/2)*Sum(_J_ab, _J_cd, _M_ab, _M_cd, _M_db, _m_a, _m_b, _m_c, _m_d)*(j_a, -_m_a, j_b, -_m_b|_J_ab, -_M_ab)*(j_c, _m_c, j_a, -_m_a|J_ca, -M_ca)*(j_c, _m_c, j_d, _m_d|_J_cd, _M_cd)*(j_d, _m_d, j_b, -_m_b|J_db, _M_db)*Dij(J_ca, J_db)*Dij(M_ca, _M_db)*Dij(_J_ab, _J_cd)*Dij(_M_ab, _M_cd)*<ab(a --> b)|| T(0) ||cd(c --> d)>/(1 + 2*_J_ab)**(1/2)
-
-        >>> expr = convert_cgc2tjs(expr)
-        >>> expr = refine_phases(expr)
-        >>> expr = evaluate_sums(expr, all_deltas=1); expr
-        (-1)**(1 + M_ca - j_b - j_c + 2*J_db + 2*_J_ab + _M_ab)*(1 + 2*J_db)**(3/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab, _M_ab, _m_a, _m_b, _m_c, _m_d)*<ab(a --> b)|| T(0) ||cd(c --> d)>*ThreeJSymbol(J_db, j_a, j_c, M_ca, -_m_a, _m_c)*ThreeJSymbol(J_db, j_b, j_d, M_ca, _m_b, -_m_d)*ThreeJSymbol(j_a, j_b, _J_ab, _m_a, _m_b, -_M_ab)*ThreeJSymbol(j_c, j_d, _J_ab, _m_c, _m_d, -_M_ab)
-
-        >>> expr = refine_tjs2sjs(expr); expr
-        (-1)**(J_db - j_a - j_d + _J_ab)*(1 + 2*J_db)**(1/2)*(1 + 2*_J_ab)**(1/2)*Sum(_J_ab)*<ab(a --> b)|| T(0) ||cd(c --> d)>*SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
-
-        Kuo & al. arrive at another 6j symbol, but we can easily check the equivalence:
-
-        >>> (j_c, j_a, J_db, j_d, j_b, J_ab) = map(S, "j_c j_a J_db j_d j_b J_ab".split())
-        >>> SixJSymbol(j_c, j_a, J_db, j_b, j_d, J_ab.as_dummy())
-        SixJSymbol(j_a, J_db, j_c, j_d, _J_ab, j_b)
-
-        """
-        if not isinstance(other, MatrixElement):
-            raise ValueError("argument ``other'' must be a MatrixElement object")
-        if not self.operator == other.operator:
-            raise ValueError("MatrixElements not compatible")
-
-        self_as_direct = self.as_direct_product(only_particle_states=True, strict_bra_coupling=True, **kw_args)
-        my_direct = self_as_direct.atoms(DirectMatrixElement).pop()
-        subsdict = extract_symbol2dummy_dict(self_as_direct)
-
-        other = other.subs(subsdict)
-        direct_as_other = other.get_direct_product_ito_self(only_particle_states=True, strict_bra_coupling=True, **kw_args)
-        others_direct = other.get_related_direct_matrix(only_particle_states=True)
-
-        # if other_direct matrix comes with a sign, the substitution would fail
-        c,t = others_direct.as_coeff_terms(MatrixElement)
-        if len(t) != 1: raise Error
-
-        if not self_as_direct.has(t[0]):
-            raise ValueError("The matrices are not compatible: %s, %s" %(t[0],self.get_related_direct_matrix()))
-
-        result =  self_as_direct.subs(t[0],c*direct_as_other)
-        result = refine_phases(result)
-        return combine_ASigmas(result)
 
     def get_related_redmat(self, **kw_args):
         return ReducedMatrixElement(self.left, self.operator, self.right, **kw_args)
