@@ -2549,7 +2549,7 @@ def apply_orthogonality(expr, summations):
 
             ranks1 = njs1.magnitudes
             ranks2 = njs2.magnitudes
-            matching_ranks = [ ranks1[i] for i in range(3) if ranks1[i] == ranks2[i] ]
+            matching_ranks = set(ranks1) & set(ranks2)
 
             if len(matching_ranks) == 3:
 
