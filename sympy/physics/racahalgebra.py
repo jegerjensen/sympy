@@ -2416,12 +2416,33 @@ def evaluate_sums(expr, **kw_args):
     Sum(a)*f(a)
     >>> evaluate_sums(ASigma(a, b)*f(a)*Dij(b,c))
     Sum(a)*f(a)
+
+    If you know that the total expression is independent of a summation variable, and
+    know the summation limits, the summation can be replaced with a factor.  E.g. a summation
+    over m=-j, j, can be replaced with (2j+1).  You can supply pairs of
+    (summation_index, replacement_factor) as key,value pairs in a dictionary
+    with the keyword independent_of={}
+
+    >>> evaluate_sums(ASigma(a, b)*f(a, b, c), independent_of={a:3})
+    3*Sum(b)*f(a, b, c)
+
+
     """
     expr = combine_ASigmas(expr)
     summations = expr.atoms(ASigma)
     if not summations:
         return expr
     summations = summations.pop()
+
+    replace_dict = kw_args.get('independent_of', {})
+    for i in replace_dict:
+        try:
+            expr = remove_summation_indices(expr, [i])
+            expr = expr*replace_dict[i]
+            expr = apply_deltas(expr, remove_all=[i])
+        except ValueError:
+            pass
+
     deltas = expr.atoms(Dij)
     for d in deltas:
         i,j = d.args
