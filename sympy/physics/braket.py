@@ -36,6 +36,7 @@ class SphericalTensorOperator(QuantumOperator, SphericalTensor):
     fulfills certain commutation relations with J_+- and J_z.
     """
     def __new__(cls, symbol, rank, projection, **kw_args):
+        symbol, rank, projection = map(sympify, (symbol, rank, projection))
         obj = SphericalTensor.__new__(cls, symbol, rank, projection, **kw_args)
         obj._tensor_proj = projection
         obj._tensor_phase = S.One
@@ -57,9 +58,25 @@ class DualSphericalTensorOperator(SphericalTensorOperator):
     An Operator that transforms like a spherical tensor (-1)**(j-m)*T(j,-m)
 
     fulfills certain commutation relations with J_+- and J_z.
+
+
+    FIXME: Should this object transform like -1**(j + m) or -1**(j - m) ?
+    It depends on interpretation of this object.  Currently the implementation
+    is that DualSphericalTensorOperator represent an operator that transforms
+    like (-1)**(j-m)T(j,-m).  That is: the DualSphericalTensorOperator object
+    is not actually a spherical tensor, but represents a conjugated
+    SphericalTensorOperator.
+
+    >>> from sympy.physics.braket import SphericalTensorOperator
+    >>> from sympy.physics.braket import DualSphericalTensorOperator
+    >>> SphericalTensorOperator('T','k','q').as_coeff_tensor()
+    (1, T(k, q))
+    >>> DualSphericalTensorOperator('T','k','q').as_coeff_tensor()
+    ((-1)**(k - q), T(k, -q))
     """
 
     def __new__(cls, symbol, rank, projection, **kw_args):
+        symbol, rank, projection = map(sympify, (symbol, rank, projection))
         obj = SphericalTensorOperator.__new__(cls, symbol, rank, projection, **kw_args)
         obj._tensor_proj = -projection
         obj._tensor_phase = S.NegativeOne**(rank - projection)
