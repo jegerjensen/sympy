@@ -2351,7 +2351,12 @@ def convert_sumindex2nondummy(expr, subslist=[]):
 
 def apply_deltas(expr, **kw_args):
     """
-    Applies the KroneckerDeltas without removing them
+    Applies the KroneckerDeltas without removing them (by default)
+
+    If you want to get rid of particular symbols, you can supply a list of them
+    with the keyword remove_all=[].  If the symbol is present in a delta function,
+    it is substituted throughout the expression, removing the delta
+    function as well.
 
     >>> from sympy.physics.racahalgebra import apply_deltas
     >>> from sympy import symbols, Function, Dij
@@ -2360,8 +2365,22 @@ def apply_deltas(expr, **kw_args):
     >>> f = Function('f')
     >>> apply_deltas(f(c)*f(a)*Dij(a,c))
     f(a)**2*Dij(a, c)
+    >>> apply_deltas(f(c)*f(a)*Dij(a,-c), remove_all=[a])
+    f(c)*f(-c)
     """
     deltas = expr.atoms(Dij)
+    for s in kw_args.get('remove_all', []):
+        for d in deltas:
+            if d.has(s):
+                i, j = d.args
+                ci, i = i.as_coeff_terms(); i = Mul(*i)
+                cj, j = j.as_coeff_terms(); j = Mul(*j)
+                if s == i:
+                    expr = expr.subs(i, cj*j/ci)
+                elif s == j:
+                    expr = expr.subs(j, ci*i/cj)
+    deltas = expr.atoms(Dij)
+
     d2dum = {}
     dum2d = {}
     for d in deltas:
