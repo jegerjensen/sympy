@@ -712,6 +712,9 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
             result[J] = M
         return result
 
+    def _latex_(self, p, *args):
+        return "\\left(%s, %s, %s, %s\\middle|%s, %s\\right)" % tuple([p._print(a) for a in self.args])
+
     def _sympystr_(self, *args):
         """
         >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
