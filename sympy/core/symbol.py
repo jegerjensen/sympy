@@ -154,6 +154,11 @@ class Dummy(Symbol):
 
         return Symbol.compare(self, other)
 
+    def _pretty_key_(self):
+        # Dummies get a penalty in the pretty key
+        return chr(255)+str(self)
+
+
 
 class Wild(Symbol):
     """
