@@ -2472,26 +2472,48 @@ def apply_orthogonality(expr, summations):
 
     >>> from sympy.physics.racahalgebra import (ThreeJSymbol,
     ...         ClebschGordanCoefficient, apply_orthogonality, ASigma)
-    >>> from sympy import symbols
-    >>> A,B,C,D,E,a,b,c,d,e = symbols('A B C D E a b c d e')
-    >>> expr = ClebschGordanCoefficient(A, a, B, b, C, c)*ClebschGordanCoefficient(A, a, B, b, D, d)
+    >>> from sympy import symbols, global_assumptions, Assume, Q
+    >>> A,B,C,D,E,F,a,b,c,d,e,f = symbols('A B C D E F a b c d e f')
+    >>> global_assumptions.add( Assume(a, 'half_integer') )
+    >>> global_assumptions.add( Assume(b, 'half_integer') )
+    >>> global_assumptions.add( Assume(c, 'half_integer') )
+    >>> global_assumptions.add( Assume(d, 'half_integer') )
+    >>> global_assumptions.add( Assume(A, 'half_integer') )
+    >>> global_assumptions.add( Assume(B, 'half_integer') )
+    >>> global_assumptions.add( Assume(C, 'half_integer') )
+    >>> global_assumptions.add( Assume(D, 'half_integer') )
+    >>> global_assumptions.add( Assume(e, Q.integer) )
+    >>> global_assumptions.add( Assume(f, Q.integer) )
+    >>> global_assumptions.add( Assume(E, Q.integer) )
+    >>> global_assumptions.add( Assume(F, Q.integer) )
+
+    >>> expr = ClebschGordanCoefficient(A, a, B, b, E, e)*ClebschGordanCoefficient(A, a, B, b, F, f)
     >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
-    Dij(C, D)*Dij(c, d)
+    Dij(E, F)*Dij(e, f)
     >>> expr = ClebschGordanCoefficient(A, a, B, b, E, e)*ClebschGordanCoefficient(A, c, B, d, E, e)
     >>> apply_orthogonality(expr*ASigma(E, e), [E, e])
     Dij(a, c)*Dij(b, d)
 
     We canonize the symbols, so that we can recognize
 
-    >>> expr = ClebschGordanCoefficient(A, -a, B, -b, C, c)*ClebschGordanCoefficient(A, a, B, b, D, d)
+    >>> expr = ClebschGordanCoefficient(A, -a, B, -b, E, e)*ClebschGordanCoefficient(A, a, B, b, F, f)
     >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
-    Dij(C, D)*Dij(c, -d)
+    (-1)**(E - A - B)*Dij(E, F)*Dij(e, -f)
 
     We can also treat orthogonality of the ThreeJSymbol:
 
     >>> expr = (2*C+1)*ThreeJSymbol(B, A, C, -b, -a, c)*ThreeJSymbol(A, B, D, a, b, d)
     >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
     Dij(C, D)*Dij(d, -c)
+
+    Trivial cases are also handled correctly:
+
+    >>> expr = ThreeJSymbol(A, B, E, a, b, e)**2
+    >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
+    1/(1 + 2*E)
+    >>> expr = ClebschGordanCoefficient(A, a, B, b, E, e)**2
+    >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
+    1
     """
     summations = map(sympify, summations)
     sumlabels = []
@@ -2505,6 +2527,7 @@ def apply_orthogonality(expr, summations):
 
     angmoms = expr.atoms(AngularMomentumSymbol)
 
+    # Which AngularMomentumSymbol are relevant for the summations?
     indices = {}
     for njs in angmoms:
         hits = [ s for s in valids if njs.has(s) ]
@@ -2515,10 +2538,15 @@ def apply_orthogonality(expr, summations):
                 else:
                     indices[k] = set([njs])
 
+    # Relations must involve exactly two angular momentum symbols
     items = list(indices.iteritems())
     for k,v in items:
-        # relations involve exactly two symbols
-        if len(v) != 2:
+        if len(v) == 1:
+            ams = v.pop()
+            if expr.has(ams**2):
+                indices[k] = (ams, ams)
+                continue
+        elif len(v) != 2:
             del indices[k]
 
     # indices maps indices -> njs
@@ -2529,11 +2557,16 @@ def apply_orthogonality(expr, summations):
             if label1 != label2 and njs1 == njs2:
                 candidates.append((label1, label2, njs1))
 
+
     sum_removals = []
     subsdict = {}
     coeff = S.One
     for s1, s2, njs in candidates:
         key1, key2 = njs1, njs2 = tuple(njs)
+        # substitution of squared symbol must replace also the exponent
+        if key1 == key2:
+            key1 = njs1**2
+            key2 = key1
         if key1 in subsdict: continue
         if key2 in subsdict: continue
         if isinstance(njs1, ClebschGordanCoefficient):
@@ -2574,14 +2607,14 @@ def apply_orthogonality(expr, summations):
                     if ratio is S.One:
                         sum_removals.append(s1)
                         sum_removals.append(s2)
-                        subsdict[key1] = Dij(m11, m12)
-                        subsdict[key2] = Dij(m21, m22)/(2*j + 1)
+                        subsdict[key1] = S.One
+                        subsdict[key2] = Dij(m11, m12)*Dij(m21, m22)/(2*j + 1)
                         continue
                     elif ratio is S.NegativeOne:
                         sum_removals.append(s1)
                         sum_removals.append(s2)
-                        subsdict[key1] = Dij(m11, -m12)*(-1)**(-Add(*ranks1))
-                        subsdict[key2] = Dij(m21, -m22)/(2*j + 1)
+                        subsdict[key1] = S.One
+                        subsdict[key2] = Dij(m11, -m12)*(-1)**(-Add(*ranks1))*Dij(m21, -m22)/(2*j + 1)
                         continue
 
             if len(matching_ranks) >= 2:
@@ -2610,14 +2643,14 @@ def apply_orthogonality(expr, summations):
                     if ratio1 == ratio2 == S.One:
                         sum_removals.append(s1)
                         sum_removals.append(s2)
-                        subsdict[key1] = Dij(J1, J2)/(2*J1 + 1)
-                        subsdict[key2] = Dij(M1, M2)
+                        subsdict[key1] = S.One
+                        subsdict[key2] = Dij(J1, J2)*Dij(M1, M2)/(2*J1 + 1)
                         continue
                     if ratio1 == ratio2 == S.NegativeOne:
                         sum_removals.append(s1)
                         sum_removals.append(s2)
-                        subsdict[key1] = Dij(J1, J2)/(2*J1 + 1)
-                        subsdict[key2] = Dij(M1, -M2)*(-1)**(-Add(*ranks1))
+                        subsdict[key1] = S.One
+                        subsdict[key2] = Dij(J1, J2)*Dij(M1, -M2)*(-1)**(-Add(*ranks1))/(2*J1 + 1)
                         continue
 
         else:
@@ -2629,7 +2662,7 @@ def apply_orthogonality(expr, summations):
         expr = expr.subs(subsdict)
         # We must be able to clean out all evaluated summation indices from phases
         # else, the orthogonality cannot be applied
-        expr = refine_phases(expr, sum_removals, identity_sources=subsdict.keys(),
+        expr = refine_phases(expr, sum_removals, identity_sources=angmoms,
                 strict=True)
         expr = apply_deltas(expr)
 
