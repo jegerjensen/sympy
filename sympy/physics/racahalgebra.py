@@ -1646,7 +1646,10 @@ def refine_tjs2sjs(expr, **kw_args):
         # find 6j-symbol, expand as 3j-symbols and try to match with original
         try:
             sjs = _identify_SixJSymbol(threejs, **kw_args)
-        except ThreeJSymbolsNotCompatibleWithSixJSymbol:
+        except ThreeJSymbolsNotCompatibleWithSixJSymbol, e:
+            if kw_args.get('verbose'):
+                print "Could not find 6j symbol for", threejs
+                print e
             continue
 
         # Determine projection symbols for expansion
@@ -2119,7 +2122,7 @@ def _identify_SixJSymbol(threejs, **kw_args):
     for tjs in threejs:
         keys_J.update(tjs.magnitudes)
     if len(keys_J) != 6:
-        raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Number of J is %s"%len(keys_J))
 
     # j1 and J are given by canonical form of SixJSymbol
     totJ  = maxJ = max(keys_J)
@@ -2137,7 +2140,8 @@ def _identify_SixJSymbol(threejs, **kw_args):
 
         # check that sjs is actually possible
         if not maxJ in connections[minJ]:
-            raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+            raise ThreeJSymbolsNotCompatibleWithSixJSymbol(
+                    "connections not satisfied for s%"%maxJ)
 
     # Two elements in a column of the sjs never appear in the same 3j-symbol
     j3 = keys_J - connections[  j1]
@@ -2163,6 +2167,13 @@ def _identify_SixJSymbol(threejs, **kw_args):
                 raise ThreeJSymbolsNotCompatibleWithSixJSymbol
             J23 = [ el for el in magnitudes if (el != j2 and el != j3)]
             J23 = J23[0]
+
+    if J12 is None or J23 is None:
+        if kw_args.get('verbose'):
+            print "failed to identify 6j symbol"
+            print "Closest match was: SixJSymbol(", j1,j2,J12, j3,totJ, J23,')'
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+
 
     return  SixJSymbol(j1,j2,J12,j3,totJ,J23)
 
