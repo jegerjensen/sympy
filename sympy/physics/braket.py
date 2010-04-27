@@ -209,7 +209,11 @@ class QuantumState(Basic):
 
     def get_antiparticle(self):
         if len(self.args)>1: raise ValueError("Only single particle states can be anti-particles (FIXME?)")
-        return type(self)(-self.symbol)
+        obj = type(self)(-self.symbol)
+        obj._j = self._j
+        obj._m = self._m
+        obj.is_coupled = self.is_coupled
+        return obj
 
     @property
     def symbol(self):
@@ -1197,6 +1201,8 @@ class MatrixElement(Basic):
         if not self_as_direct.has(t[0]):
             raise ValueError("The matrices are not compatible: %s, %s" %(t[0],self.get_related_direct_matrix()))
 
+        assert  t[0] == my_direct
+
         result =  self_as_direct.subs(t[0],c*direct_as_other)
         result = refine_phases(result)
         return combine_ASigmas(result)
@@ -1572,7 +1578,7 @@ class DirectMatrixElement(MatrixElement):
         return self
 
     def as_direct_product(self, **kw_args):
-        return self
+        return self.get_related_direct_matrix(**kw_args)
 
     def get_related_direct_matrix(self, **kw_args):
         if kw_args.get('only_particle_states'):
