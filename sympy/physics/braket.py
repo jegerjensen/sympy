@@ -1186,12 +1186,12 @@ class MatrixElement(Basic):
         if not self.operator == other.operator:
             raise ValueError("MatrixElements not compatible")
 
-        self_as_direct = self.as_direct_product(only_particle_states=True, strict_bra_coupling=True, **kw_args)
+        self_as_direct = self.as_direct_product(only_particle_states=True, strict_bra_coupling=0, **kw_args)
         my_direct = self_as_direct.atoms(DirectMatrixElement).pop()
         subsdict = extract_symbol2dummy_dict(self_as_direct)
 
         other = other.subs(subsdict)
-        direct_as_other = other.get_direct_product_ito_self(only_particle_states=True, strict_bra_coupling=True, **kw_args)
+        direct_as_other = other.get_direct_product_ito_self(only_particle_states=True, strict_bra_coupling=0, **kw_args)
         others_direct = other.get_related_direct_matrix(only_particle_states=True)
 
         # if other_direct matrix comes with a sign, the substitution would fail
