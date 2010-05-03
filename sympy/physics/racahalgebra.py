@@ -409,6 +409,30 @@ class ThreeJSymbol(AngularMomentumSymbol):
         """
         return set([TriangularInequality(*self.magnitudes)])
 
+    def _latex_(self, p, exp=None):
+        """
+        >>> from sympy.physics.racahalgebra import ThreeJSymbol
+        >>> from sympy import symbols, latex
+        >>> A,B,C,a,b,c = symbols('ABCabc')
+        >>> print latex(ThreeJSymbol(A, B, C, a, b, c))
+        %
+        \\left(
+          \\begin{array}{ccc}
+           A & B & C \\\\
+           a & b & c
+          \\end{array}
+        \\right)
+        """
+
+        magn = " & ".join([ p._print(J) for J in self.magnitudes  ])
+        proj = " & ".join([ p._print(J) for J in self.projections ])
+        res = "%%\n\\left(\n  \\begin{array}{ccc}\n   %s \\\\\n   %s\n  \\end{array}\n\\right)" % (magn, proj)
+
+        if exp:
+            res += "^{%s}" % exp
+
+        return res
+
 
 class SixJSymbol(AngularMomentumSymbol):
     """
@@ -595,6 +619,28 @@ class SixJSymbol(AngularMomentumSymbol):
         triag.add( TriangularInequality(j4, j5, j3) )
         triag.add( TriangularInequality(j4, j2, j6) )
         return triag
+
+    def _latex_(self, p, exp=None):
+        """
+        >>> from sympy.physics.racahalgebra import SixJSymbol
+        >>> from sympy import symbols, latex
+        >>> A,B,C,D,E,F = symbols('ABCDEF')
+        >>> print latex(SixJSymbol(A, E, B, D, F, C))
+        %
+        \\left\\{
+          \\begin{array}{ccc}
+           A & E & B \\\\
+           D & F & C
+          \\end{array}
+        \\right\\}
+        """
+        magn = " & ".join([ p._print(J) for J in self.args[:3]])
+        proj = " & ".join([ p._print(J) for J in self.args[3:]])
+        res = "%%\n\\left\\{\n  \\begin{array}{ccc}\n   %s \\\\\n   %s\n  \\end{array}\n\\right\\}" % (magn, proj)
+        if exp:
+            res += "^{%s}" % exp
+
+        return res
 
 
 class ClebschGordanCoefficient(AngularMomentumSymbol):
