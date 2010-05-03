@@ -136,7 +136,7 @@ class BraKet(QuantumState):
     def _sympystr_(self, p, *args):
         return str(self)
 
-    def _latex_(self, p, *args):
+    def _latex_(self, p):
         return r"\left%s %s \right%s" % (
                 self.left_braket,
                 self._latex_nobraket_(p),
