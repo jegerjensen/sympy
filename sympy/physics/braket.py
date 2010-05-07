@@ -136,13 +136,6 @@ class BraKet(QuantumState):
     def _sympystr_(self, p, *args):
         return str(self)
 
-    def _latex_(self, p):
-        return r"\left%s %s \right%s" % (
-                self.left_braket,
-                self._latex_nobraket_(p),
-                self.right_braket
-                )
-
     def _latex_nobraket_(self, p, contained_in=None):
         if contained_in and not contained_in.is_dual is None:
             if self.is_dual != contained_in.is_dual:
@@ -161,9 +154,15 @@ class Ket(BraKet):
     left_braket = '|'
     right_braket = '>'
 
+    def _latex_(self, p):
+        return r"\left| %s \right\rangle" % self._latex_nobraket_(p)
+
 class Bra(BraKet):
     left_braket = '<'
     right_braket = '|'
+
+    def _latex_(self, p):
+        return r"\left\langle %s \right|" % self._latex_nobraket_(p)
 
 class QuantumState(Basic):
     """
