@@ -36,6 +36,10 @@ class Dij(Function):
                 return cls(-i, -j)
         if i > j: return cls(j, i)
 
+    def _latex(self, p, exp=None):
+        args = ", ".join([ p._print(a) for a in self.args ])
+        return r"\delta_{%s}" % args
+
 class Eijk(Function):
     """
     Represents the Levi-Civita symbol (antisymmetric symbol)
