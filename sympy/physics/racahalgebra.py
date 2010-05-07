@@ -951,6 +951,9 @@ class SphericalTensor(Basic):
     def _latex_(self, p):
         return "%s(%s, %s)" % tuple([p._print(a) for a in self.args])
 
+    def _latex_drop_projection(self, p):
+        return "%s(%s)" % tuple([p._print(a) for a in self.args[:2]])
+
 
 class CompositeSphericalTensor(SphericalTensor):
     """
