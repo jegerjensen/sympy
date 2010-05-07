@@ -47,7 +47,7 @@ class LatexPrinter(Printer):
                 self._settings['mode'] = 'equation*'
         if 'mode' in self._settings:
             valid_modes = ['inline', 'plain', 'equation', \
-                            'equation*']
+                            'equation*', 'align', 'dmath']
             if self._settings['mode'] not in valid_modes:
                 raise ValueError, "'mode' must be one of 'inline', 'plain', " \
                     "'equation' or 'equation*'"
