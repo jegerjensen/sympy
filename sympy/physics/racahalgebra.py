@@ -1733,9 +1733,6 @@ def refine_tjs2sjs(expr, **kw_args):
         for permut2 in _iter_tjs_permutations(new_tjs_expr):
             summations2, phases2, factors2, threejs2, ignorables2 = permut2
 
-        # we can already simplify some parts
-        phases = refine(powsimp(phases/phases2))
-        factors = factors/factors2
 
         if threejs2 != threejs:
             # We need to bring the 3js to same form by changing sign of
@@ -1748,27 +1745,24 @@ def refine_tjs2sjs(expr, **kw_args):
                 new = new_tjs[old.magnitudes]
                 projdict[new] =  _find_projections_to_invert(old, new)
 
-            # now we need to process the list of alternative projection inversions
+            # We need to process the list of alternative projection inversions
             # in order to find combinations that are consistent for all 3js
             # simultaneously
             try:
-                alternative_phases = _get_phase_subslist_dict(projdict)
+                proj_inversions = _get_projection_inversion_dict(projdict)
             except ThreeJSymbolsNotCompatibleWithSixJSymbol:
                 if kw_args.get('verbose'):
                     print projdict
                 raise
 
-            # choose the simplest phase
-            orig = phases
-            for alt in alternative_phases:
-                test_phase = refine(powsimp(orig*alt))
-                if test_phase is S.One or test_phase is S.NegativeOne:
-                    phases = test_phase
-                    break
-                elif orig == phases:
-                    phases = test_phase
-                elif len(test_phase.exp.args) < len(phases.exp.args):
-                    phases = test_phase
+            # We do the inversions on the 6j symbol expression
+            phases2 = phases2.subs(proj_inversions)
+            factors2 = factors2.subs(proj_inversions)
+            for tjs in threejs2:
+                compatible_tjs = tjs.subs(proj_inversions)
+                coeff, junk = compatible_tjs.as_coeff_terms(AngularMomentumSymbol)
+                phases2 *= coeff
+
 
 
         # make sure there is summation over all projections
@@ -1792,6 +1786,9 @@ def refine_tjs2sjs(expr, **kw_args):
 
         # sjs == phases2*factors2*(tjs)^4  =>  (tjs)^4 == sjs/factors2/phases2
         # expr = phases*factors*(tjs)^4 == phases/phases2 * factors/factors2 * sjs
+
+        phases = refine(powsimp(phases/phases2))
+        factors = factors/factors2
 
         expr = Mul(summations, phases, sjs, factors, *ignorables)
 
@@ -1859,9 +1856,9 @@ def is_equivalent(expr1, expr2, verbosity=0):
         return True
 
 
-def _get_phase_subslist_dict(projection_dict):
+def _get_projection_inversion_dict(projection_dict):
     """
-    Determines possible combinations of projection inversion and corresponding phase.
+    Checks combinations of projection inversion and returns a subsdict.
 
     ``projection_dict`` must have tjs as keys, and projection lists (from
     _find_projections_to_invert) as values.
@@ -1950,18 +1947,16 @@ def _get_phase_subslist_dict(projection_dict):
     # determine possible inversions
     inversions = _recurse_into_projections(projection_dict.values())
 
-    # determine phases by doing the inversions
-    phase_inversion_dict = dict([])
-    tjs_expr = Mul(*projection_dict.keys())
-    for inv in inversions:
-        to_invert = inv[0]
-        subslist = [ (m, -m) for m in to_invert ]
-        tjs_expr = powsimp(tjs_expr.subs(subslist))
-        eliminate_tjs = [(tjs,S.One) for tjs in tjs_expr.atoms(ThreeJSymbol)]
-        phase = refine(tjs_expr.subs(eliminate_tjs))
+    # determine best inversion as the quickest (fewest substitutions)
+    best = inversions[0][0]
+    for inv in inversions[1:]:
+        if len(inv[0]) < len(best): best = inv[0]
 
-        phase_inversion_dict[phase] = subslist
-    return phase_inversion_dict.keys()
+    subsdict = {}
+    for M in best:
+        subsdict[M] = -M
+
+    return subsdict
 
 
 def _substitute_tjs2sjs(threej_atoms, expression, sjs, sjs_ito_tjs):
