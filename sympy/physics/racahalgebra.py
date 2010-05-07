@@ -2621,7 +2621,6 @@ def apply_orthogonality(expr, summations):
 
     sum_removals = []
     subsdict = {}
-    coeff = S.One
     for s1, s2, njs in candidates:
         key1, key2 = njs1, njs2 = tuple(njs)
         # substitution of squared symbol must replace also the exponent
@@ -2630,6 +2629,7 @@ def apply_orthogonality(expr, summations):
             key2 = key1
         if key1 in subsdict: continue
         if key2 in subsdict: continue
+        coeff = S.One
         if isinstance(njs1, ClebschGordanCoefficient):
             c1, njs1 = njs1.get_as_ThreeJSymbol().as_coeff_terms(ThreeJSymbol)
             njs1 = njs1[0]
@@ -2641,8 +2641,8 @@ def apply_orthogonality(expr, summations):
 
         if isinstance(njs1, ThreeJSymbol) and isinstance(njs2, ThreeJSymbol):
 
-            ranks1 = njs1.magnitudes
-            ranks2 = njs2.magnitudes
+            ranks1 = list(njs1.magnitudes)
+            ranks2 = list(njs2.magnitudes)
             matching_ranks = set(ranks1) & set(ranks2)
 
             if len(matching_ranks) == 3:
@@ -2669,13 +2669,13 @@ def apply_orthogonality(expr, summations):
                         sum_removals.append(s1)
                         sum_removals.append(s2)
                         subsdict[key1] = S.One
-                        subsdict[key2] = Dij(m11, m12)*Dij(m21, m22)/(2*j + 1)
+                        subsdict[key2] = Dij(m11, m12)*Dij(m21, m22)/(2*j + 1)*coeff
                         continue
                     elif ratio is S.NegativeOne:
                         sum_removals.append(s1)
                         sum_removals.append(s2)
                         subsdict[key1] = S.One
-                        subsdict[key2] = Dij(m11, -m12)*(-1)**(-Add(*ranks1))*Dij(m21, -m22)/(2*j + 1)
+                        subsdict[key2] = Dij(m11, -m12)*(-1)**(-Add(*ranks1))*Dij(m21, -m22)/(2*j + 1)*coeff
                         continue
 
             if len(matching_ranks) >= 2:
@@ -2694,10 +2694,24 @@ def apply_orthogonality(expr, summations):
 
                 if len(hit_ranks) == 2:
 
+                    # get rank,proj for delta functions
                     J1 = [ r for r in ranks1 if r not in hit_ranks][0]
                     M1 = njs1.get_projection(J1)
                     J2 = [ r for r in ranks2 if r not in hit_ranks][0]
                     M2 = njs2.get_projection(J2)
+
+                    # 3j-symbols must have contractable ranks in same columns.
+                    # Canonical ordering ensures that the contractable ranks
+                    # appear in the same order in both, while the nonmatching
+                    # ranks can be in any column.
+                    i1 = ranks1.index(J1)
+                    i2 = ranks2.index(J2)
+                    if i1 == i2 or (i1, i2) == (0,2) or (i1, i2) == (2,0):
+                        c_permut = S.One
+                    else:
+                        c_permut = (-1)**(Add(*ranks1))
+
+
 
                     ratio1 = njs1.get_projection(hit_ranks[0])/njs2.get_projection(hit_ranks[0])
                     ratio2 = njs1.get_projection(hit_ranks[1])/njs2.get_projection(hit_ranks[1])
@@ -2705,13 +2719,13 @@ def apply_orthogonality(expr, summations):
                         sum_removals.append(s1)
                         sum_removals.append(s2)
                         subsdict[key1] = S.One
-                        subsdict[key2] = Dij(J1, J2)*Dij(M1, M2)/(2*J1 + 1)
+                        subsdict[key2] = Dij(J1, J2)*Dij(M1, M2)/(2*J1 + 1)*coeff*c_permut
                         continue
                     if ratio1 == ratio2 == S.NegativeOne:
                         sum_removals.append(s1)
                         sum_removals.append(s2)
                         subsdict[key1] = S.One
-                        subsdict[key2] = Dij(J1, J2)*Dij(M1, -M2)*(-1)**(-Add(*ranks1))/(2*J1 + 1)
+                        subsdict[key2] = Dij(J1, J2)*Dij(M1, -M2)*(-1)**(-Add(*ranks1))/(2*J1 + 1)*coeff*c_permut
                         continue
 
         else:
@@ -2719,12 +2733,11 @@ def apply_orthogonality(expr, summations):
 
     if subsdict:
         expr = remove_summation_indices(expr, sum_removals)
-        expr *= coeff
-        expr = expr.subs(subsdict)
         # We must be able to clean out all evaluated summation indices from phases
         # else, the orthogonality cannot be applied
         expr = refine_phases(expr, sum_removals, identity_sources=angmoms,
                 strict=True)
+        expr = expr.subs(subsdict)
         expr = apply_deltas(expr)
 
     return expr
