@@ -759,7 +759,9 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
         return result
 
     def _latex_(self, p, exp=None):
-        res = "\\left(%s, %s, %s, %s\\middle|%s, %s\\right)" % tuple([p._print(a) for a in self.args])
+        symbs = [p._print(a) for a in self.args]
+        symbs = [a if a[0] != '-' else '{'+a+'}' for a in symbs]
+        res = "\\left(%s %s %s %s\\middle|%s %s\\right)" % tuple(symbs)
         if exp:
             res += "^{%s}" % exp
 
