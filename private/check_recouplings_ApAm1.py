@@ -1,7 +1,8 @@
 from sympy.physics.racahalgebra import (
         refine_phases, refine_tjs2sjs, convert_cgc2tjs, is_equivalent,
         SixJSymbol, ASigma, combine_ASigmas, evaluate_sums, apply_deltas,
-        apply_orthogonality, ClebschGordanCoefficient, extract_symbol2dummy_dict
+        apply_orthogonality, ClebschGordanCoefficient, extract_symbol2dummy_dict,
+        extract_dummy2symbol_dict
         )
 from sympy.physics.braket import (
         MatrixElement, ReducedMatrixElement, apply_wigner_eckardt,
@@ -32,7 +33,9 @@ def _report(expr):
 
     # print(expr)
     # pprint(expr)
-    print latex(expr, mode='split')
+    subsdict = extract_dummy2symbol_dict(expr)
+    expr = expr.subs(subsdict)
+    print latex(expr, mode='dmath', mul_symbol='dot')
     # preview(expr)
 
     print
@@ -69,12 +72,12 @@ T = SphericalTensorOperator('T', S.Zero, S.Zero)
 
 print
 print "Defined tensor operators:"
-print LA
-print RA
-print LAm1
-print RAm1
-print V
-print T
+_report( LA)
+_report( RA)
+_report( LAm1)
+_report( RAm1)
+_report( V)
+_report( T)
 
 
 print
@@ -213,15 +216,8 @@ relation_mine_ito_gautes = convert_cgc2tjs(relation_mine_ito_gautes)
 relation_mine_ito_gautes = refine_phases(relation_mine_ito_gautes)
 _report( relation_mine_ito_gautes)
 subsdict = extract_symbol2dummy_dict(relation_mine_ito_gautes)
-# print "To use the other orthogonality, we need a sum over 'm_b'"
-# relation_mine_ito_gautes = relation_mine_ito_gautes*ASigma(m_b)/(2*j_b + 1)
-# print relation_mine_ito_gautes
-# relation_mine_ito_gautes = apply_orthogonality(relation_mine_ito_gautes, [ subsdict[M_ij], m_b])
 relation_mine_ito_gautes = apply_orthogonality(relation_mine_ito_gautes, [ subsdict[M_ij], subsdict[M_Am1]])
 _report( relation_mine_ito_gautes)
-# print "And finally, we can remove the summation over M_Am1 multipliyng with (2J_Am1 + 1)"
-# relation_mine_ito_gautes = evaluate_sums(relation_mine_ito_gautes, independent_of={subsdict[M_ij]:2*subsdict[J_ij]+1, subsdict[M_Am1]: 2*J_Am1+1 })
-# print relation_mine_ito_gautes
 relation_mine_ito_gautes = refine_phases(relation_mine_ito_gautes)
 _report( relation_mine_ito_gautes)
 print
@@ -230,37 +226,8 @@ _report(fcode(relation_mine_ito_gautes))
 
 
 
-
 SF = Symbol('SF')
 
-"""
-Ket = FermKet
-Bra = FermBra
-
-i, j, k, l = make_spherical_sp_states('i j k l')
-a, b, c, d = make_spherical_sp_states('a b c d')
-
-LA, RA = make_tensor_operators('J_A M_A J_A M_A',Q.integer)
-LAm1,RAm1 = make_tensor_operators('J_Am1 M_Am1 J_Am1 M_Am1','half_integer')
-# LA = LA.subs(Symbol('t'), Symbol('L'))
-LA = Dagger(LA.subs(Symbol('t'), Symbol('L')))
-# LA = SphericalTensorOperator('L', S.Zero, S.Zero)
-RA = RA.subs(Symbol('t'), Symbol('R'))
-LAm1 = Dagger(LAm1.subs(Symbol('t'), Symbol('L')))
-RAm1 = RAm1.subs(Symbol('t'), Symbol('R'))
-V = SphericalTensorOperator('V', S.Zero, S.Zero)
-T = SphericalTensorOperator('T', S.Zero, S.Zero)
-cre_p = SphericalTensorOperator('a','j','m')
-ann_p = Dagger(SphericalTensorOperator('a','j','m'))
-"""
-print
-print "Defined tensor operators:"
-print LA
-print RA
-print LAm1
-print RAm1
-print V
-print T
 
 print
 print "==== Recoupling <{A}|a'|{A-1}> ===="
@@ -269,6 +236,7 @@ print
 # """
 j_a = Symbol('j_a', nonnegative=True)
 m_a = Symbol('m_a')
+braket_assumptions.add(Assume(j_a, 'half_integer'))
 sf_reduction = (-1)**(j_a - m_a)*ClebschGordanCoefficient(J_A, M_A, j_a, -m_a, J_Am1, M_Am1)*ASigma(M_A, m_a)
 # sf_reduction = (-1)**(j_a - m_a)*ClebschGordanCoefficient(0, 0, j_a, -m_a, 'J_Am1', 'M_Am1')*ASigma('M_A', 'm_a')
 
@@ -312,11 +280,11 @@ expr_msc = combine_ASigmas(l_ai*r_i*ASigma('m_i') * sf_reduction)
 _report(Eq(SF, expr_msc))
 expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [M_A, m_a])
+_report(Eq(SF, expr_sph))
 expr_sph = convert_cgc2tjs(expr_sph)
 _report(Eq(SF, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
-_report(Eq(SF, expr_sph))
-expr_sph = apply_deltas(expr_sph)
 _report(Eq(SF, expr_sph))
 expr_sph = refine_phases(expr_sph)
 _report(Eq(SF, expr_sph))
@@ -339,11 +307,11 @@ expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
 expr_sph = apply_orthogonality(expr_sph, ['m_b', 'm_i', 'm_j'])
 _report(Eq(SF, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(SF, expr_sph))
 expr_sph = convert_cgc2tjs(expr_sph)
 _report(Eq(SF, expr_sph))
-expr_sph = refine_phases((expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(SF, expr_sph))
+expr_sph = refine_phases(expr_sph, ['m_b'])
 _report(Eq(SF, expr_sph))
 expr_sph = refine_tjs2sjs(expr_sph, verbose=1, let_pass=0)
 _report(Eq(SF, expr_sph))
@@ -445,11 +413,11 @@ expr_msc = combine_ASigmas(l_abjk*r_bjk*t_ai*ASigma('m_a','m_j','m_k','m_b') * s
 _report(Eq(SF, expr_msc))
 expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
+expr_sph = convert_cgc2tjs(expr_sph)
+_report(Eq(SF, expr_sph))
 expr_sph = apply_orthogonality(expr_sph, ['m_j', 'm_k'])
 _report(Eq(SF, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
-_report(Eq(SF, expr_sph))
-expr_sph = convert_cgc2tjs(expr_sph)
 _report(Eq(SF, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
 _report(Eq(SF, expr_sph))
