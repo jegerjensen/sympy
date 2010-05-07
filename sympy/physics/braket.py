@@ -1440,6 +1440,13 @@ class ReducedMatrixElement(MatrixElement):
                 self.right
                 )
 
+    def _latex_(self, p):
+        left = self.left._latex_nobraket_(p)
+        right = self.right._latex_nobraket_(p)
+        op = self.operator._latex_drop_projection(p)
+        return r"\left\langle %s \middle\| %s \middle\| %s \right\rangle" %(
+                left, op, right )
+
     @property
     def definition(self):
         """
