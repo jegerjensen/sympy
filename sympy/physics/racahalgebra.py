@@ -2355,6 +2355,36 @@ def extract_symbol2dummy_dict(expr):
             nondummies[k] = v
     return nondummies
 
+def extract_dummy2symbol_dict(expr):
+    """
+    Returns a dict mapping all dummies in expr to nondummies.
+
+    In case the nondummy is present in expr, we map to a primed nondummy in
+    order to differentiate the symbols.
+
+    >>> from sympy.physics.racahalgebra import extract_dummy2symbol_dict
+    >>> from sympy import symbols
+    >>> a,b = symbols('a b')
+    >>> expr = a.as_dummy() + b.as_dummy() + b.as_dummy() + b
+    >>> extract_dummy2symbol_dict(expr)
+    {_a: a, _b: b__'', _b: b__'}
+
+    """
+    Dummy = type(Symbol('x', dummy=True))
+    dummies = expr.atoms(Dummy)
+    nondummies = expr.atoms(Symbol) - dummies
+    subsdict = {}
+    for nond, dum in [ (d.as_nondummy(), d) for d in dummies ]:
+        n = 0
+        name = nond.name
+        while nond in nondummies:
+            n = n+1
+            if n <= 3: nond = Symbol(name + "__" + "'"*n)
+            else: nond = Symbol(name+"__(%s)"%n)
+        subsdict[dum] = nond
+        nondummies.add(nond)
+    return subsdict
+
 def convert_sumindex2dummy(expr):
     """
     Replaces all summation Symbols with dummies.
