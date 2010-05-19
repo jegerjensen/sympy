@@ -2781,5 +2781,6 @@ def apply_orthogonality(expr, summations):
                 strict=True)
         expr = expr.subs(subsdict)
         expr = apply_deltas(expr)
+        expr = refine_phases(expr, identity_sources=angmoms)
 
     return expr
