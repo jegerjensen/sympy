@@ -5,7 +5,7 @@ Module for working with spherical tensors.
 """
 
 from sympy import (
-        Basic, Function, Mul, sympify, Integer, Add, sqrt, Pow, S, Symbol, latex,
+        Expr, Function, Mul, sympify, Integer, Add, sqrt, Pow, S, Symbol, latex,
         cache, powsimp, ratsimp, simplify, sympify
         )
 
@@ -409,7 +409,7 @@ class ThreeJSymbol(AngularMomentumSymbol):
         """
         return set([TriangularInequality(*self.magnitudes)])
 
-    def _latex_(self, p, exp=None):
+    def _latex(self, p, exp=None):
         """
         >>> from sympy.physics.racahalgebra import ThreeJSymbol
         >>> from sympy import symbols, latex
@@ -620,7 +620,7 @@ class SixJSymbol(AngularMomentumSymbol):
         triag.add( TriangularInequality(j4, j2, j6) )
         return triag
 
-    def _latex_(self, p, exp=None):
+    def _latex(self, p, exp=None):
         """
         >>> from sympy.physics.racahalgebra import SixJSymbol
         >>> from sympy import symbols, latex
@@ -758,7 +758,7 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
             result[J] = M
         return result
 
-    def _latex_(self, p, exp=None):
+    def _latex(self, p, exp=None):
         symbs = [p._print(a) for a in self.args]
         symbs = [a if a[0] != '-' else '{'+a+'}' for a in symbs]
         res = "\\left(%s %s %s %s\\middle|%s %s\\right)" % tuple(symbs)
@@ -767,7 +767,7 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
 
         return res
 
-    def _sympystr_(self, *args):
+    def _sympystr(self, *args):
         """
         >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient
         >>> from sympy import symbols
@@ -781,7 +781,7 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
         return "(%s, %s, %s, %s|%s, %s)" % self.args
 
     def _pretty_(self, p, *args):
-        return prettyForm(self._sympystr_())
+        return prettyForm(self._sympystr())
 
 def get_spherical_tensor(symbol, rank, projection, tensor1=None, tensor2=None):
     """
@@ -798,7 +798,7 @@ def get_spherical_tensor(symbol, rank, projection, tensor1=None, tensor2=None):
         return AtomicSphericalTensor(symbol, rank, projection)
 
 
-class SphericalTensor(Basic):
+class SphericalTensor(Expr):
     """
     Represents a spherical tensor(ST), i.e. an object that transforms under
     rotations as defined by the Wigner rotation matrices.
@@ -821,7 +821,7 @@ class SphericalTensor(Basic):
         if cls == SphericalTensor:
             return get_spherical_tensor(symbol, *args)
         else:
-            return Basic.__new__(cls, symbol, *args, **kw_args)
+            return Expr.__new__(cls, symbol, *args, **kw_args)
 
     @property
     def rank(self):
@@ -932,7 +932,7 @@ class SphericalTensor(Basic):
             dirprod = dirprod.subs(subsdict)
         return coeff, dirprod
 
-    def _sympystr_(self, *args):
+    def _sympystr(self, *args):
         """
         >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
@@ -948,7 +948,7 @@ class SphericalTensor(Basic):
 
         return symbol,rank
 
-    def _latex_(self, p):
+    def _latex(self, p):
         return "%s(%s, %s)" % tuple([p._print(a) for a in self.args])
 
     def _latex_drop_projection(self, p):
@@ -987,7 +987,7 @@ class CompositeSphericalTensor(SphericalTensor):
         """
         assert isinstance(tensor1, SphericalTensor)
         assert isinstance(tensor2, SphericalTensor)
-        obj = Basic.__new__(cls,symbol,rank,projection,tensor1,tensor2)
+        obj = Expr.__new__(cls,symbol,rank,projection,tensor1,tensor2)
         return obj
 
     @property
@@ -1007,7 +1007,7 @@ class CompositeSphericalTensor(SphericalTensor):
 
         return symbol+tensor_product,rank
 
-    def _sympystr_(self, p, *args):
+    def _sympystr(self, p, *args):
         """
         >>> from sympy.physics.racahalgebra import SphericalTensor
         >>> from sympy import symbols
@@ -1155,7 +1155,7 @@ class AtomicSphericalTensor(SphericalTensor):
         projection. If two spherical tensors are supplied as tensor1 and
         tensor2, we return a CompositeSphericalTensor instead.
         """
-        obj = Basic.__new__(cls,symbol,rank,projection)
+        obj = Expr.__new__(cls,symbol,rank,projection)
         return obj
 
     def _eval_as_coeff_direct_product(self, **kw_args):
@@ -1170,7 +1170,7 @@ class AtomicSphericalTensor(SphericalTensor):
         """
         return S.One
 
-class ASigma(Basic):
+class ASigma(Expr):
     """
     Summation symbol.  This object is purely symbolic, and is just used to
     display summation indices.
@@ -1200,7 +1200,7 @@ class ASigma(Basic):
                 raise ValueError("ASigma doesn't accept products of symbols: %s"%i)
         unsigned.sort()
         if unsigned:
-            obj = Basic.__new__(cls,*unsigned)
+            obj = Expr.__new__(cls,*unsigned)
         else:
             obj = S.One
         return obj
@@ -1243,11 +1243,11 @@ class ASigma(Basic):
         else:
             return self
 
-    def _sympystr_(self, p, *args):
+    def _sympystr(self, p, *args):
         l = [p.doprint(o) for o in self.args]
         return "Sum" + "(%s)"%", ".join(l)
 
-    def _latex_(self, p):
+    def _latex(self, p):
         labels = " ".join([ p._print(i) for i in self.args ])
         return r"\sum_{%s}" % labels
 
