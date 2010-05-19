@@ -1,5 +1,5 @@
 from sympy import (
-        S, Basic, Mul, global_assumptions, sympify, Symbol, Assume, ask, Q
+        S, Expr, Mul, global_assumptions, sympify, Symbol, Assume, ask, Q
         )
 from sympy.physics.racahalgebra import (
         ThreeJSymbol, ClebschGordanCoefficient, SixJSymbol, SphericalTensor,
@@ -18,16 +18,16 @@ default_redmat_definition = 'wikipedia'
 
 class WignerEckardDoesNotApply(Exception): pass
 
-class QuantumState(Basic): pass
+class QuantumState(Expr): pass
 
-class QuantumOperator(Basic):
+class QuantumOperator(Expr):
     """
     Base class for all objects representing a quantum operator.
     """
     is_commutative=False
     def __new__(cls, *args, **kw_args):
         args = map(sympify, args)
-        return Basic.__new__(cls, *args, **kw_args)
+        return Expr.__new__(cls, *args, **kw_args)
 
 class SphericalTensorOperator(QuantumOperator, SphericalTensor):
     """
@@ -133,7 +133,7 @@ class BraKet(QuantumState):
                 str_args.append(str(s))
         return ", ".join([ str(s) for s in str_args])
 
-    def _sympystr_(self, p, *args):
+    def _sympystr(self, p, *args):
         return str(self)
 
     def _latex_nobraket_(self, p, contained_in=None):
@@ -154,17 +154,17 @@ class Ket(BraKet):
     left_braket = '|'
     right_braket = '>'
 
-    def _latex_(self, p):
+    def _latex(self, p):
         return r"\left| %s \right\rangle" % self._latex_nobraket_(p)
 
 class Bra(BraKet):
     left_braket = '<'
     right_braket = '|'
 
-    def _latex_(self, p):
+    def _latex(self, p):
         return r"\left\langle %s \right|" % self._latex_nobraket_(p)
 
-class QuantumState(Basic):
+class QuantumState(Expr):
     """
     Base class for all objects representing a quantum state.
 
@@ -200,11 +200,11 @@ class QuantumState(Basic):
         if kw_args.get('hole'):
             symbol = -symbol
         #
-        obj = Basic.__new__(cls, symbol, *args, **kw_args)
+        obj = Expr.__new__(cls, symbol, *args, **kw_args)
         return obj
 
     def _hashable_content(self):
-        return Basic._hashable_content(self) + (self.is_hole,)
+        return Expr._hashable_content(self) + (self.is_hole,)
 
     def get_antiparticle(self):
         if len(self.args)>1: raise ValueError("Only single particle states can be anti-particles (FIXME?)")
@@ -995,7 +995,7 @@ def _get_matrix_element(left, operator, right, **kw_args):
         return DirectMatrixElement(left, operator, right, **kw_args)
 
 
-class MatrixElement(Basic):
+class MatrixElement(Expr):
     """
     Base class for all matrix elements.
 
@@ -1064,7 +1064,7 @@ class MatrixElement(Basic):
             assert isinstance(left, DualQuantumState), "not dual: %s" %left
             assert isinstance(operator, QuantumOperator), "not operator: %s" %operator
             assert isinstance(right, RegularQuantumState)
-            obj = Basic.__new__(cls, left, operator, right, **kw_args)
+            obj = Expr.__new__(cls, left, operator, right, **kw_args)
             return coeff*obj
 
     @property
@@ -1088,10 +1088,10 @@ class MatrixElement(Basic):
     def __str__(self):
         return "%s %s %s" %self.args[:4]
 
-    def _sympystr_(self, p, *args):
+    def _sympystr(self, p, *args):
         return str(self)
 
-    def _latex_(self, p):
+    def _latex(self, p):
         left = self.left._latex_nobraket_(p)
         right = self.right._latex_nobraket_(p)
         op = p._print(self.operator)
@@ -1440,7 +1440,7 @@ class ReducedMatrixElement(MatrixElement):
                 self.right
                 )
 
-    def _latex_(self, p):
+    def _latex(self, p):
         left = self.left._latex_nobraket_(p)
         right = self.right._latex_nobraket_(p)
         op = self.operator._latex_drop_projection(p)
