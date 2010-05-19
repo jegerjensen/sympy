@@ -2367,7 +2367,7 @@ def extract_dummy2symbol_dict(expr):
     >>> a,b = symbols('a b')
     >>> expr = a.as_dummy() + b.as_dummy() + b.as_dummy() + b
     >>> extract_dummy2symbol_dict(expr)
-    {_a: a, _b: b__'', _b: b__'}
+    {_a: a, _b: b__', _b: b__''}
 
     """
     Dummy = type(Symbol('x', dummy=True))
