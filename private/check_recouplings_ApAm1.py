@@ -108,7 +108,7 @@ print
 
 t_ai = MatrixElement(Dagger(a), T, i)
 t_ai_sph = ReducedMatrixElement(Dagger(a), T, i)
-_report( Eq(t_ai, t_ai_sph.get_direct_product_ito_self(tjs=0)))
+_report(Eq(t_ai, t_ai_sph.get_direct_product_ito_self(tjs=0)))
 
 print
 _report(fcode(t_ai_sph.get_direct_product_ito_self(tjs=1)))
@@ -119,7 +119,7 @@ print
 
 t_abij = MatrixElement((Dagger(a), Dagger(b)), T, (i, j))
 t_abij_sph = ReducedMatrixElement(SphFermBra('ab', Dagger(a), Dagger(b), reverse=0), T, SphFermKet('ij', i, j, reverse=0))
-_report( Eq(t_abij, t_abij_sph.get_direct_product_ito_self(tjs=0)))
+_report(Eq(t_abij, t_abij_sph.get_direct_product_ito_self(tjs=0)))
 
 print
 _report(fcode(t_abij_sph.get_direct_product_ito_self(tjs=1)))
@@ -141,8 +141,6 @@ print
 print "*************** <a| R | ij> *****************"
 print
 
-# r_aij = MatrixElement((Dagger(i), Dagger(j)), RAm1, b)
-# r_aij_sph = ReducedMatrixElement(SphFermBra('ij', Dagger(i), Dagger(j), reverse=1), RAm1, b)
 r_aij = MatrixElement(Dagger(a), RAm1, (i, j))
 r_aij_sph = ReducedMatrixElement(Dagger(a), RAm1, SphFermKet('ij', i, j, reverse=0))
 _report( Eq(r_aij, r_aij_sph.get_direct_product_ito_self(tjs=0)))
@@ -183,7 +181,7 @@ Here, we have inserted the R operator directly, but in order to make Gautes
 reduced matrix element independent of projection, it is necessary to treat the
 R operator as a dual SphericalTensorOperator, transforming like (-1)**(j-m)T(j,-m).
 In the wikipedian reduced matrix element, we expect R to transform as a
-tensor T(j,m)i.  Since we prefer to insert the R operator directly in the
+tensor T(j,m).  Since we prefer to insert the R operator directly in the
 wikipedian element, the R operator in gautes must be substituted with
 (-1)**(j+m)R(j,-m).  The expression is then """
 direct_as_gautes = ( ASigma(J_ij, M_ij)*(-1)**(J_Am1 + M_Am1)
@@ -191,8 +189,7 @@ direct_as_gautes = ( ASigma(J_ij, M_ij)*(-1)**(J_Am1 + M_Am1)
         *ClebschGordanCoefficient(j_i, m_i, j_j, m_j, J_ij, M_ij)
         *gautes(Dagger(b), SphFermKet('ij',i,j))
         )
-_report( direct_as_gautes)
-print "We should use dummies for summation indices"
+# We should use dummies for summation indices
 direct_as_gautes = direct_as_gautes.subs([(J_ij, J_ij.as_dummy()), (M_ij, M_ij.as_dummy())])
 _report( direct_as_gautes)
 print "The wikipedian reduced matrix element can also be written in terms of the"
@@ -206,19 +203,14 @@ relation_mine_ito_gautes = mine_as_direct.subs(direct_w_dummies, direct_as_gaute
 print "Inserting the expression for direct in terms of Gautes gives the relation"
 _report( relation_mine_ito_gautes)
 print "Which we can simplify to"
-relation_mine_ito_gautes = combine_ASigmas(relation_mine_ito_gautes)
 relation_mine_ito_gautes = apply_orthogonality(relation_mine_ito_gautes, [ subsdict[m_i], subsdict[m_j]])
-_report( relation_mine_ito_gautes)
 _report( relation_mine_ito_gautes)
 relation_mine_ito_gautes = evaluate_sums(relation_mine_ito_gautes)
 _report( relation_mine_ito_gautes)
 relation_mine_ito_gautes = convert_cgc2tjs(relation_mine_ito_gautes)
-relation_mine_ito_gautes = refine_phases(relation_mine_ito_gautes)
 _report( relation_mine_ito_gautes)
 subsdict = extract_symbol2dummy_dict(relation_mine_ito_gautes)
 relation_mine_ito_gautes = apply_orthogonality(relation_mine_ito_gautes, [ subsdict[M_ij], subsdict[M_Am1]])
-_report( relation_mine_ito_gautes)
-relation_mine_ito_gautes = refine_phases(relation_mine_ito_gautes)
 _report( relation_mine_ito_gautes)
 print
 _report(fcode(relation_mine_ito_gautes))
@@ -226,49 +218,26 @@ _report(fcode(relation_mine_ito_gautes))
 
 
 
+l0 = Symbol('l_0')
+r0 = Symbol('r_0')
 SF = Symbol('SF')
+
+
 
 
 print
 print "==== Recoupling <{A}|a'|{A-1}> ===="
 print
 
-# """
 j_a = Symbol('j_a', nonnegative=True)
 m_a = Symbol('m_a')
 braket_assumptions.add(Assume(j_a, 'half_integer'))
 sf_reduction = (-1)**(j_a - m_a)*ClebschGordanCoefficient(J_A, M_A, j_a, -m_a, J_Am1, M_Am1)*ASigma(M_A, m_a)
-# sf_reduction = (-1)**(j_a - m_a)*ClebschGordanCoefficient(0, 0, j_a, -m_a, 'J_Am1', 'M_Am1')*ASigma('M_A', 'm_a')
 
 print "reduction factor"
 _report( sf_reduction)
 _report(fcode(refine_phases(convert_cgc2tjs(sf_reduction))))
 
-l0 = Symbol('l_0')
-r0 = Symbol('r_0')
-
-# r_i = MatrixElement("",RAm1, i)
-# r_aij = MatrixElement(Dagger(a), RAm1, (i, j))
-# r_i_sph = ReducedMatrixElement("",RAm1, i)
-# r_aij_sph = ReducedMatrixElement(Dagger(a), RAm1, SphFermKet('ij',i, j))
-
-# l_ai = MatrixElement(Dagger(i),LA,a)
-# l_ai_sph = ReducedMatrixElement(Dagger(i),LA,a)
-# l_abij = MatrixElement((Dagger(i),Dagger(j)),LA,(a,b))
-# l_abij_sph = ReducedMatrixElement(SphFermBra('ij',Dagger(i),Dagger(j), reverse=0), LA, SphFermKet('ab', a, b,reverse=0))
-
-# t_ai = MatrixElement(Dagger(a),T ,i)
-# t_ai_sph = ReducedMatrixElement(Dagger(a),T ,i)
-# t_abij = MatrixElement((Dagger(a), Dagger(b)), T,(i, j))
-# t_abij_sph = ReducedMatrixElement(SphFermBra('ab',Dagger(a), Dagger(b), reverse=0), T, SphFermKet('ij', i, j,reverse=0))
-
-print("*** coupled elements: ***")
-_report(Eq(r_i_sph,rewrite_coupling(r_i_sph, r_i)))
-_report(Eq(r_aij_sph,rewrite_coupling(r_aij_sph, r_aij)))
-_report(Eq(l_ai_sph,rewrite_coupling(l_ai_sph, l_ai)))
-_report(Eq(l_abij_sph,rewrite_coupling(l_abij_sph, l_abij)))
-_report(Eq(t_ai_sph,rewrite_coupling(t_ai_sph, t_ai)))
-_report(Eq(t_abij_sph,rewrite_coupling(t_abij_sph, t_abij)))
 
 coupled_subs = {
         l_ai: rewrite_coupling(l_ai, l_ai_sph),
@@ -280,9 +249,9 @@ expr_msc = combine_ASigmas(l_ai*r_i*ASigma('m_i') * sf_reduction)
 _report(Eq(SF, expr_msc))
 expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
-expr_sph = apply_orthogonality(expr_sph, [M_A, m_a])
-_report(Eq(SF, expr_sph))
 expr_sph = convert_cgc2tjs(expr_sph)
+_report(Eq(SF, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [M_A, m_a])
 _report(Eq(SF, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
 _report(Eq(SF, expr_sph))
@@ -307,11 +276,11 @@ expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
 expr_sph = apply_orthogonality(expr_sph, ['m_b', 'm_i', 'm_j'])
 _report(Eq(SF, expr_sph))
-expr_sph = convert_cgc2tjs(expr_sph)
-_report(Eq(SF, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
 _report(Eq(SF, expr_sph))
-expr_sph = refine_phases(expr_sph, ['m_b'])
+expr_sph = convert_cgc2tjs(expr_sph)
+_report(Eq(SF, expr_sph))
+expr_sph = refine_phases(expr_sph, verbose=1)
 _report(Eq(SF, expr_sph))
 expr_sph = refine_tjs2sjs(expr_sph, verbose=1, let_pass=0)
 _report(Eq(SF, expr_sph))
@@ -324,7 +293,7 @@ print
 
 j_i = Symbol('j_i', nonnegative=True)
 m_i = Symbol('m_i')
-sf_reduction = (-1)**(j_i - m_i)*ClebschGordanCoefficient(J_A, M_A, j_i, -m_i, J_Am1, M_Am1)*ASigma('M_A', 'm_i')
+sf_reduction = (-1)**(j_i - m_i)*ClebschGordanCoefficient(J_A, M_A, j_i, -m_i, J_Am1, M_Am1)*ASigma(M_A, m_i)
 
 
 coupled_subs = {
@@ -336,9 +305,11 @@ expr_msc = combine_ASigmas(l0*r_i*sf_reduction)
 _report(Eq(SF, expr_msc))
 expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
-expr_sph = expr_sph.subs([(S('J_A'), 0), (S('M_A'),0)])
+expr_sph = expr_sph.subs([(J_A, 0), (M_A,0)])
 _report(Eq(SF, expr_sph))
 expr_sph = convert_cgc2tjs(expr_sph)
+_report(Eq(SF, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
 _report(Eq(SF, expr_sph))
 expr_sph = refine_phases(expr_sph, verbose=1)
 _report(Eq(SF, expr_sph))
@@ -385,11 +356,9 @@ expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
 expr_sph = convert_cgc2tjs(expr_sph)
 _report(Eq(SF, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
+expr_sph = evaluate_sums(expr_sph, all_deltas=True)
 _report(Eq(SF, expr_sph))
-expr_sph = apply_deltas(expr_sph)
-_report(Eq(SF, expr_sph))
-expr_sph = refine_phases(expr_sph, forbidden=[S('M_A'), S('M_Am1'), S('m_a')])
+expr_sph = apply_orthogonality(expr_sph, [M_A, m_a])
 _report(Eq(SF, expr_sph))
 _report( fcode(expr_sph))
 
@@ -419,10 +388,6 @@ expr_sph = apply_orthogonality(expr_sph, ['m_j', 'm_k'])
 _report(Eq(SF, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
 _report(Eq(SF, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(SF, expr_sph))
-expr_sph = apply_deltas(expr_sph)
-_report(Eq(SF, expr_sph))
 expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
 _report(Eq(SF, expr_sph))
 _report(fcode(expr_sph))
@@ -451,13 +416,11 @@ expr_sph = expr_msc.subs(coupled_subs)
 _report(Eq(SF, expr_sph))
 expr_sph = apply_orthogonality(expr_sph, ['m_b', 'm_a'])
 _report(Eq(SF, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(SF, expr_sph))
 expr_sph = convert_cgc2tjs(expr_sph)
 _report(Eq(SF, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
+expr_sph = evaluate_sums(expr_sph, all_deltas=True)
 _report(Eq(SF, expr_sph))
-expr_sph = apply_deltas(expr_sph)
+expr_sph = refine_phases(expr_sph)
 _report(Eq(SF, expr_sph))
 expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
 _report(Eq(SF, expr_sph))
