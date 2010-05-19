@@ -2440,9 +2440,13 @@ def convert_sumindex2nondummy(expr, subslist=[]):
 
     return (expr).subs(new_subslist)
 
-def apply_deltas(expr, **kw_args):
+def apply_deltas(expr, only_deltas=[], **kw_args):
     """
     Applies the KroneckerDeltas without removing them (by default)
+
+    Any summation indices will not be substituted.
+
+    If you supply an iterable ``only_deltas'' every other delta wil be ignored.
 
     If you want to get rid of particular symbols, you can supply a list of them
     with the keyword remove_all=[].  If the symbol is present in a delta function,
@@ -2459,7 +2463,11 @@ def apply_deltas(expr, **kw_args):
     >>> apply_deltas(f(c)*f(a)*Dij(a,-c), remove_all=[a])
     f(c)*f(-c)
     """
+    expr, summations = expr.as_coeff_terms(ASigma)
+    only_deltas = set(only_deltas)
     deltas = expr.atoms(Dij)
+    if only_deltas:
+        deltas = deltas & only_deltas
     for s in kw_args.get('remove_all', []):
         for d in deltas:
             if d.has(s):
@@ -2470,7 +2478,10 @@ def apply_deltas(expr, **kw_args):
                     expr = expr.subs(i, cj*j/ci)
                 elif s == j:
                     expr = expr.subs(j, ci*i/cj)
+
     deltas = expr.atoms(Dij)
+    if only_deltas:
+        deltas = deltas & only_deltas
 
     d2dum = {}
     dum2d = {}
@@ -2487,7 +2498,7 @@ def apply_deltas(expr, **kw_args):
             expr = expr.subs(i, cj*j/ci)
         else:
             expr = expr.subs(j, ci*i/cj)
-    expr = expr.subs(dum2d)
+    expr = expr.subs(dum2d)*Mul(*summations)
     return expr
 
 def evaluate_sums(expr, **kw_args):
