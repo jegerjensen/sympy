@@ -758,8 +758,12 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
             result[J] = M
         return result
 
-    def _latex_(self, p, *args):
-        return "\\left(%s, %s, %s, %s\\middle|%s, %s\\right)" % tuple([p._print(a) for a in self.args])
+    def _latex_(self, p, exp=None):
+        res = "\\left(%s, %s, %s, %s\\middle|%s, %s\\right)" % tuple([p._print(a) for a in self.args])
+        if exp:
+            res += "^{%s}" % exp
+
+        return res
 
     def _sympystr_(self, *args):
         """
@@ -942,7 +946,7 @@ class SphericalTensor(Basic):
 
         return symbol,rank
 
-    def _latex_(self, p, *args):
+    def _latex_(self, p):
         return "%s(%s, %s)" % tuple([p._print(a) for a in self.args])
 
 
@@ -1238,9 +1242,9 @@ class ASigma(Basic):
         l = [p.doprint(o) for o in self.args]
         return "Sum" + "(%s)"%", ".join(l)
 
-    def _latex_(self, p, *args):
+    def _latex_(self, p):
         labels = " ".join([ p._print(i) for i in self.args ])
-        return r"\Sigma_{%s}" % labels
+        return r"\sum_{%s}" % labels
 
 class TriangularInequality(Function):
     nargs = 3
