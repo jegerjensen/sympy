@@ -2519,11 +2519,11 @@ def evaluate_sums(expr, **kw_args):
     >>> evaluate_sums(ASigma(a, b)*f(a)*Dij(b,c))
     Sum(a)*f(a)
 
-    If you know that the total expression is independent of a summation variable, and
-    know the summation limits, the summation can be replaced with a factor.  E.g. a summation
-    over m=-j, j, can be replaced with (2j+1).  You can supply pairs of
-    (summation_index, replacement_factor) as key,value pairs in a dictionary
-    with the keyword independent_of={}
+    If you know that the total expression is independent of a summation
+    variable, and know the summation limits, the summation can be replaced with
+    a factor.  E.g. a summation over m=-j, j, can be replaced with (2j+1).  You
+    can supply pairs of (summation_index, replacement_factor) as key,value
+    pairs in a dictionary with the keyword independent_of={}
 
     >>> evaluate_sums(ASigma(a, b)*f(a, b, c), independent_of={a:3})
     3*Sum(b)*f(a, b, c)
@@ -2563,7 +2563,7 @@ def evaluate_sums(expr, **kw_args):
                 continue
             expr = expr.subs(i, j*c2/c1)
         elif kw_args.get('all_deltas'):
-            expr = expr.subs(j, i*c1/c2)
+            expr = apply_deltas(expr, [d])
     return expr
 
 def apply_orthogonality(expr, summations):
