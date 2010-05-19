@@ -2647,7 +2647,8 @@ def apply_orthogonality(expr, summations):
             ams = v.pop()
             if expr.has(ams**2):
                 indices[k] = (ams, ams)
-                continue
+            else:
+                del indices[k]
         elif len(v) != 2:
             del indices[k]
 
