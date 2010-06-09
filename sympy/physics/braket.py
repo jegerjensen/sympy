@@ -1304,15 +1304,9 @@ class ReducedMatrixElement(MatrixElement):
                 definition = opt_args[0]
             else:
                 definition = kw_args.get('definition', default_redmat_definition)
-            if definition == 'edmonds':
-                return ReducedMatrixElement_edmonds(left, op, right, **kw_args)
-            elif definition == 'brink_satchler':
-                return ReducedMatrixElement_brink_satchler(left, op, right, **kw_args)
-            elif definition == 'wikipedia':
-                return ReducedMatrixElement_wikipedia(left, op, right, **kw_args)
-            else:
-                raise ValueError(
-                        "Unknown reduced matrix definition: %s"%definition)
+
+            return eval( "ReducedMatrixElement_%s(left, op, right, **kw_args)" % definition)
+
         else:
             obj = MatrixElement.__new__(cls, left,op,right, **kw_args)
             return obj
