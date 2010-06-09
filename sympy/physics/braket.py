@@ -1480,7 +1480,7 @@ class ReducedMatrixElement(MatrixElement):
         redmat = self.subs(subsdict)
         cgc = redmat._get_reduction_factor(**kw_args)
 
-        result = cgc * dirprod.subs(matel, self)
+        result = cgc * dirprod.subs(matel, redmat)
 
         if kw_args.get('tjs'):
             result = refine_phases(convert_cgc2tjs(result))
