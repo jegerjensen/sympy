@@ -2215,12 +2215,14 @@ def _identify_SixJSymbol(threejs, **kw_args):
                     "connections not satisfied for s%"%maxJ)
 
     # Two elements in a column of the sjs never appear in the same 3j-symbol
-    j3 = keys_J - connections[  j1]
-    j2 = keys_J - connections[totJ]
+    j2 = keys_J - connections[totJ]  # j2 and totJ are in same column
+    j3 = keys_J - connections[  j1]  # j3 and j1   are in same column
     if not (len(j3) == len(j2) == 1):
         if kw_args.get('verbose'):
-            print j2, j3
-        raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+            print "possible j2:", j2
+            print "possible j3:", j3
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol(
+                "Found no unique j2 and j3 for 6j symbol.")
     j2 = j2.pop()
     j3 = j3.pop()
 
