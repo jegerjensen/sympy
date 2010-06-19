@@ -35,6 +35,7 @@ def _report(expr):
 
     # print(expr)
     # pprint(expr)
+
     # subsdict = extract_dummy2symbol_dict(expr)
     # expr = expr.subs(subsdict)
     # print latex(expr, mode='dmath', mul_symbol='dot')
@@ -147,8 +148,9 @@ print
 print "*************** <k -c| X | j -b> *****************"
 print
 
-x_kcjb = MatrixElement((Dagger(k), -Dagger(c)), X, (j, -b))
-x_kcjb_sph = ReducedMatrixElement(SphFermBra('ck', Dagger(k),-Dagger(c), reverse=1), X, SphFermKet('jb', j, -b, reverse=0))
+x_kcjb = MatrixElement((Dagger(k), Dagger(b)), X, (c, j))
+# x_kcjb_sph = ReducedMatrixElement(SphFermBra('ck', Dagger(k),-Dagger(c), reverse=1), X, SphFermKet('jb', j, -b, reverse=0))
+x_kcjb_sph = ReducedMatrixElement(SphFermBra('kc', Dagger(k), c, reverse=0), X, SphFermKet('jb', Dagger(b), j, reverse=1))
 _report(Eq(x_kcjb, x_kcjb_sph.get_direct_product_ito_self(tjs=0)))
 
 print
@@ -217,7 +219,7 @@ print
 r_aij = MatrixElement(Dagger(a), RAm1, (i, j))
 r_aij_sph = ReducedMatrixElement(Dagger(a), RAm1, SphFermKet('ij', i, j, reverse=0), definition='gaute')
 _report( Eq(r_aij, r_aij_sph.get_direct_product_ito_self(tjs=0)))
-r_aij_cross = ReducedMatrixElement(SphFermBra('aj', -Dagger(j), Dagger(a)), RAm1, i, definition='gaute')
+r_aij_cross = ReducedMatrixElement(SphFermBra('aj', Dagger(a), j), RAm1, i, definition='gaute')
 _report( Eq(r_aij, r_aij_cross.get_direct_product_ito_self(tjs=0)))
 
 print
@@ -237,10 +239,10 @@ r_bij = r_aij.subs(Dagger(a), Dagger(b))
 r_cik = r_aij.subs([(Dagger(a), Dagger(c)), (j, k)])
 
 # r_bij_sph = r_aij_cross.subs(Dagger(a), Dagger(b))
-r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (Dagger(j.get_antiparticle()), Dagger(k).get_antiparticle())])
+# r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (Dagger(j.get_antiparticle()), Dagger(k).get_antiparticle())])
 
 r_bij_sph = r_aij_sph.subs(Dagger(a), Dagger(b))
-# r_cik_sph = r_aij_sph.subs([(Dagger(a), Dagger(c)), (j, k)])
+r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (j, k)])
 
 coupled_subs = {
         x_kcjb: rewrite_coupling(x_kcjb, x_kcjb_sph),
@@ -262,7 +264,7 @@ expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
 _report(Eq(diagram, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
 _report(Eq(diagram, expr_sph))
-expr_sph = refine_tjs2sjs(expr_sph)
+expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
 _report(Eq(diagram, expr_sph))
 expr_sph = refine_phases(expr_sph, identity_sources=angmom_symbs, try_hard=True)
 _report(Eq(diagram, expr_sph))
