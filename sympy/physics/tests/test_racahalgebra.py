@@ -10,7 +10,7 @@ from sympy.physics.racahalgebra import (
         SixJSymbol, ThreeJSymbol, ClebschGordanCoefficient, refine_tjs2sjs,
         convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor,
         CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent,
-        _standardize_coeff, iDij
+        _standardize_coeff, iDij, evaluate_sums
         )
 from sympy.utilities import raises
 
@@ -28,6 +28,16 @@ def test_inverse_kronecker_delta():
 
     assert iDij(a, b) != Dij(a, b)
     assert iDij(a, a) == Dij(a, a)
+
+def test_evaluate_sums():
+    f = Function('f')
+    i,j,k,l,m,n = symbols('i j k l m n')
+    fn = f(i,j,k,l,m,n)
+
+    assert evaluate_sums(ASigma(i,j,k)*fn*Dij(k,m)) == ASigma(i,j)*f(i,j,m,l,m,n)
+    assert evaluate_sums(ASigma(i,j,k)*fn*Dij(i,l)*Dij(k,m)) == ASigma(j)*f(l,j,m,l,m,n)
+    assert evaluate_sums(ASigma(i,j,k)*fn*Dij(i,k)*Dij(k,m)) == ASigma(j)*f(m,j,m,l,m,n)
+    assert evaluate_sums(ASigma(i,j,k)*fn*Dij(i,m)*Dij(k,i)) == ASigma(j)*f(m,j,m,l,m,n)
 
 
 def test_tjs_methods():

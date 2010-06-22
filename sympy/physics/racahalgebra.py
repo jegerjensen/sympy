@@ -2554,40 +2554,55 @@ def evaluate_sums(expr, **kw_args):
 
     """
     expr = combine_ASigmas(expr)
-    summations = expr.atoms(ASigma)
+    expr, summations = expr.as_coeff_terms(ASigma)
     if not summations:
         return expr
-    summations = summations.pop()
+    assert len(summations) == 1
+    summations = summations[0]
 
     replace_dict = kw_args.get('independent_of', {})
     for i in replace_dict:
         try:
-            expr = remove_summation_indices(expr, [i])
+            summations = summations.remove_indices([i])
             expr = expr*replace_dict[i]
             expr = apply_deltas(expr, remove_all=[i])
         except ValueError:
             pass
 
-    deltas = expr.atoms(Dij)
-    for d in deltas:
+    expr, deltas = expr.as_coeff_terms(Dij)
+
+    # expr is now stripped of both summations and deltas
+
+    deltas = sorted(deltas)
+    remaining_deltas = []
+    while deltas:
+        d = deltas.pop()
+        if isinstance(d, Pow):
+            d = d.base
+        assert isinstance(d, Dij), "Expected Dij, got %s"%type(d)
         i,j = d.args
         c1,t = i.as_coeff_terms(); i = t[0]
         c2,t = j.as_coeff_terms(); j = t[0]
         if j in summations.args:
-            try:
-                expr = remove_summation_indices(expr, [j])
-            except ValueError:
-                continue
-            expr = expr.subs(j, i*c1/c2)
+            subsexpr = (j, i*c1/c2)
+            summations = summations.remove_indices([j])
         elif i in summations.args:
-            try:
-                expr = remove_summation_indices(expr, [i])
-            except ValueError:
-                continue
-            expr = expr.subs(i, j*c2/c1)
+            summations = summations.remove_indices([i])
+            subsexpr = (i, j*c2/c1)
         elif kw_args.get('all_deltas'):
             expr = apply_deltas(expr, [d])
-    return expr
+            subsexpr = None
+        else:
+            subsexpr = None
+
+        if subsexpr:
+            expr = expr.subs(*subsexpr)
+            deltas = [ delta.subs(*subsexpr) for delta in deltas ]
+        else:
+            remaining_deltas.append(d)
+
+    return summations*expr*Mul(*remaining_deltas)
+
 
 def apply_orthogonality(expr, summations):
     """
