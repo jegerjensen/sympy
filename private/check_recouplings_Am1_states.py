@@ -219,7 +219,7 @@ print
 r_aij = MatrixElement(Dagger(a), RAm1, (i, j))
 r_aij_sph = ReducedMatrixElement(Dagger(a), RAm1, SphFermKet('ij', i, j, reverse=0), definition='gaute')
 _report( Eq(r_aij, r_aij_sph.get_direct_product_ito_self(tjs=0)))
-r_aij_cross = ReducedMatrixElement(SphFermBra('aj', Dagger(a), j), RAm1, i, definition='gaute')
+r_aij_cross = ReducedMatrixElement(SphFermBra('aj', Dagger(a), j, reverse=True), RAm1, i, definition='gaute')
 _report( Eq(r_aij, r_aij_cross.get_direct_product_ito_self(tjs=0)))
 
 print
@@ -231,6 +231,45 @@ M_ij, M_Am1, m_i, m_j, m_b, m_c, m_k = symbols('M_ij M_Am1 m_i m_j m_b m_c m_k')
 
 print
 print "****************** Right Am1, I4 **************"
+print
+
+diagram = Symbol('I4_R')
+M_aj = Symbol('M_aj')
+
+r_bij_cross = r_aij_cross.subs(Dagger(a), Dagger(b))
+r_cik = r_aij.subs([(Dagger(a), Dagger(c)), (j, k)])
+r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (j, k)])
+# r_cik_sph = r_aij_sph.subs([(Dagger(a), Dagger(c)), (j, k)])
+
+coupled_subs = {
+        x_kcjb: rewrite_coupling(x_kcjb, x_kcjb_sph),
+        r_cik: rewrite_coupling(r_cik, r_cik_sph, verbose=1, strict=1)
+        }
+print
+print("recoupling diagram 1")
+cgc_factor = r_bij_cross.as_direct_product(use_dummies=0).subs(r_bij_cross.get_related_direct_matrix(), 1)
+_report(cgc_factor)
+expr_msc = r_cik*x_kcjb*ASigma(m_k, m_c)*cgc_factor
+expr_msc = combine_ASigmas(expr_msc)
+_report(Eq(diagram, expr_msc))
+expr_sph = expr_msc.subs(coupled_subs)
+_report(Eq(diagram, expr_sph))
+junk, angmom_symbs = expr_sph.as_coeff_terms(AngularMomentumSymbol)
+expr_sph = apply_orthogonality(expr_sph, [m_c, m_k, m_b, m_j])
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [M_Am1, M_aj])
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
+
+print
+print "****************** Right Am1, I4 Direct to 6j-symbol **************"
 print
 
 diagram = Symbol('I4_R')
@@ -267,6 +306,34 @@ _report(Eq(diagram, expr_sph))
 expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
 _report(Eq(diagram, expr_sph))
 expr_sph = refine_phases(expr_sph, identity_sources=angmom_symbs, try_hard=True)
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
+
+print
+print "****************** Check recoupling of right Am1 ************"
+print
+
+print "******* cross -> regular ******"
+print
+
+diagram = r_aij_sph
+
+expr_sph = rewrite_coupling(r_aij_sph, r_aij_cross)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
+
+print
+print "******* regular -> cross ******"
+print
+diagram = r_aij_cross
+
+expr_sph = rewrite_coupling(r_aij_cross, r_aij_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
 _report(Eq(diagram, expr_sph))
 
 _report(fcode(expr_sph))
