@@ -31,10 +31,6 @@ def _report(expr):
 
     pprint(str(expr))
 
-    # print fcode(expr)
-
-    # print(expr)
-    # pprint(expr)
 
     # subsdict = extract_dummy2symbol_dict(expr)
     # expr = expr.subs(subsdict)
@@ -126,23 +122,23 @@ print
 print "*************** <j| X | i> *****************"
 print
 
-x_ji = MatrixElement(Dagger(j), X, i)
-x_ji_sph = ReducedMatrixElement(Dagger(j), X, i)
-_report(Eq(x_ji, x_ji_sph.get_direct_product_ito_self(tjs=0)))
+x_kj = MatrixElement(Dagger(k), X, j)
+x_kj_sph = ReducedMatrixElement(Dagger(k), X, j)
+_report(Eq(x_kj, x_kj_sph.get_direct_product_ito_self(tjs=0)))
 
 print
-_report(fcode(x_ji_sph.get_direct_product_ito_self(tjs=1)))
+_report(fcode(x_kj_sph.get_direct_product_ito_self(tjs=1)))
 
 print
 print "*************** <k| X | c> *****************"
 print
 
-x_kc = MatrixElement(Dagger(k), X, c)
-x_kc_sph = ReducedMatrixElement(Dagger(k), X, c)
-_report(Eq(x_kc, x_kc_sph.get_direct_product_ito_self(tjs=0)))
+x_ja = MatrixElement(Dagger(j), X, a)
+x_ja_sph = ReducedMatrixElement(Dagger(j), X, a)
+_report(Eq(x_ja, x_ja_sph.get_direct_product_ito_self(tjs=0)))
 
 print
-_report(fcode(x_kc_sph.get_direct_product_ito_self(tjs=1)))
+_report(fcode(x_ja_sph.get_direct_product_ito_self(tjs=1)))
 
 print
 print "*************** <k -c| X | j -b> *****************"
@@ -155,6 +151,17 @@ _report(Eq(x_kcjb, x_kcjb_sph.get_direct_product_ito_self(tjs=0)))
 
 print
 _report(fcode(x_kcjb_sph.get_direct_product_ito_self(tjs=1)))
+
+print
+print "*************** <j c| X | k b> *****************"
+print
+
+x_jckb = MatrixElement((Dagger(j), Dagger(c)), X, (k, b))
+x_jckb_sph = ReducedMatrixElement(SphFermBra('jc', Dagger(j), Dagger(c), reverse=0), X, SphFermKet('kb', k,b, reverse=0))
+_report(Eq(x_jckb, x_jckb_sph.get_direct_product_ito_self(tjs=0)))
+
+print
+_report(fcode(x_jckb_sph.get_direct_product_ito_self(tjs=1)))
 
 
 print
@@ -225,9 +232,121 @@ _report( Eq(r_aij, r_aij_cross.get_direct_product_ito_self(tjs=0)))
 print
 _report(fcode(r_aij_sph.get_direct_product_ito_self(tjs=1)))
 
-J_ij, J_Am1, j_i, j_j, j_b, j_c, j_k = symbols('J_ij J_Am1 j_i j_j j_b j_c j_k', nonnegative=True)
-M_ij, M_Am1, m_i, m_j, m_b, m_c, m_k = symbols('M_ij M_Am1 m_i m_j m_b m_c m_k')
+J_ij, J_Am1, j_a, j_i, j_j, j_b, j_c, j_k = symbols('J_ij J_Am1 j_a j_i j_j j_b j_c j_k', nonnegative=True)
+M_ij, M_Am1, m_a, m_i, m_j, m_b, m_c, m_k = symbols('M_ij M_Am1 m_a m_i m_j m_b m_c m_k')
 
+
+print
+print "****************** Left Am1, I5 to Lbij **************"
+print
+
+diagram = Symbol('I5_L2')
+
+coupled_subs = {
+        x_ja: rewrite_coupling(x_ja, x_ja_sph),
+        l_i: rewrite_coupling(l_i, l_i_sph, verbose=1, strict=1)
+        }
+print
+print("recoupling diagram 1")
+cgc_factor = l_aij_sph.as_direct_product(use_dummies=0).subs(l_aij, 1)
+_report(cgc_factor)
+expr_msc = l_i*x_ja*cgc_factor
+expr_sph = expr_msc.subs(coupled_subs)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_deltas(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(expr_sph, [j_a])
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [m_a, M_Am1])
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
+
+
+print
+print "****************** Right Am1, I4 only regular coupling **************"
+print
+
+diagram = Symbol('I4_R')
+M_aj = Symbol('M_aj')
+
+r_bij_sph = r_aij_sph.subs(Dagger(a), Dagger(b))
+r_bij = r_aij.subs(Dagger(a), Dagger(b))
+# r_cik = r_aij.subs([(Dagger(a), Dagger(c)), (j, k)])
+# r_cik_sph = r_aij_sph.subs([(Dagger(a), Dagger(c)), (j, k)])
+r_cik = MatrixElement(Dagger(c), RAm1, (i, k))
+r_cik_sph = ReducedMatrixElement(Dagger(c), RAm1, SphFermKet('ik', i, k, reverse=0), definition='gaute')
+
+coupled_subs = {
+        x_jckb: rewrite_coupling(x_jckb, x_jckb_sph),
+        r_cik: rewrite_coupling(r_cik, r_cik_sph, verbose=1, strict=1)
+        }
+print
+print("recoupling diagram 1")
+print("Coefficient from left hand side is")
+cgc_factor = r_bij_sph.as_direct_product(use_dummies=0).subs(r_bij, 1)
+_report(cgc_factor)
+expr_msc = r_cik*x_jckb*ASigma(m_k, m_c)*cgc_factor
+expr_msc = combine_ASigmas(expr_msc)
+_report(Eq(diagram, expr_msc))
+expr_sph = expr_msc.subs(coupled_subs)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(expr_sph, [M_ij, M_Am1, m_a, m_i, m_j, m_b, m_c, m_k])
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
+
+
+stop
+
+
+
+
+print
+print "****************** Right Am1, I7 to Rbij **************"
+print
+
+diagram = Symbol('I7_R2')
+
+r_bij = r_aij.subs(Dagger(a), Dagger(b))
+r_bik = r_aij.subs([(Dagger(a), Dagger(b)), (j, k)])
+
+r_bij_sph = r_aij_sph.subs(Dagger(a), Dagger(b))
+r_bik_sph = r_aij_sph.subs([(Dagger(a), Dagger(b)), (j, k)])
+
+coupled_subs = {
+        x_kj: rewrite_coupling(x_kj, x_kj_sph),
+        r_bik: rewrite_coupling(r_bik, r_bik_sph, verbose=1, strict=1)
+        }
+print
+print("recoupling diagram 1")
+cgc_factor = r_bij_sph.as_direct_product(use_dummies=0).subs(r_bij, 1)
+_report(cgc_factor)
+expr_msc = r_bik*x_kj*ASigma(m_k, j_k)*cgc_factor
+expr_msc = combine_ASigmas(expr_msc)
+_report(Eq(diagram, expr_msc))
+expr_sph = expr_msc.subs(coupled_subs)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [m_j, m_i, m_b, M_Am1])
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(expr_sph)
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
 
 print
 print "****************** Right Am1, I4 **************"
@@ -276,9 +395,6 @@ diagram = Symbol('I4_R')
 
 r_bij = r_aij.subs(Dagger(a), Dagger(b))
 r_cik = r_aij.subs([(Dagger(a), Dagger(c)), (j, k)])
-
-# r_bij_sph = r_aij_cross.subs(Dagger(a), Dagger(b))
-# r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (Dagger(j.get_antiparticle()), Dagger(k).get_antiparticle())])
 
 r_bij_sph = r_aij_sph.subs(Dagger(a), Dagger(b))
 r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (j, k)])
