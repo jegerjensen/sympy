@@ -453,3 +453,60 @@ expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
 _report(Eq(diagram, expr_sph))
 
 _report(fcode(expr_sph))
+
+
+print
+print "****************** Norm of Left and right Am1 **************"
+print
+
+r_i = MatrixElement(0, RAm1, i)
+r_i_sph = ReducedMatrixElement(0, RAm1, i, definition='wikipedia')
+_report( Eq(r_i, r_i_sph.get_direct_product_ito_self(tjs=0)))
+
+r_aij = MatrixElement(Dagger(a), RAm1, (i, j))
+r_aij_sph = ReducedMatrixElement(Dagger(a), RAm1, SphFermKet('ij', i, j, reverse=0), definition='wikipedia')
+_report( Eq(r_aij, r_aij_sph.get_direct_product_ito_self(tjs=0)))
+
+diagram = Symbol('norm_1')
+
+coupled_subs = {
+        l_i: rewrite_coupling(l_i, l_i_sph, verbose=1, strict=1),
+        r_i: rewrite_coupling(r_i, r_i_sph, verbose=1, strict=1)
+        }
+print
+print("norm of r1, l1")
+expr_msc = l_i*r_i*ASigma(m_i)
+expr_sph = expr_msc.subs(coupled_subs)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(expr_sph, [j_a])
+_report(Eq(diagram, expr_sph))
+_report(fcode(expr_sph))
+
+
+diagram = Symbol('norm_2')
+
+coupled_subs = {
+        l_aij: rewrite_coupling(l_aij, l_aij_sph, verbose=1, strict=1),
+        r_aij: rewrite_coupling(r_aij, r_aij_sph, verbose=1, strict=1)
+        }
+print
+print("norm of r2, l2")
+expr_msc = l_aij*r_aij*ASigma(m_i,m_j,m_a)
+expr_sph = expr_msc.subs(coupled_subs)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [m_j, m_i, m_b, M_Am1])
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [], all=True, mode='projections')
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(expr_sph, [j_a])
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
