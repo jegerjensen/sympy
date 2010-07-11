@@ -2604,7 +2604,7 @@ def evaluate_sums(expr, **kw_args):
     return summations*expr*Mul(*remaining_deltas)
 
 
-def apply_orthogonality(expr, summations):
+def apply_orthogonality(expr, summations, **kw_args):
     """
     Tries to simplify by applying orthogonality relations of angular momentum symbols.
 
@@ -2660,6 +2660,10 @@ def apply_orthogonality(expr, summations):
     sigmas = expr.atoms(ASigma)
     for s in sigmas:
         sumlabels.extend(s.args)
+
+    if kw_args.get('all'):
+        summations = sumlabels
+
     valids = [ s for s in summations if s in sumlabels ]
     if not valids:
         return expr
@@ -2725,7 +2729,7 @@ def apply_orthogonality(expr, summations):
             ranks2 = list(njs2.magnitudes)
             matching_ranks = set(ranks1) & set(ranks2)
 
-            if len(matching_ranks) == 3:
+            if len(matching_ranks) == 3 and not kw_args.get('mode')=="projections":
 
                 # (jmjnJM)(jkjlJM) -> d_mk d_nl
 
