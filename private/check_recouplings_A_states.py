@@ -224,7 +224,7 @@ print
 print "*************** <a| R | ij> *****************"
 print
 
-r_abij = MatrixElement((Dagger(a),Dagger(b)), RAm1, (i, j))
+r_abij = MatrixElement((Dagger(a),Dagger(b)), RA, (i, j))
 r_abij_sph = ReducedMatrixElement(SphFermBra('ab', Dagger(a), Dagger(b)),
         RA, SphFermKet('ij', i, j, reverse=0), definition='wikipedia')
 _report( Eq(r_abij, r_abij_sph.get_direct_product_ito_self(tjs=0)))
@@ -262,6 +262,42 @@ _report(Eq(diagram, expr_sph))
 expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
 _report(Eq(diagram, expr_sph))
 expr_sph = apply_orthogonality(expr_sph, [m_i, m_j])
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_deltas(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_tjs2sjs(expr_sph)
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
+
+print
+print "****************** Right A, r_abij = X_abic*r_cj **************"
+print
+
+diagram = Symbol('I4_R1')
+
+x_abic = MatrixElement((Dagger(a), Dagger(b)), X, (i, c))
+x_abic_sph = ReducedMatrixElement(SphFermBra('ab', Dagger(a), Dagger(b), reverse=0), X, SphFermKet('ic', i,c, reverse=0))
+r_cj = MatrixElement(Dagger(c), RA, j)
+r_cj_sph = ReducedMatrixElement(Dagger(c), RA, j, definition='wikipedia')
+_report( Eq(r_cj, r_cj_sph.get_direct_product_ito_self(tjs=0)))
+_report( Eq(x_abic, x_abic_sph.get_direct_product_ito_self(tjs=0)))
+
+coupling_substitution = {
+        x_abic: rewrite_coupling(x_abic, x_abic_sph),
+        r_cj: rewrite_coupling(r_cj, r_cj_sph, verbose=1, strict=1)
+        }
+print
+print("recoupling diagram 1")
+lhs_coupling_factor = r_abij_sph.as_direct_product(use_dummies=False).subs(r_abij, 1)
+expr_msc = lhs_coupling_factor*x_abic*r_cj*Sum(m_c)
+expr_sph = expr_msc.subs(coupling_substitution)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [m_a, m_b])
 _report(Eq(diagram, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
 _report(Eq(diagram, expr_sph))
