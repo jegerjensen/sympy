@@ -18,6 +18,8 @@ from sympy import (
         )
 import sys
 
+Sum=ASigma
+
 pprint_use_unicode(False)
 
 
@@ -226,7 +228,7 @@ r_abij = MatrixElement((Dagger(a),Dagger(b)), RAm1, (i, j))
 r_abij_sph = ReducedMatrixElement(SphFermBra('ab', Dagger(a), Dagger(b)),
         RA, SphFermKet('ij', i, j, reverse=0), definition='wikipedia')
 _report( Eq(r_abij, r_abij_sph.get_direct_product_ito_self(tjs=0)))
-r_abij_cross = ReducedMatrixElement(SphFermBra('aj', Dagger(a), j, reverse=True), RAm1, SphFermKet('bi', i, j))
+r_abij_cross = ReducedMatrixElement(SphFermBra('aj', Dagger(a), j, reverse=True), RAm1, SphFermKet('bi', b, i))
 _report( Eq(r_abij, r_abij_cross.get_direct_product_ito_self(tjs=0)))
 
 print
@@ -242,29 +244,30 @@ print
 
 diagram = Symbol('I4_R1')
 
-r_ak = MatrixElement(Dagger(a), RAm1, k)
+r_ak = MatrixElement(Dagger(a), RA, k)
 r_ak_sph = ReducedMatrixElement(Dagger(a), RA, k, definition='wikipedia')
 _report( Eq(r_ak, r_ak_sph.get_direct_product_ito_self(tjs=0)))
+_report( Eq(x_kbij, x_kbij_sph.get_direct_product_ito_self(tjs=0)))
 
-couping_substitution = {
+coupling_substitution = {
         x_kbij: rewrite_coupling(x_kbij, x_kbij_sph),
         r_ak: rewrite_coupling(r_ak, r_ak_sph, verbose=1, strict=1)
         }
 print
 print("recoupling diagram 1")
 lhs_coupling_factor = r_abij_sph.as_direct_product(use_dummies=False).subs(r_abij, 1)
-expr_msc = lhs_coupling_factor*x_kbij*r_ak
+expr_msc = lhs_coupling_factor*x_kbij*r_ak*Sum(m_k)
 expr_sph = expr_msc.subs(coupling_substitution)
 _report(Eq(diagram, expr_sph))
 expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [m_i, m_j])
 _report(Eq(diagram, expr_sph))
 expr_sph = evaluate_sums(expr_sph)
 _report(Eq(diagram, expr_sph))
 expr_sph = apply_deltas(expr_sph)
 _report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(expr_sph, [j_a])
-_report(Eq(diagram, expr_sph))
-expr_sph = apply_orthogonality(expr_sph, [m_a, M_Am1])
+expr_sph = refine_tjs2sjs(expr_sph)
 _report(Eq(diagram, expr_sph))
 
 _report(fcode(expr_sph))
