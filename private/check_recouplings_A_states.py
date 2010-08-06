@@ -101,10 +101,10 @@ braket_assumptions.add(Assume(M_A, Q.integer))
 braket_assumptions.add(Assume(J_Am1, 'half_integer'))
 braket_assumptions.add(Assume(M_Am1, 'half_integer'))
 
-LA = SphericalTensorOperator('L', J_A, M_A)
-LAm1 = SphericalTensorOperator('L', J_Am1, M_Am1)
-RA = DualSphericalTensorOperator('R', J_A, M_A)
-RAm1 = DualSphericalTensorOperator('R', J_Am1, M_Am1)
+RA = SphericalTensorOperator('R', J_A, M_A)
+RAm1 = SphericalTensorOperator('R', J_Am1, M_Am1)
+LA = DualSphericalTensorOperator('L', J_A, M_A)
+LAm1 = DualSphericalTensorOperator('L', J_Am1, M_Am1)
 X = SphericalTensorOperator('X', S.Zero, S.Zero)
 T = SphericalTensorOperator('T', S.Zero, S.Zero)
 
@@ -145,7 +145,6 @@ print "*************** <k -c| X | j -b> *****************"
 print
 
 x_kcjb = MatrixElement((Dagger(k), Dagger(b)), X, (c, j))
-# x_kcjb_sph = ReducedMatrixElement(SphFermBra('ck', Dagger(k),-Dagger(c), reverse=1), X, SphFermKet('jb', j, -b, reverse=0))
 x_kcjb_sph = ReducedMatrixElement(SphFermBra('kc', Dagger(k), c, reverse=0), X, SphFermKet('jb', Dagger(b), j, reverse=1))
 _report(Eq(x_kcjb, x_kcjb_sph.get_direct_product_ito_self(tjs=0)))
 
@@ -153,15 +152,15 @@ print
 _report(fcode(x_kcjb_sph.get_direct_product_ito_self(tjs=1)))
 
 print
-print "*************** <j c| X | k b> *****************"
+print "*************** <k b| X | i j> *****************"
 print
 
-x_jckb = MatrixElement((Dagger(j), Dagger(c)), X, (k, b))
-x_jckb_sph = ReducedMatrixElement(SphFermBra('jc', Dagger(j), Dagger(c), reverse=0), X, SphFermKet('kb', k,b, reverse=0))
-_report(Eq(x_jckb, x_jckb_sph.get_direct_product_ito_self(tjs=0)))
+x_kbij = MatrixElement((Dagger(k), Dagger(b)), X, (i, j))
+x_kbij_sph = ReducedMatrixElement(SphFermBra('kb', Dagger(k), Dagger(b), reverse=0), X, SphFermKet('ij', i,j, reverse=0))
+_report(Eq(x_kbij, x_kbij_sph.get_direct_product_ito_self(tjs=0)))
 
 print
-_report(fcode(x_jckb_sph.get_direct_product_ito_self(tjs=1)))
+_report(fcode(x_kbij_sph.get_direct_product_ito_self(tjs=1)))
 
 
 print
@@ -210,48 +209,52 @@ print
 _report(fcode(l_aij_sph.get_direct_product_ito_self(tjs=1)))
 
 print
-print "*************** <| R | i> *****************"
+print "*************** <a| R | i> *****************"
 print
 
-r_i = MatrixElement(0, RAm1, i)
-r_i_sph = ReducedMatrixElement(0, RAm1, i, definition='gaute')
-_report( Eq(r_i, r_i_sph.get_direct_product_ito_self(tjs=0)))
+r_ai = MatrixElement(Dagger(a), RAm1, i)
+r_ai_sph = ReducedMatrixElement(Dagger(a), RA, i, definition='wikipedia')
+_report( Eq(r_ai, r_ai_sph.get_direct_product_ito_self(tjs=0)))
 
 print
-_report(fcode(r_i_sph.get_direct_product_ito_self(tjs=1)))
+_report(fcode(r_ai_sph.get_direct_product_ito_self(tjs=1)))
 print
 print "*************** <a| R | ij> *****************"
 print
 
-r_aij = MatrixElement(Dagger(a), RAm1, (i, j))
-r_aij_sph = ReducedMatrixElement(Dagger(a), RAm1, SphFermKet('ij', i, j, reverse=0), definition='gaute')
-_report( Eq(r_aij, r_aij_sph.get_direct_product_ito_self(tjs=0)))
-r_aij_cross = ReducedMatrixElement(SphFermBra('aj', Dagger(a), j, reverse=True), RAm1, i, definition='gaute')
-_report( Eq(r_aij, r_aij_cross.get_direct_product_ito_self(tjs=0)))
+r_abij = MatrixElement((Dagger(a),Dagger(b)), RAm1, (i, j))
+r_abij_sph = ReducedMatrixElement(SphFermBra('ab', Dagger(a), Dagger(b)),
+        RA, SphFermKet('ij', i, j, reverse=0), definition='wikipedia')
+_report( Eq(r_abij, r_abij_sph.get_direct_product_ito_self(tjs=0)))
+r_abij_cross = ReducedMatrixElement(SphFermBra('aj', Dagger(a), j, reverse=True), RAm1, SphFermKet('bi', i, j))
+_report( Eq(r_abij, r_abij_cross.get_direct_product_ito_self(tjs=0)))
 
 print
-_report(fcode(r_aij_sph.get_direct_product_ito_self(tjs=1)))
+_report(fcode(r_abij_sph.get_direct_product_ito_self(tjs=1)))
 
 J_ij, J_Am1, j_a, j_i, j_j, j_b, j_c, j_k = symbols('J_ij J_Am1 j_a j_i j_j j_b j_c j_k', nonnegative=True)
 M_ij, M_Am1, m_a, m_i, m_j, m_b, m_c, m_k = symbols('M_ij M_Am1 m_a m_i m_j m_b m_c m_k')
 
 
 print
-print "****************** Left Am1, I5 to Lbij **************"
+print "****************** Right A, r_abij = X_kbij*r_ak **************"
 print
 
-diagram = Symbol('I5_L2')
+diagram = Symbol('I4_R1')
 
-coupled_subs = {
-        x_ja: rewrite_coupling(x_ja, x_ja_sph),
-        l_i: rewrite_coupling(l_i, l_i_sph, verbose=1, strict=1)
+r_ak = MatrixElement(Dagger(a), RAm1, k)
+r_ak_sph = ReducedMatrixElement(Dagger(a), RA, k, definition='wikipedia')
+_report( Eq(r_ak, r_ak_sph.get_direct_product_ito_self(tjs=0)))
+
+couping_substitution = {
+        x_kbij: rewrite_coupling(x_kbij, x_kbij_sph),
+        r_ak: rewrite_coupling(r_ak, r_ak_sph, verbose=1, strict=1)
         }
 print
 print("recoupling diagram 1")
-cgc_factor = l_aij_sph.as_direct_product(use_dummies=0).subs(l_aij, 1)
-_report(cgc_factor)
-expr_msc = l_i*x_ja*cgc_factor
-expr_sph = expr_msc.subs(coupled_subs)
+lhs_coupling_factor = r_abij_sph.as_direct_product(use_dummies=False).subs(r_abij, 1)
+expr_msc = lhs_coupling_factor*x_kbij*r_ak
+expr_sph = expr_msc.subs(coupling_substitution)
 _report(Eq(diagram, expr_sph))
 expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
 _report(Eq(diagram, expr_sph))
@@ -266,247 +269,3 @@ _report(Eq(diagram, expr_sph))
 
 _report(fcode(expr_sph))
 
-
-print
-print "****************** Right Am1, I4 only regular coupling **************"
-print
-
-diagram = Symbol('I4_R')
-M_aj = Symbol('M_aj')
-
-r_bij_sph = r_aij_sph.subs(Dagger(a), Dagger(b))
-r_bij = r_aij.subs(Dagger(a), Dagger(b))
-# r_cik = r_aij.subs([(Dagger(a), Dagger(c)), (j, k)])
-# r_cik_sph = r_aij_sph.subs([(Dagger(a), Dagger(c)), (j, k)])
-r_cik = MatrixElement(Dagger(c), RAm1, (i, k))
-r_cik_sph = ReducedMatrixElement(Dagger(c), RAm1, SphFermKet('ik', i, k, reverse=0), definition='gaute')
-
-coupled_subs = {
-        x_jckb: rewrite_coupling(x_jckb, x_jckb_sph),
-        r_cik: rewrite_coupling(r_cik, r_cik_sph, verbose=1, strict=1)
-        }
-print
-print("recoupling diagram 1")
-print("Coefficient from left hand side is")
-cgc_factor = r_bij_sph.as_direct_product(use_dummies=0).subs(r_bij, 1)
-_report(cgc_factor)
-expr_msc = r_cik*x_jckb*ASigma(m_k, m_c)*cgc_factor
-expr_msc = combine_ASigmas(expr_msc)
-_report(Eq(diagram, expr_msc))
-expr_sph = expr_msc.subs(coupled_subs)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(expr_sph, [M_ij, M_Am1, m_a, m_i, m_j, m_b, m_c, m_k])
-_report(Eq(diagram, expr_sph))
-
-_report(fcode(expr_sph))
-
-
-stop
-
-
-
-
-print
-print "****************** Right Am1, I7 to Rbij **************"
-print
-
-diagram = Symbol('I7_R2')
-
-r_bij = r_aij.subs(Dagger(a), Dagger(b))
-r_bik = r_aij.subs([(Dagger(a), Dagger(b)), (j, k)])
-
-r_bij_sph = r_aij_sph.subs(Dagger(a), Dagger(b))
-r_bik_sph = r_aij_sph.subs([(Dagger(a), Dagger(b)), (j, k)])
-
-coupled_subs = {
-        x_kj: rewrite_coupling(x_kj, x_kj_sph),
-        r_bik: rewrite_coupling(r_bik, r_bik_sph, verbose=1, strict=1)
-        }
-print
-print("recoupling diagram 1")
-cgc_factor = r_bij_sph.as_direct_product(use_dummies=0).subs(r_bij, 1)
-_report(cgc_factor)
-expr_msc = r_bik*x_kj*ASigma(m_k, j_k)*cgc_factor
-expr_msc = combine_ASigmas(expr_msc)
-_report(Eq(diagram, expr_msc))
-expr_sph = expr_msc.subs(coupled_subs)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = apply_orthogonality(expr_sph, [m_j, m_i, m_b, M_Am1])
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(expr_sph)
-_report(Eq(diagram, expr_sph))
-
-_report(fcode(expr_sph))
-
-print
-print "****************** Right Am1, I4 **************"
-print
-
-diagram = Symbol('I4_R')
-M_aj = Symbol('M_aj')
-
-r_bij_cross = r_aij_cross.subs(Dagger(a), Dagger(b))
-r_cik = r_aij.subs([(Dagger(a), Dagger(c)), (j, k)])
-r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (j, k)])
-# r_cik_sph = r_aij_sph.subs([(Dagger(a), Dagger(c)), (j, k)])
-
-coupled_subs = {
-        x_kcjb: rewrite_coupling(x_kcjb, x_kcjb_sph),
-        r_cik: rewrite_coupling(r_cik, r_cik_sph, verbose=1, strict=1)
-        }
-print
-print("recoupling diagram 1")
-cgc_factor = r_bij_cross.as_direct_product(use_dummies=0).subs(r_bij_cross.get_related_direct_matrix(), 1)
-_report(cgc_factor)
-expr_msc = r_cik*x_kcjb*ASigma(m_k, m_c)*cgc_factor
-expr_msc = combine_ASigmas(expr_msc)
-_report(Eq(diagram, expr_msc))
-expr_sph = expr_msc.subs(coupled_subs)
-_report(Eq(diagram, expr_sph))
-junk, angmom_symbs = expr_sph.as_coeff_terms(AngularMomentumSymbol)
-expr_sph = apply_orthogonality(expr_sph, [m_c, m_k, m_b, m_j])
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = apply_orthogonality(expr_sph, [M_Am1, M_aj])
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-
-_report(fcode(expr_sph))
-
-print
-print "****************** Right Am1, I4 Direct to 6j-symbol **************"
-print
-
-diagram = Symbol('I4_R')
-
-r_bij = r_aij.subs(Dagger(a), Dagger(b))
-r_cik = r_aij.subs([(Dagger(a), Dagger(c)), (j, k)])
-
-r_bij_sph = r_aij_sph.subs(Dagger(a), Dagger(b))
-r_cik_sph = r_aij_cross.subs([(Dagger(a), Dagger(c)), (j, k)])
-
-coupled_subs = {
-        x_kcjb: rewrite_coupling(x_kcjb, x_kcjb_sph),
-        r_cik: rewrite_coupling(r_cik, r_cik_sph, verbose=1, strict=1)
-        }
-print
-print("recoupling diagram 1")
-cgc_factor = r_bij_sph.as_direct_product(use_dummies=0).subs(r_bij_sph.get_related_direct_matrix(), 1)
-_report(cgc_factor)
-expr_msc = r_cik*x_kcjb*ASigma(m_k, m_c)*cgc_factor
-expr_msc = combine_ASigmas(expr_msc)
-_report(Eq(diagram, expr_msc))
-expr_sph = expr_msc.subs(coupled_subs)
-_report(Eq(diagram, expr_sph))
-junk, angmom_symbs = expr_sph.as_coeff_terms(AngularMomentumSymbol)
-expr_sph = apply_orthogonality(expr_sph, [m_c, m_k])
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(expr_sph, identity_sources=angmom_symbs, try_hard=True)
-_report(Eq(diagram, expr_sph))
-
-_report(fcode(expr_sph))
-
-print
-print "****************** Check recoupling of right Am1 ************"
-print
-
-print "******* cross -> regular ******"
-print
-
-diagram = r_aij_sph
-
-expr_sph = rewrite_coupling(r_aij_sph, r_aij_cross)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
-_report(Eq(diagram, expr_sph))
-
-_report(fcode(expr_sph))
-
-print
-print "******* regular -> cross ******"
-print
-diagram = r_aij_cross
-
-expr_sph = rewrite_coupling(r_aij_cross, r_aij_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_tjs2sjs(expr_sph, verbose=1)
-_report(Eq(diagram, expr_sph))
-
-_report(fcode(expr_sph))
-
-
-print
-print "****************** Norm of Left and right Am1 **************"
-print
-
-r_i = MatrixElement(0, RAm1, i)
-r_i_sph = ReducedMatrixElement(0, RAm1, i, definition='wikipedia')
-_report( Eq(r_i, r_i_sph.get_direct_product_ito_self(tjs=0)))
-
-r_aij = MatrixElement(Dagger(a), RAm1, (i, j))
-r_aij_sph = ReducedMatrixElement(Dagger(a), RAm1, SphFermKet('ij', i, j, reverse=0), definition='wikipedia')
-_report( Eq(r_aij, r_aij_sph.get_direct_product_ito_self(tjs=0)))
-
-diagram = Symbol('norm_1')
-
-coupled_subs = {
-        l_i: rewrite_coupling(l_i, l_i_sph, verbose=1, strict=1),
-        r_i: rewrite_coupling(r_i, r_i_sph, verbose=1, strict=1)
-        }
-print
-print("norm of r1, l1")
-expr_msc = l_i*r_i*ASigma(m_i)
-expr_sph = expr_msc.subs(coupled_subs)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(expr_sph, [j_a])
-_report(Eq(diagram, expr_sph))
-_report(fcode(expr_sph))
-
-
-diagram = Symbol('norm_2')
-
-coupled_subs = {
-        l_aij: rewrite_coupling(l_aij, l_aij_sph, verbose=1, strict=1),
-        r_aij: rewrite_coupling(r_aij, r_aij_sph, verbose=1, strict=1)
-        }
-print
-print("norm of r2, l2")
-expr_msc = l_aij*r_aij*ASigma(m_i,m_j,m_a)
-expr_sph = expr_msc.subs(coupled_subs)
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
-_report(Eq(diagram, expr_sph))
-expr_sph = apply_orthogonality(expr_sph, [m_j, m_i, m_b, M_Am1])
-_report(Eq(diagram, expr_sph))
-expr_sph = evaluate_sums(expr_sph)
-_report(Eq(diagram, expr_sph))
-expr_sph = apply_orthogonality(expr_sph, [], all=True, mode='projections')
-_report(Eq(diagram, expr_sph))
-expr_sph = refine_phases(expr_sph, [j_a])
-_report(Eq(diagram, expr_sph))
-
-_report(fcode(expr_sph))
