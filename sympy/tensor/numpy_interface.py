@@ -7,6 +7,8 @@
 
 """
 
+from sympy.core import Symbol, Lambda
+
 def get_ndarray(indexed, function, subs_dict, **kw_args):
 
     """Convenience function that creates a numpy array based on an Indexed object.
@@ -80,7 +82,8 @@ def linfunc(start, end, dim, endpoint=True):
     (8.5, -6.5)
 
     """
+    x = Symbol('x')
     if endpoint:
-        return lambda x: start + x*float(end - start)/(dim-1)
+        return Lambda(x, start + x*(end - start)/(dim-1))
     else:
-        return lambda x: start + x*float(end - start)/dim
+        return Lambda(x, start + x*(end - start)/dim)
