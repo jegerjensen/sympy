@@ -64,6 +64,26 @@ def get_ndarray(indexed, function, subs_dict, **kw_args):
                 ", ".join([str(n) for n in not_numbers]))
     return numpy.fromfunction(function, shape, **kw_args)
 
+def linexpr(variable, start, end, dim, endpoint=True):
+    """Returns an expression that calculates values in a linspace.
+
+    >>> from sympy.tensor.numpy_interface import linexpr
+    >>> from sympy.core import symbols
+    >>> x = symbols('x')
+    >>> linexpr(x, 1, 4, 4)
+    1 + x
+    >>> linexpr(x, 1, 4, 4, endpoint=False)
+    1 + 3*x/4
+
+    Note that the dim parameter is not a hard limit, it is only used to
+    calculate the stepsize:
+
+    >>> f(10), f(-10)
+    (8.5, -6.5)
+
+    """
+    return linfunc(start, end, dim, endpoint)(variable)
+
 def linfunc(start, end, dim, endpoint=True):
     """Returns a function that calculates values in a linspace.
 
