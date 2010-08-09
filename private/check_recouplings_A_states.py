@@ -237,6 +237,44 @@ _report(fcode(r_abij_sph.get_direct_product_ito_self(tjs=1)))
 J_ij, J_Am1, j_a, j_i, j_j, j_b, j_c, j_k = symbols('J_ij J_Am1 j_a j_i j_j j_b j_c j_k', nonnegative=True)
 M_ij, M_Am1, m_a, m_i, m_j, m_b, m_c, m_k = symbols('M_ij M_Am1 m_a m_i m_j m_b m_c m_k')
 
+print
+print "****************** Right A, r_ai = X_kc*r_acik *************"
+print
+
+diagram = Symbol('XkcR2')
+
+x_kc = MatrixElement(Dagger(k), X, c)
+x_kc_sph = ReducedMatrixElement(Dagger(k), X, c)
+r_acik = MatrixElement((Dagger(a),Dagger(c)), RA, (i, k))
+r_acik_sph = ReducedMatrixElement(SphFermBra('ac', Dagger(a), Dagger(c)),
+        RA, SphFermKet('ik', i, k, reverse=0), definition='wikipedia')
+_report( Eq(x_kc, x_kc_sph.get_direct_product_ito_self(tjs=0)))
+_report( Eq(r_acik, r_acik_sph.get_direct_product_ito_self(tjs=0)))
+
+coupling_substitution = {
+        r_acik: rewrite_coupling(r_acik, r_acik_sph),
+        x_kc: rewrite_coupling(x_kc, x_kc_sph, verbose=1, strict=1)
+        }
+print
+print("recoupling diagram 1")
+lhs_coupling_factor = r_ai_sph.as_direct_product(use_dummies=False).subs(r_ai, 1)
+expr_msc = lhs_coupling_factor*r_acik*x_kc*Sum(m_c)
+expr_sph = expr_msc.subs(coupling_substitution)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_phases(convert_cgc2tjs(expr_sph))
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_orthogonality(expr_sph, [m_a, m_b])
+_report(Eq(diagram, expr_sph))
+expr_sph = evaluate_sums(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = apply_deltas(expr_sph)
+_report(Eq(diagram, expr_sph))
+expr_sph = refine_tjs2sjs(expr_sph)
+_report(Eq(diagram, expr_sph))
+
+_report(fcode(expr_sph))
+
+sys.exit()
 
 print
 print "****************** Right A, r_abij = X_kbij*r_ak **************"
