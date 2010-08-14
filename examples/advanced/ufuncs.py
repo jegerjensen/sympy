@@ -53,7 +53,7 @@ def main():
         # Setup the Sympy expression to ufuncify
         expr = legendre(n, x)
 
-        print "The polynomial of degree n is"
+        print "The polynomial of degree %i is" % n
         pprint(expr)
 
         # Create a symbolic scalar lambda function
