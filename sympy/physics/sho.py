@@ -1,6 +1,5 @@
-from sympy import sqrt, exp, S, laguerre_l, pi, ratsimp, Rational, powsimp, Integer
-from sympy.mpmath import fac, fac2, gamma
-from sympy import gamma, factorial, factorial2
+from sympy.core import S, pi, Rational
+from sympy.functions import laguerre_l, sqrt, exp, factorial, factorial2
 
 def R_nl(n, l, nu, r):
     """
