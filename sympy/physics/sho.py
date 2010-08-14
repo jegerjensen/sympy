@@ -24,26 +24,26 @@ def R_nl(n, l, nu, r):
     >>> from sympy import var
     >>> var("r nu l")
     (r, nu, l)
-    >>> R_nl(1, 0, 1, r)
+    >>> R_nl(0, 0, 1, r)
     2*2**(3/4)*exp(-r**2)/pi**(1/4)
-    >>> R_nl(2, 0, 1, r)
+    >>> R_nl(1, 0, 1, r)
     4*2**(1/4)*3**(1/2)*(3/2 - 2*r**2)*exp(-r**2)/(3*pi**(1/4))
 
     l, nu and r may be symbolic:
 
-    >>> R_nl(1, 0, nu, r)
+    >>> R_nl(0, 0, nu, r)
     2*2**(3/4)*(nu**(3/2))**(1/2)*exp(-nu*r**2)/pi**(1/4)
-    >>> R_nl(1, l, 1, r)
+    >>> R_nl(0, l, 1, r)
     r**l*(2**(2 + l)*2**(3/2 + l)/(1 + 2*l)!!)**(1/2)*exp(-r**2)/pi**(1/4)
 
     The normalization of the radial wavefunction is::
 
     >>> from sympy import Integral, oo
+    >>> Integral(R_nl(0, 0, 1, r)**2 * r**2, (r, 0, oo)).n()
+    1.00000000000000
     >>> Integral(R_nl(1, 0, 1, r)**2 * r**2, (r, 0, oo)).n()
     1.00000000000000
-    >>> Integral(R_nl(2, 0, 1, r)**2 * r**2, (r, 0, oo)).n()
-    1.00000000000000
-    >>> Integral(R_nl(2, 1, 1, r)**2 * r**2, (r, 0, oo)).n()
+    >>> Integral(R_nl(1, 1, 1, r)**2 * r**2, (r, 0, oo)).n()
     1.00000000000000
 
     """
