@@ -6,13 +6,19 @@ def R_nl(n, l, nu, r):
     """
     Returns the radial wavefunction R_{nl} for a 3d isotropic harmonic oscillator.
 
-    n, l .... quantum numbers 'n' and 'l'
-    nu   .... mass-scaled frequency, nu = m*omega/(2*hbar) where `m' is the
-              mass and `omega' the frequency of the oscillator.
-    r    .... radial coordinate
+    ``n``
+        the "nodal" quantum number.  Corresponds to the number of nodes in the
+        wavefunction.  n >= 0
+    ``l``
+        the quantum number for orbital angular momentum
+    ``nu``
+        mass-scaled frequency: nu = m*omega/(2*hbar) where `m' is the mass and
+        `omega' the frequency of the oscillator.  (in atomic units nu == omega)
+    ``r``
+        Radial coordinate
 
 
-    Examples::
+    :Examples:
 
     >>> from sympy.physics.sho import R_nl
     >>> from sympy import var
@@ -42,7 +48,9 @@ def R_nl(n, l, nu, r):
 
     """
     n, l, nu, r = map(S, [n, l, nu, r])
-    # normalization coefficient
+
+    # formula uses n >= 1 (instead of nodal n >= 0)
+    n = n + 1
     C = sqrt(
             ((2*nu)**(l + Rational(3, 2))*2**(n+l+1)*factorial(n-1))/
             (sqrt(pi)*(factorial2(2*n + 2*l - 1)))
