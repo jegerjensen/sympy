@@ -8,6 +8,11 @@ create fast, customized universal functions for use with numpy arrays.
 An autowrapped sympy expression can be significantly faster than what you would
 get by applying a sequence of the ufuncs shipped with numpy. [0]
 
+The procedure demonstrated here was later automated by
+``sympy.utilities.autowrap.ufuncify``, but the example is still relevant as
+documentation of the low level steps needed to create the ufunc.  Creating
+the ufunc yourself with low level commands allows greater flexibility.
+
 You need to have numpy installed to run this example, as well as a working
 fortran compiler.
 
