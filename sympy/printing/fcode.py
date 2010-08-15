@@ -200,14 +200,7 @@ class FCodePrinter(CodePrinter):
             else:
                 name = expr.func.__name__
             if hasattr(expr, '_imp_') and isinstance(expr._imp_, C.Lambda):
-                # inlined function. We print it through fcode just to
-                # collect all constants and number symbols.  Use dummies
-                # as function arguments because else we might get an
-                # IndexException.
-                dummies = map(lambda x: C.Symbol(str(x), dummy=1), expr.args)
-                consts, junk, junk = fcode(expr._imp_(*dummies), human=False)
-                self._number_symbols |= consts
-
+                # inlined function.
                 # the expression is printed with _print to avoid loops
                 return self._print(expr._imp_(*expr.args))
             if expr.func not in implicit_functions:
