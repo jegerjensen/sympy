@@ -3,15 +3,10 @@
 Setup ufuncs for the legendre polynomials
 -----------------------------------------
 
-This example demonstrates how you can use the autowrap module in Sympy to
+This example demonstrates how you can use the ufuncify utility in Sympy to
 create fast, customized universal functions for use with numpy arrays.
 An autowrapped sympy expression can be significantly faster than what you would
 get by applying a sequence of the ufuncs shipped with numpy. [0]
-
-The procedure demonstrated here was later automated by
-``sympy.utilities.autowrap.ufuncify``, but the example is still relevant as
-documentation of the low level steps needed to create the ufunc.  Creating
-the ufunc yourself with low level commands allows greater flexibility.
 
 You need to have numpy installed to run this example, as well as a working
 fortran compiler.
@@ -27,8 +22,8 @@ except ImportError:
     sys.exit("Cannot import numpy. Exiting.")
 
 import sympy.mpmath as mpmath
+from sympy.utilities.autowrap import ufuncify
 from sympy.utilities.lambdify import implemented_function
-from sympy.utilities.autowrap import autowrap
 from sympy import symbols, Idx, IndexedBase, Eq, Lambda, legendre, Plot, pprint
 
 
@@ -36,11 +31,6 @@ def main():
 
     print __doc__
 
-    # arrays are represented with IndexedBase, indices with Idx
-    m = symbols('m', integer=True)
-    i = Idx('i', m)
-    A = IndexedBase('A')
-    B = IndexedBase('B')
     x = symbols('x')
 
     # a numpy array we can apply the ufuncs to
@@ -57,24 +47,14 @@ def main():
 
         # Setup the Sympy expression to ufuncify
         expr = legendre(n, x)
-
         print "The polynomial of degree %i is" % n
         pprint(expr)
 
-        # Create a symbolic scalar lambda function
-        scalar_lambda = Lambda(x, expr)
-
-        # attach it to a Sympy function
-        f = implemented_function('f', scalar_lambda)
-
-        # Define the outgoing array element in terms of the incoming
-        instruction = Eq(A[i], f(B[i]))
-
-        # implement, compile and wrap the element-wise function
-        bin_poly = autowrap(instruction)
+        # This is where the magic happens:
+        binary_poly = ufuncify(x, expr)
 
         # It's now ready for use with numpy arrays
-        polyvector = bin_poly(grid)
+        polyvector = binary_poly(grid)
 
         # let's check the values against mpmath's legendre function
         maxdiff = 0
@@ -88,10 +68,10 @@ def main():
 
         # We can also attach the autowrapped legendre polynomial to a sympy
         # function and plot values as they are calculated by the binary function
-        g = implemented_function('g', bin_poly)
+        g = implemented_function('g', binary_poly)
         plot1[n] = g(x), [200]
 
-    print "Here's a plot with values calculated by the wrapped binary function"
+    print "Here's a plot with values calculated by the wrapped binary functions"
     plot1.show()
 
 if __name__ == '__main__':
