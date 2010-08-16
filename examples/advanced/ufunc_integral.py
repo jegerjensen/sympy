@@ -38,7 +38,8 @@ except ImportError:
 
 from sympy.utilities.lambdify import implemented_function
 from sympy.utilities.autowrap import autowrap, ufuncify
-from sympy import Idx, IndexedBase, Lambda, pprint, Symbol, oo, Integral
+from sympy import Idx, IndexedBase, Lambda, pprint, Symbol, oo, Integral,\
+        Function
 from sympy.physics.sho import R_nl
 from sympy.physics.hydrogen import R_nl as hydro_nl
 
@@ -52,7 +53,7 @@ omega2 = 0.1                # in atomic units: twice the oscillator frequency
 orbital_momentum_l = 1      # the quantum number `l` for angular momentum
 hydrogen_n = 2              # the nodal quantum number for the Hydrogen wave
 rmax = 20                   # cut off in the radial direction
-gridsize = 200
+gridsize = 200              # number of points in the grid
 
 # ***************************************************************************
 
@@ -118,56 +119,66 @@ def main():
     for n in range(basis_dimension):
 
         #
-        # setup wave functions
+        # setup basis wave functions
         #
         # To get inline expressions in the low level code, we attach the
-        # wave function expressions to regular Sympy functions using the
+        # wave function expressions to a regular Sympy function using the
         # implemented_function utility.  This is an extra step needed to avoid
         # erronous summations in the wave function expressions.
+        #
+        # Such function objects carry around the expression they represent,
+        # but the expression is not exposed unless explicit measures are taken.
+        # The benefit is that the routines that searches for repeated indices
+        # in order to make contractions will not search through the wave
+        # function expression.
         psi_ho = implemented_function('psi_ho',
                 Lambda(x, R_nl(n, orbital_momentum_l, omega2, x)))
-        psi_H = implemented_function('psi_H',
-                Lambda(x, hydro_nl(hydrogen_n, orbital_momentum_l, 1, x)))
 
-        # These function objects carry around the expressions they represent,
-        # but the expressions are hidden.  The benefit is that the routines
-        # that searches for repeated indices in order to make contractions
-        # will not search through the wave function expression.
 
-        # setup expression for integration
-        # let x represent a point in the grid array.  Then we can approximate the
-        # integral by a sum over the following expression multiplied by the
-        # stepsize.  (stepsize comes below)
-        expr = x**2*psi_ho(x)*psi_H(x)
+        # We represent the hydrogen function by an array which will be an input
+        # argument to the binary routine.  This will let the integrators find
+        # h.o. basis coefficients for any wave function we throw at them.
+        psi = IndexedBase('psi')
+
+        #
+        # setup expression for the integration
+        #
+
+        step = Symbol('step') # use symbolic stepsize for flexibility
+
+        # let i represent an index of the grid array, and let A represent the
+        # grid array.  Then we can approximate the integral by a sum over the
+        # following expression (simplified rectangular rule, ignoring end point
+        # corrections):
+
+        expr = A[i]**2*psi_ho(A[i])*psi[i]*step
 
         if n==0:
             print "Setting up binary integrators for the integral:"
-            pprint(Integral(expr, (x, 0, oo)))
+            pprint(Integral(x**2*psi_ho(x)*Function('psi')(x), (x, 0, oo)))
 
         # But it needs to be an operation on indexed objects, so that the code
         # generators will recognize it correctly as an array.
-        expr = expr.subs(x, A[i])
-
-        # use symbolic stepsize for flexibility:
-        step = Symbol('step')
+        # expr = expr.subs(x, A[i])
 
         # Autowrap it.  For functions that take more than one argument, it is
-        # wise to use the 'args' keyword so that you know the signature of the
-        # wrapped function.  (The dimension m will be an optional argument.)
-        binary_integrator[n] = autowrap(expr*step, args=[A.label, step, m] )
+        # a good idea to use the 'args' keyword so that you know the signature
+        # of the wrapped function.  (The dimension m will be an optional
+        # argument, but it must be present in the args list.)
+        binary_integrator[n] = autowrap(expr, args=[A.label, psi.label, step, m])
 
         # Lets see how it converges with the grid dimension
         print "Checking convergence of integrator for n = %i" %n
         for g in range(3, 8):
             grid, step = np.linspace(0, rmax, 2**g, retstep=True)
             print "grid dimension %5i, integral = %e" % (2**g,
-                    binary_integrator[n](grid, step))
+                    binary_integrator[n](grid, H_ufunc(grid), step))
 
 
     print "A binary integrator has been set up for each basis state"
-    print "We will now use them to reconstruct the hydrogen solution."
+    print "We will now use them to reconstruct a hydrogen solution."
 
-    # Note: We didn't need to specify grid or use gridsize before now(!)
+    # Note: We didn't need to specify grid or use gridsize before now
     grid, stepsize = np.linspace(0, rmax, gridsize, retstep=True)
 
     print "Calculating coefficients with gridsize = %i and stepsize %f" %(
@@ -175,8 +186,9 @@ def main():
 
     coeffs = {}
     for n in range(basis_dimension):
-        coeffs[n] = binary_integrator[n](grid, stepsize)
+        coeffs[n] = binary_integrator[n](grid, H_ufunc(grid), stepsize)
         print "c(%i) = %e" % (n, coeffs[n])
+
 
     print "Constructing the approximate hydrogen wave"
     hydro_approx = 0
@@ -204,6 +216,19 @@ def main():
         pylab.plot(grid, H_ufunc(grid), 'r-', label='exact')
         pylab.legend()
         pylab.show()
+
+    print """Note:
+    These binary integrators were specialized to find coefficients for a
+    harmonic oscillator basis, but they can process any wave function as long
+    as it is available as a vector and defined on a grid with equidistant
+    points. (That is, on any grid you get from numpy.linspace.)
+
+    To make the integrators even more flexible, you can setup the harmonic
+    oscillator solutions with symbolic parameters omega and l.  Then the
+    autowrapped binary routine will take these scalar variables as arguments,
+    and be applicable to *any* isotropic harmonic oscillator basis.
+
+    """
 
 
 if __name__ == '__main__':
