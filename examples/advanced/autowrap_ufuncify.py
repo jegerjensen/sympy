@@ -24,7 +24,7 @@ except ImportError:
 import sympy.mpmath as mpmath
 from sympy.utilities.autowrap import ufuncify
 from sympy.utilities.lambdify import implemented_function
-from sympy import symbols, Idx, IndexedBase, Eq, Lambda, legendre, Plot, pprint
+from sympy import symbols, legendre, Plot, pprint
 
 
 def main():
