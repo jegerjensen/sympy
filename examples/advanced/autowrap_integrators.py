@@ -221,12 +221,13 @@ def main():
     These binary integrators were specialized to find coefficients for a
     harmonic oscillator basis, but they can process any wave function as long
     as it is available as a vector and defined on a grid with equidistant
-    points. (That is, on any grid you get from numpy.linspace.)
+    points. That is, on any grid you get from numpy.linspace.
 
     To make the integrators even more flexible, you can setup the harmonic
     oscillator solutions with symbolic parameters omega and l.  Then the
     autowrapped binary routine will take these scalar variables as arguments,
-    and be applicable to *any* isotropic harmonic oscillator basis.
+    so that the integrators can find coefficients for *any* isotropic harmonic
+    oscillator basis.
 
     """
 
