@@ -2590,7 +2590,8 @@ def evaluate_sums(expr, **kw_args):
             summations = summations.remove_indices([i])
             subsexpr = (i, j*c2/c1)
         elif kw_args.get('all_deltas'):
-            expr = apply_deltas(expr, [d])
+            # the delta has been stripped and must be inserted again
+            expr = apply_deltas(expr*d, [d])
             subsexpr = None
         else:
             subsexpr = None
