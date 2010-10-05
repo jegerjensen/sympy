@@ -2598,6 +2598,8 @@ def evaluate_sums(expr, **kw_args):
         if subsexpr:
             expr = expr.subs(*subsexpr)
             deltas = [ delta.subs(*subsexpr) for delta in deltas ]
+            # drop any deltas that are now evaluated
+            deltas = filter(lambda x: x.has(Dij), deltas)
         else:
             remaining_deltas.append(d)
 
