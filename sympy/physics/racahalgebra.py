@@ -211,21 +211,6 @@ def initialize_racah():
 
 initialize_racah()
 
-class iDij(Dij):
-    """
-    Represents the ``inverse Kronecker-delta''
-
-      A*iDij(a,b) == B   <==>   A == B*Dij(a,b)
-
-    The inverse Kronecker-Delta iDij(a,b) signal that the term should be
-    considered as one side of an equality, and that the other side vanishes for
-    a != b.  So, unlike the straight KroneckerDelta which carries information
-    only about itself, the inverse KroneckerDeltas carry information primarily
-    about the rest of the term.
-
-    """
-    pass
-
 
 class AngularMomentumSymbol(Function):
     """
