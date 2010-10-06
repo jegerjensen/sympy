@@ -17,10 +17,16 @@ from sympy.utilities import raises
 
 def test_half_integer_ask_handler():
     x = Symbol('x')
+    y = Symbol('y')
+    assert ask(x,'real', Assume(x,'half_integer')) == None
     assert ask(x,'half_integer', Assume(x,'half_integer')) == True
     assert ask(x,'half_integer', Assume(x,'half_integer', False)) == False
+    assert ask(x,'half_integer', Assume(x,'integer')) == False
+    assert ask(x,'integer', Assume(x,'half_integer')) == False
     assert ask(2*x,Q.even, Assume(x,'half_integer')) == False
     assert ask(2*x,Q.odd, Assume(x,'half_integer')) == True
+    assert ask(y + x, Q.integer, Assume(x,'half_integer')
+                               & Assume(y,'half_integer')) == True
 
 
 def test_evaluate_sums():
