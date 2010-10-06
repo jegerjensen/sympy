@@ -15,7 +15,8 @@ from sympy.printing.pretty.stringpict import  prettyForm
 from sympy.assumptions import (
         register_handler, remove_handler, Q, ask, Assume, refine
         )
-from sympy.assumptions.handlers import AskHandler
+from sympy.assumptions.handlers import CommonHandler
+from sympy.logic.boolalg import conjuncts
 
 def pretty_hash(expr):
     return expr._pretty_key_()
@@ -101,7 +102,18 @@ class UnableToComplyWithForbiddenAndMandatorySymbols(Exception):
 
 def initialize_racah():
 
-    class AskHalfIntegerHandler(AskHandler):
+    class AskHalfIntegerHandler(CommonHandler):
+
+        @staticmethod
+        def Expr(expr, assumptions):
+            assumps = conjuncts(assumptions)
+            if ~Q.half_integer(expr) in assumps:
+                return False
+            elif Q.half_integer(expr) in assumps:
+                return True
+            elif Q.integer(expr) in assumps:
+                return False
+
         @staticmethod
         def Add(expr, assumptions):
             """
@@ -122,7 +134,7 @@ def initialize_racah():
             else:
                 return _result
 
-    class ExtendedIntegerHandler(AskHandler):
+    class ExtendedIntegerHandler(CommonHandler):
         """
         Here we determine if Integer taking into account half-integer symbols.
 
@@ -131,6 +143,12 @@ def initialize_racah():
             - False if expression is Half integer
             - None if inconclusive
         """
+
+        @staticmethod
+        def Expr(expr, assumptions):
+            assumps = conjuncts(assumptions)
+            if Q.half_integer(expr) in assumps:
+                return False
 
         @staticmethod
         def Mul(expr, assumptions):
@@ -172,7 +190,7 @@ def initialize_racah():
                 return _result
 
 
-    class ExtendedEvenHandler(AskHandler):
+    class ExtendedEvenHandler(CommonHandler):
         """
         Here we determine even/odd taking into account half-integer symbols.
 
@@ -183,6 +201,12 @@ def initialize_racah():
 
         (The Oddhandler is set up to return "not even".)
         """
+
+        @staticmethod
+        def Expr(expr, assumptions):
+            assumps = conjuncts(assumptions)
+            if Q.half_integer(expr) in assumps:
+                return False
 
         @staticmethod
         def Mul(expr, assumptions):
