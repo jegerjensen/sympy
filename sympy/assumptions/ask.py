@@ -112,26 +112,29 @@ def ask(expr, key, assumptions=True, context=global_assumptions, disable_preproc
 
     # See if there's a straight-forward conclusion we can make for the inference
     if not disable_preprocessing:
-        if assumptions.is_Atom:
-            if key in known_facts_dict[assumptions]:
-                return True
-            if Not(key) in known_facts_dict[assumptions]:
-                return False
-        elif assumptions.func is And:
-            for assum in assumptions.args:
-                if assum.is_Atom:
-                    if key in known_facts_dict[assum]:
-                        return True
-                    if Not(key) in known_facts_dict[assum]:
-                        return False
-                elif assum.func is Not and assum.args[0].is_Atom:
-                    if key in known_facts_dict[assum]:
-                        return False
-                    if Not(key) in known_facts_dict[assum]:
-                        return True
-        elif assumptions.func is Not and assumptions.args[0].is_Atom:
-            if assumptions.args[0] in known_facts_dict[key]:
-                return False
+        try:
+            if assumptions.is_Atom:
+                if key in known_facts_dict[assumptions]:
+                    return True
+                if Not(key) in known_facts_dict[assumptions]:
+                    return False
+            elif assumptions.func is And:
+                for assum in assumptions.args:
+                    if assum.is_Atom:
+                        if key in known_facts_dict[assum]:
+                            return True
+                        if Not(key) in known_facts_dict[assum]:
+                            return False
+                    elif assum.func is Not and assum.args[0].is_Atom:
+                        if key in known_facts_dict[assum]:
+                            return False
+                        if Not(key) in known_facts_dict[assum]:
+                            return True
+            elif assumptions.func is Not and assumptions.args[0].is_Atom:
+                if assumptions.args[0] in known_facts_dict[key]:
+                    return False
+        except KeyError:
+            pass # assumption was not present in known_facts_dict
 
     # Failing all else, we do a full logical inference
     # If it's not consistent with the assumptions, then it can't be true
