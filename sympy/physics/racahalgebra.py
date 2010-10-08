@@ -33,6 +33,9 @@ __all__ = [
         'convert_cgc2tjs',
         'convert_tjs2cgc',
         'combine_ASigmas',
+        'evaluate_sums',
+        'apply_deltas',
+        'apply_orthogonality',
         'remove_summation_indices',
         ]
 
