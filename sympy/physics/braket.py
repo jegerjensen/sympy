@@ -12,6 +12,17 @@ from sympy.physics.secondquant import (
         Dagger, AntiSymmetricTensor, _sort_anticommuting_fermions
         )
 
+__all__ = [
+        'SphericalTensorOperator',
+        'DualSphericalTensorOperator',
+        'SphFermKet',
+        'SphFermBra',
+        'ReducedMatrixElement',
+        'DirectMatrixElement',
+        'ThreeTensorMatrixElement',
+        ]
+
+
 braket_assumptions = global_assumptions
 blank_symbol = Symbol("[blank symbol]")
 default_redmat_definition = 'wikipedia'
