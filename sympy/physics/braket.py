@@ -1934,6 +1934,11 @@ def rewrite_coupling(expr, other, **kw_args):
     """
     Tries to rewrite every MatrixElement in terms of the MatrixElement ``other''.
     """
+    if isinstance(other, (list, dict)):
+        for o in other:
+            expr = rewrite_coupling(expr, o, **kw_args)
+        return expr
+
     junk, t = other.as_coeff_terms(MatrixElement)
     assert len(t) == 1;
     other = t[0]
