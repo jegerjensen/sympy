@@ -1383,19 +1383,7 @@ class ReducedMatrixElement(MatrixElement):
         >>> ReducedMatrixElement(bra, T, ket, 'edmonds').get_inverse_reduction_factor()
         (-1)**(m_a - j_a)*(1 + 2*j_a)*Sum(_m_b, _q)*ThreeJSymbol(j_a, j_b, k, m_a, -_m_b, -_q)
         """
-        left,op,right = self.args
-        c_ket, t_ket = right.as_coeff_tensor()
-        j1, m1 = t_ket.get_rank_proj()
-        c_op, t_op = op.as_coeff_tensor()
-        j2, m2 = t_op.get_rank_proj()
-        J, M = left._j, left._m
-        if self.definition == 'wikipedia':
-            factor = ASigma(m1, m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket/c_op
-        elif self.definition == 'edmonds':
-            factor = (-1)**(M-J)*ASigma(m1, m2)*(2*J+1)*ThreeJSymbol(J, j2, j1, -M, m2, m1)/c_ket/c_op
-        elif self.definition == 'brink_satchler':
-            factor = (-1)**(-2*j2)*ASigma(m1,m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket/c_op
-
+        factor = self._eval_inverse_reduction_factor()
         if kw_args.get('use_dummies', True):
             factor = convert_sumindex2dummy(factor)
         if kw_args.get('tjs'):
@@ -1535,6 +1523,16 @@ class ReducedMatrixElement_edmonds(ReducedMatrixElement):
         J, M = left._j, left._m
         return c_op*c_ket*(-1)**(J-M)*ThreeJSymbol(J, j2, j1, -M, m2, m1)
 
+    def _eval_inverse_reduction_factor(self):
+        left,op,right = self.args
+        c_ket, t_ket = right.as_coeff_tensor()
+        j1, m1 = t_ket.get_rank_proj()
+        c_op, t_op = op.as_coeff_tensor()
+        j2, m2 = t_op.get_rank_proj()
+        J, M = left._j, left._m
+        return (-1)**(M-J)*ASigma(m1, m2)*(2*J+1)*ThreeJSymbol(J, j2, j1, -M, m2, m1)/c_ket/c_op
+
+
 class ReducedMatrixElement_brink_satchler(ReducedMatrixElement):
     _definition = 'brink_satchler'
     def _eval_reduction_factor(self):
@@ -1546,6 +1544,15 @@ class ReducedMatrixElement_brink_satchler(ReducedMatrixElement):
         J, M = left._j, left._m
         return (-1)**(2*j2)*c_op*c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
 
+    def _eval_inverse_reduction_factor(self):
+        left,op,right = self.args
+        c_ket, t_ket = right.as_coeff_tensor()
+        j1, m1 = t_ket.get_rank_proj()
+        c_op, t_op = op.as_coeff_tensor()
+        j2, m2 = t_op.get_rank_proj()
+        J, M = left._j, left._m
+        return (-1)**(-2*j2)*ASigma(m1,m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket/c_op
+
 class ReducedMatrixElement_wikipedia(ReducedMatrixElement):
     _definition = 'wikipedia'
     def _eval_reduction_factor(self):
@@ -1556,6 +1563,15 @@ class ReducedMatrixElement_wikipedia(ReducedMatrixElement):
         j2, m2 = t_op.get_rank_proj()
         J, M = left._j, left._m
         return c_op*c_ket*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)
+
+    def _eval_inverse_reduction_factor(self):
+        left,op,right = self.args
+        c_ket, t_ket = right.as_coeff_tensor()
+        j1, m1 = t_ket.get_rank_proj()
+        c_op, t_op = op.as_coeff_tensor()
+        j2, m2 = t_op.get_rank_proj()
+        J, M = left._j, left._m
+        return ASigma(m1, m2)*ClebschGordanCoefficient(j1, m1, j2, m2, J, M)/c_ket/c_op
 
 class DirectMatrixElement(MatrixElement):
     """
