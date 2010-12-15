@@ -1358,7 +1358,7 @@ class ReducedMatrixElement(MatrixElement):
         else:
             return factor
 
-    def _get_inverse_reduction_factor(self, **kw_args):
+    def get_inverse_reduction_factor(self, **kw_args):
         """
         Returns the inverted ClebschGordanCoefficient that relates this reduced
         matrix element to the corresponding direct matrix element.
@@ -1376,11 +1376,11 @@ class ReducedMatrixElement(MatrixElement):
         >>> bra = SphFermBra('a')
         >>> ket = SphFermKet('b')
         >>> T = SphericalTensorOperator('T',k,q)
-        >>> ReducedMatrixElement(bra, T, ket)._get_inverse_reduction_factor()
+        >>> ReducedMatrixElement(bra, T, ket).get_inverse_reduction_factor()
         Sum(_m_b, _q)*(j_b, _m_b, k, _q|j_a, m_a)
-        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler')._get_inverse_reduction_factor(use_dummies=False)
+        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler').get_inverse_reduction_factor(use_dummies=False)
         (-1)**(-2*k)*Sum(m_b, q)*(j_b, m_b, k, q|j_a, m_a)
-        >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_inverse_reduction_factor()
+        >>> ReducedMatrixElement(bra, T, ket, 'edmonds').get_inverse_reduction_factor()
         (-1)**(m_a - j_a)*(1 + 2*j_a)*Sum(_m_b, _q)*ThreeJSymbol(j_a, j_b, k, m_a, -_m_b, -_q)
         """
         left,op,right = self.args
@@ -1509,7 +1509,7 @@ class ReducedMatrixElement(MatrixElement):
         >>> m = ReducedMatrixElement(bra, T, SphFermKet('bc', 'b', 'c')).as_direct_product(); m
         Sum(_M_bc, _m_b, _m_c, _q)*(J_bc, _M_bc, k, _q|j_a, m_a)*(j_b, _m_b, j_c, _m_c|J_bc, _M_bc)*<a| T(k, _q) |b, c>
         """
-        invcgc = self._get_inverse_reduction_factor(**kw_args)
+        invcgc = self.get_inverse_reduction_factor(**kw_args)
         matel = self._get_ThreeTensorMatrixElement()
 
         subsdict = extract_symbol2dummy_dict(invcgc)

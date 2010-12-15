@@ -60,7 +60,7 @@ class ReducedMatrixElement_gaute(ReducedMatrixElement):
         else:
             return factor
 
-    def _get_inverse_reduction_factor(self, **kw_args):
+    def get_inverse_reduction_factor(self, **kw_args):
         from sympy.physics.racahalgebra import convert_sumindex2dummy
         left,op,right = self.args
         c_bra, t_bra = left.as_coeff_tensor()
