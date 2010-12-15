@@ -1248,9 +1248,9 @@ class ReducedMatrixElement(MatrixElement):
     <a|| T(k) ||b>
 
     The geometrical factor is available through the method
-    ._get_reduction_factor():
+    .get_reduction_factor():
 
-    >>> ReducedMatrixElement(a, T, b)._get_reduction_factor()
+    >>> ReducedMatrixElement(a, T, b).get_reduction_factor()
     (j_b, m_b, k, q|j_a, m_a)
 
     You can also formulate the direct product (corresponding to a full
@@ -1291,14 +1291,14 @@ class ReducedMatrixElement(MatrixElement):
 
     Other definitions currently available are 'edmonds' and 'brink_satchler':
 
-    >>> ReducedMatrixElement(a, T, b, 'edmonds')._get_reduction_factor()
+    >>> ReducedMatrixElement(a, T, b, 'edmonds').get_reduction_factor()
     (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
-    >>> ReducedMatrixElement(a, T, b, 'brink_satchler')._get_reduction_factor()
+    >>> ReducedMatrixElement(a, T, b, 'brink_satchler').get_reduction_factor()
     (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)
 
     If you want to introduce yet another definition, all you have to do is
     to subclass ReducedMatrixElement and overload the method
-    ReducedMatrixElement._get_reduction_factor(self).  The convention is to
+    ReducedMatrixElement.get_reduction_factor(self).  The convention is to
     name the subclass ReducedMatrixElement_<definition_string>.  (Future
     functionality may depend on that.)
 
@@ -1322,7 +1322,7 @@ class ReducedMatrixElement(MatrixElement):
             obj = MatrixElement.__new__(cls, left,op,right, **kw_args)
             return obj
 
-    def _get_reduction_factor(self, **kw_args):
+    def get_reduction_factor(self, **kw_args):
         """
         Returns the ClebschGordanCoefficient that relates this reduced
         matrix element to the corresponding direct matrix element.
@@ -1337,18 +1337,18 @@ class ReducedMatrixElement(MatrixElement):
         >>> bra = SphFermBra('a')
         >>> ket = SphFermKet('b')
         >>> T = SphericalTensorOperator('T',k,q)
-        >>> ReducedMatrixElement(bra, T, ket)._get_reduction_factor()
+        >>> ReducedMatrixElement(bra, T, ket).get_reduction_factor()
         (j_b, m_b, k, q|j_a, m_a)
-        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler')._get_reduction_factor()
+        >>> ReducedMatrixElement(bra, T, ket, definition='brink_satchler').get_reduction_factor()
         (-1)**(2*k)*(j_b, m_b, k, q|j_a, m_a)
-        >>> ReducedMatrixElement(bra, T, ket, 'edmonds')._get_reduction_factor()
+        >>> ReducedMatrixElement(bra, T, ket, 'edmonds').get_reduction_factor()
         (-1)**(j_a - m_a)*ThreeJSymbol(j_a, j_b, k, m_a, -m_b, -q)
 
         If the spherical tensor operator has tensor properties related to dual
         states, this will be treated correctly in the coupling coefficient:
 
         >>> L = DualSphericalTensorOperator('L',k,q)
-        >>> ReducedMatrixElement(bra, L, ket)._get_reduction_factor()
+        >>> ReducedMatrixElement(bra, L, ket).get_reduction_factor()
         (-1)**(k - q)*(j_b, m_b, k, -q|j_a, m_a)
         """
         left,op,right = self.args
@@ -1489,7 +1489,7 @@ class ReducedMatrixElement(MatrixElement):
 
         matel = matel.subs(subsdict)
         redmat = self.subs(subsdict)
-        cgc = redmat._get_reduction_factor(**kw_args)
+        cgc = redmat.get_reduction_factor(**kw_args)
 
         result = cgc * dirprod.subs(matel, redmat)
 
@@ -1696,7 +1696,7 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         """
         redmat = self.get_related_redmat(definition=definition)
-        return redmat._get_reduction_factor(**kw_args)*redmat
+        return redmat.get_reduction_factor(**kw_args)*redmat
 
     def get_direct_product_ito_self(self, **kw_args):
         """

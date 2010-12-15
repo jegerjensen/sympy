@@ -43,7 +43,7 @@ def _report(expr):
 class ReducedMatrixElement_gaute(ReducedMatrixElement):
     _definition = 'gaute'
 
-    def _get_reduction_factor(self, **kw_args):
+    def get_reduction_factor(self, **kw_args):
         left,op,right = self.args
         c_bra, t_bra = left.as_coeff_tensor()
         j1, m1 = t_bra.get_rank_proj()

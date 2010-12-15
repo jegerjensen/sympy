@@ -267,11 +267,11 @@ def test_ReducedMatrixElement():
     bra_a = SphFermBra('a')
     ket_b = SphFermKet('b')
     Op = SphericalTensorOperator('T','k','q')
-    assert ReducedMatrixElement(bra_a, Op, ket_b)._get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,j_a,m_a)
+    assert ReducedMatrixElement(bra_a, Op, ket_b).get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,j_a,m_a)
     assert ReducedMatrixElement(bra_a, Op, ket_b)._get_ThreeTensorMatrixElement()==ThreeTensorMatrixElement(bra_a, Op, ket_b)
 
     bra_ac = SphFermBra('ac', bra_a, SphFermBra('c'))
-    assert ReducedMatrixElement(bra_ac, Op, ket_b)._get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)
+    assert ReducedMatrixElement(bra_ac, Op, ket_b).get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)
     assert ReducedMatrixElement(bra_ac, Op, ket_b)._get_ThreeTensorMatrixElement()==ThreeTensorMatrixElement(bra_ac, Op, ket_b)
 
     assert ReducedMatrixElement(bra_ac, Op, ket_b).as_direct_product(use_dummies=False)==ASigma(m_b, q, m_a, m_c)*ClebschGordanCoefficient(j_b,m_b,k,q,J_ac,M_ac)*ClebschGordanCoefficient(j_a, m_a, j_c, m_c, J_ac, M_ac)*DirectMatrixElement((bra_a, SphFermBra('c')), Op, ket_b)
@@ -281,12 +281,12 @@ def test_ReducedMatrixElement():
     assert redmat.definition == 'brink_satchler'
     assert redmat.func(*redmat.args) == redmat
     assert redmat.func(*redmat.args).definition == 'brink_satchler'
-    assert redmat._get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,j_a,m_a)*(-1)**(2*k)
+    assert redmat.get_reduction_factor()==ClebschGordanCoefficient(j_b,m_b,k,q,j_a,m_a)*(-1)**(2*k)
 
     redmat = ReducedMatrixElement(bra_a,Op,ket_b,'edmonds')
     assert redmat.definition == 'edmonds'
     assert redmat.func(*redmat.args).definition == 'edmonds'
-    assert redmat._get_reduction_factor()==ThreeJSymbol(j_a,k,j_b,-m_a,q,m_b)*(-1)**(j_a-m_a)
+    assert redmat.get_reduction_factor()==ThreeJSymbol(j_a,k,j_b,-m_a,q,m_b)*(-1)**(j_a-m_a)
 
 
 def test_DirectMatrixElement():
