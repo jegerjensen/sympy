@@ -2841,3 +2841,51 @@ def apply_orthogonality(expr, summations, **kw_args):
         expr = refine_phases(expr, identity_sources=angmoms)
 
     return expr
+
+
+def apply_identity_tjs(expr):
+    """Applies known 3j-symbol identities to the expression
+
+    We apply
+
+    >>> from sympy.physics.racahalgebra import ThreeJSymbol, ASigma
+    >>> from sympy.physics.racahalgebra import apply_identity_tjs
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('abc')
+    >>> A,B,C = symbols('ABC')
+    >>> expr = ASigma(a)*(-1)**(A+a)*ThreeJSymbol(A, A, C, a, -a, c)
+    >>> apply_identity_tjs(expr)
+    (1 + 2*A)**(1/2)*Dij(0, C)/(1 + 2*C)**(1/2)
+    """
+
+    threejs = expr.atoms(ThreeJSymbol)
+    subslist = []
+    for tjs in threejs:
+        Js = tjs.magnitudes
+        Ms = tjs.projections
+        for i,j in [(0,1), (0,2), (1,2)]:
+            if Js[i] == Js[j] and Ms[i] == -Ms[j]:
+                zero = (set([0,1,2]) - set([i,j])).pop()
+                J0 = Js[zero]
+                new_tjs = sqrt(2*Js[i]+1)/sqrt(2*J0+1)*Dij(J0, 0)
+
+                junk, m = Ms[i].as_coeff_terms()
+
+                try:
+                   new_expr = remove_summation_indices(expr, m)
+                except ValueError:
+                    continue
+
+                new_expr = new_expr/(-1)**(Js[i] + m[0])
+                new_expr = refine_phases(new_expr, forbidden=m, strict=0)
+                new_expr = new_expr.subs(tjs, new_tjs)
+
+                if (i,j) == (0,2):
+                    # we need uneven permutation
+                    new_expr *= (-1)**(Add(*Js))
+
+                # it is now safe to modify original expr
+                expr = new_expr
+                break
+
+    return expr
