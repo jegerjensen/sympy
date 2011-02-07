@@ -1,5 +1,6 @@
 from sympy import (
-        S, Expr, Mul, global_assumptions, sympify, Symbol, Assume, ask, Q
+        S, Expr, Mul, global_assumptions, sympify, Symbol, Assume, ask,
+        Q, Predicate
         )
 from sympy.physics.racahalgebra import (
         ThreeJSymbol, ClebschGordanCoefficient, SixJSymbol, SphericalTensor,
@@ -118,7 +119,7 @@ class FermionState(QuantumState):
         >>> FermionState('a').spin_assume
         'half_integer'
         """
-        return 'half_integer'
+        return Predicate('half_integer')
 
     @classmethod
     def _sort_states(cls,states):

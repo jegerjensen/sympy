@@ -1,4 +1,4 @@
-from sympy import symbols, C, S, global_assumptions
+from sympy import symbols, C, S, global_assumptions, Q
 
 from sympy.physics.braket import (
         SphericalTensorOperator, Dagger, BosonState, FermionState, Ket, Bra,
@@ -21,8 +21,8 @@ def test_SphericalTensorOperator():
     assert Dagger(SphericalTensorOperator(T,k,q))==DualSphericalTensorOperator(T, k, q)
 
 def test_Fermion_Boson():
-    assert BosonState('a').spin_assume == 'integer'
-    assert FermionState('a').spin_assume == 'half_integer'
+    assert BosonState('a').spin_assume == Q.integer
+    assert FermionState('a').spin_assume == Q.half_integer
 
 def test_braket():
     assert str(Ket('a')) == "|a>"
