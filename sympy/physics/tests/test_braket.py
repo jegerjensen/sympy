@@ -11,8 +11,7 @@ from sympy.physics.braket import (
         )
 from sympy.physics.racahalgebra import is_equivalent
 
-from sympy.utilities import raises
-from sympy.utilities.pytest import XFAIL
+from sympy.utilities.pytest import XFAIL, raises
 
 
 def test_SphericalTensorOperator():

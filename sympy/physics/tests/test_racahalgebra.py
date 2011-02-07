@@ -12,7 +12,7 @@ from sympy.physics.racahalgebra import (
         CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent,
         _standardize_coeff, evaluate_sums
         )
-from sympy.utilities import raises
+from sympy.utilities.pytest import raises
 
 
 def test_half_integer_ask_handler():
