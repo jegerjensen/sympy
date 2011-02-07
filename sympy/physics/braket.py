@@ -224,9 +224,12 @@ class QuantumState(Expr):
     def get_antiparticle(self):
         if len(self.args)>1: raise ValueError("Only single particle states can be anti-particles (FIXME?)")
         obj = type(self)(-self.symbol)
-        obj._j = self._j
-        obj._m = self._m
-        obj.is_coupled = self.is_coupled
+        try:
+            obj._j = self._j
+            obj._m = self._m
+            obj.is_coupled = self.is_coupled
+        except AttributeError:
+            pass
         return obj
 
     @property
