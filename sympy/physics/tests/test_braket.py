@@ -68,7 +68,7 @@ def test_antiparticle_Dagger_commutation():
     assert Dagger(FermBra('a').get_antiparticle()) == FermKet('a').get_antiparticle()
 
 def test_DirectQuantumState():
-    a,b,c,d = symbols('a b c d')
+    a,b,c,d = map(QuantumState, 'abcd')
     class Fermions(DirectQuantumState, FermionState):
         pass
     class Bosons(DirectQuantumState, BosonState):

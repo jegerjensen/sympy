@@ -218,6 +218,9 @@ class QuantumState(Expr):
     def _hashable_content(self):
         return Expr._hashable_content(self) + (self.is_hole,)
 
+    def _sortkey(self):
+        return type(self), self._hashable_content()
+
     def get_antiparticle(self):
         if len(self.args)>1: raise ValueError("Only single particle states can be anti-particles (FIXME?)")
         obj = type(self)(-self.symbol)
