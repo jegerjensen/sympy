@@ -1977,27 +1977,23 @@ class NO(Expr):
             if self[i].is_q_annihilator:
                 assume = self[i].state.assumptions0
 
-                # only operators with a dummy index can be split in two terms
-                if isinstance(self[i].state, Dummy):
+                # create indices with fermi restriction
+                assume.pop("above_fermi", None)
+                assume["below_fermi"]=True
+                below = Dummy('i',**assume)
+                assume.pop("below_fermi", None)
+                assume["above_fermi"]=True
+                above = Dummy('a',**assume)
 
-                    # create indices with fermi restriction
-                    assume.pop("above_fermi", None)
-                    assume["below_fermi"]=True
-                    below = Dummy('i',**assume)
-                    assume.pop("below_fermi", None)
-                    assume["above_fermi"]=True
-                    above = Dummy('a',**assume)
+                cls = type(self[i])
+                split = (
+                        self[i].__new__(cls,below)
+                        * KroneckerDelta(below,self[i].state)
+                        + self[i].__new__(cls,above)
+                        * KroneckerDelta(above,self[i].state)
+                        )
+                subslist.append((self[i],split))
 
-                    cls = type(self[i])
-                    split = (
-                            self[i].__new__(cls,below)
-                            * KroneckerDelta(below,self[i].state)
-                            + self[i].__new__(cls,above)
-                            * KroneckerDelta(above,self[i].state)
-                            )
-                    subslist.append((self[i],split))
-                else:
-                    raise SubstitutionOfAmbigousOperatorFailed(self[i])
         if subslist:
             result = NO(self.subs(subslist))
             if isinstance(result, Add):
