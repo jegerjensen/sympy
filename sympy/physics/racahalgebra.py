@@ -1176,6 +1176,12 @@ class CompositeSphericalTensor(SphericalTensor):
         else:
             return convert_sumindex2nondummy(expr)
 
+    def _latex(self, p):
+        return "%s\left[%s \otimes %s\\right]^{%s}_{%s}" % tuple([p._print(a) for a in self.args])
+
+    def _latex_drop_projection(self, p):
+        return "%s\left[%s \otimes %s\\right]^{%s}" % tuple([p._print(a) for a in self.args[:-1]])
+
 
 class AtomicSphericalTensor(SphericalTensor):
     """
