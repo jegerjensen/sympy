@@ -850,6 +850,14 @@ class SphericalTensor(Expr):
     def symbol(self):
         return self.args[0]
 
+    def as_coeff_tensor(self):
+        """Returns the coefficient and tensor that characterizes a rotation
+
+        Derived classes may encapsulate rotational properties such that a
+        phase and a different tensor is needed in coupling expressions.
+        """
+        return S.One, self
+
     def _dagger_(self):
         """
         Hermitian conjugate of a SphericalTensor.
@@ -1063,15 +1071,15 @@ class CompositeSphericalTensor(SphericalTensor):
         return symbol+tensor_product+rank_projection
 
     def _eval_as_coeff_direct_product(self, **kw_args):
-        t1 = self.tensor1
-        t2 = self.tensor2
-        coeffs = (ClebschGordanCoefficient(
+        c1, t1 = self.tensor1.as_coeff_tensor()
+        c2, t2 = self.tensor2.as_coeff_tensor()
+        coeffs = (c1*c2*ClebschGordanCoefficient(
                 t1.rank,t1.projection,
                 t2.rank,t2.projection,
                 self.rank,self.projection)
                 *ASigma(t1.projection, t2.projection))
 
-        if kw_args.get('deep',True):
+        if kw_args.get('deep', True):
             c1, t1 = t1._eval_as_coeff_direct_product(**kw_args)
             c2, t2 = t2._eval_as_coeff_direct_product(**kw_args)
             coeffs *= c1*c2
@@ -1079,12 +1087,12 @@ class CompositeSphericalTensor(SphericalTensor):
         return combine_ASigmas(coeffs),t1*t2
 
     def _eval_coeff_for_direct_product_ito_self(self, **kw_args):
-        t1 = self.tensor1
-        t2 = self.tensor2
+        c1, t1 = self.tensor1.as_coeff_tensor()
+        c2, t2 = self.tensor2.as_coeff_tensor()
         expr = (ClebschGordanCoefficient(
                     t1.rank,t1.projection,
                     t2.rank,t2.projection,
-                    self.rank,self.projection)
+                    self.rank,self.projection) / c1 / c2
                 * t1._eval_coeff_for_direct_product_ito_self()
                 * t2._eval_coeff_for_direct_product_ito_self()
                 * ASigma(self.rank, self.projection)
