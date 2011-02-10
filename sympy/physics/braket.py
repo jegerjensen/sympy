@@ -528,12 +528,12 @@ class SphericalQuantumState(QuantumState):
             if contained_in.is_dual != self.is_dual:
                 return p._print(self)
         if self.is_coupled == 1:
-            return r"%s(%s \curvearrowright %s)"%(self.symbol_str,
+            return r"%s(%s \rightarrow %s)"%(self.symbol_str,
                     self.state1._latex_nobraket_(p, self),
                     self.state2._latex_nobraket_(p, self)
                     )
         if self.is_coupled == -1:
-            return r"%s(%s \curvearrowleft %s)"%(self.symbol_str,
+            return r"%s(%s \leftarrow %s)"%(self.symbol_str,
                     self.state1._latex_nobraket_(p, self),
                     self.state2._latex_nobraket_(p, self)
                     )
