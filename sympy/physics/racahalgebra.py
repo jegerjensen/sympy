@@ -2697,6 +2697,10 @@ def apply_orthogonality(expr, summations, **kw_args):
     >>> expr = ClebschGordanCoefficient(A, a, B, b, E, e)**2
     >>> apply_orthogonality(expr*ASigma(a, b), [a, b])
     1
+
+    If the list of summation symbols is empty, all summation variables
+    in the expression is considered.
+
     """
     summations = map(sympify, summations)
     sumlabels = []
@@ -2704,8 +2708,7 @@ def apply_orthogonality(expr, summations, **kw_args):
     for s in sigmas:
         sumlabels.extend(s.args)
 
-    if kw_args.get('all'):
-        summations = sumlabels
+    summations = summations or sumlabels
 
     valids = [ s for s in summations if s in sumlabels ]
     if not valids:
