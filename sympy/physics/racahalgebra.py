@@ -2583,6 +2583,16 @@ def evaluate_sums(expr, **kw_args):
 
 
     """
+
+    def get_coeff_index(index):
+        c,t = index.as_coeff_terms()
+        if t:
+            i = t[0]
+        else:
+            i = S.One
+        return c, i
+
+
     expr = combine_ASigmas(expr)
     expr, summations = expr.as_coeff_terms(ASigma)
     if not summations:
@@ -2611,8 +2621,8 @@ def evaluate_sums(expr, **kw_args):
             d = d.base
         assert isinstance(d, Dij), "Expected Dij, got %s"%type(d)
         i,j = d.args
-        c1,t = i.as_coeff_terms(); i = t[0]
-        c2,t = j.as_coeff_terms(); j = t[0]
+        c1, i = get_coeff_index(i)
+        c2, j = get_coeff_index(j)
         if j in summations.args:
             subsexpr = (j, i*c1/c2)
             summations = summations.remove_indices([j])
