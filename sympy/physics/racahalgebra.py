@@ -703,6 +703,25 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
         return (Pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
                 *ThreeJSymbol(j1, j2, J, m1, m2, -M))
 
+    def invert_projections(self):
+        """
+        Returns the C-G coefficient with all projections inverted.
+
+        This generates a phase (-1)**(j1 + j2 - J)
+
+        >>> from sympy.physics.racahalgebra import ClebschGordanCoefficient,ThreeJSymbol
+        >>> from sympy import symbols
+        >>> a,b,c = symbols('abc')
+        >>> A,B,C = symbols('ABC')
+        >>> ClebschGordanCoefficient(A, a, B, b, C, c).invert_projections()
+        (-1)**(A + B - C)*(A, -a, B, -b|C, -c)
+        """
+        args = list(self.args)
+        for i in range(3):
+            args[2*i + 1] = -args[2*i + 1]
+        phase = Pow(-1, args[0] + args[2] - args[4])
+        return phase*ClebschGordanCoefficient(*args)
+
     @property
     def projections(self):
         """
