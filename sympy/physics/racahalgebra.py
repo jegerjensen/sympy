@@ -1923,32 +1923,44 @@ def is_equivalent(expr1, expr2, verbosity=0):
 
     fails = {}
     if njs1 != njs2:
-        if verbosity: fails['AngularMomentumSymbols'] = (njs1,njs2)
-        else: return False
+        if verbosity:
+            fails['AngularMomentumSymbols'] = (njs1,njs2)
+        else:
+            return False
     if summations1 != summations2:
-        if verbosity: fails['summations'] = (summations1, summations2)
-        else: return False
+        if verbosity:
+            fails['summations'] = (summations1, summations2)
+        else:
+            return False
     if phases1 != phases2:
         ratio = refine(powsimp(phases1/phases2))
         if ratio is S.One:
             pass
         elif ratio is S.NegativeOne:
-            if verbosity: fails['phaseratio'] = ratio
-            else: return False
+            if verbosity:
+                fails['phaseratio'] = ratio
+            else:
+                return False
         else:
-            ratio = refine_phases(ratio, ratio.exp.atoms(Symbol),
-                    identity_sources=njs1)
+            ratio = refine_phases(ratio, ratio.exp.atoms(Symbol), [],
+                    identity_sources=njs1 + njs2)
             if not ratio is S.One:
-                if verbosity: fails['phaseratio'] = ratio
-                else: return False
+                if verbosity:
+                    fails['phaseratio'] = ratio
+                else:
+                    return False
     if factors1 != factors2:
         if not ratsimp(factors1/factors2) is S.One:
-            if verbosity: fails['factors'] = (factors1,factors2)
-            else: return False
+            if verbosity:
+                fails['factors'] = (factors1,factors2)
+            else:
+                return False
     if ignorables1 != ignorables2:
         if not simplify(Add(*ignorables2) - Add(*ignorables1)) is S.Zero:
-            if verbosity: fails['other'] = (ignorables1, ignorables2)
-            else: return False
+            if verbosity:
+                fails['other'] = (ignorables1, ignorables2)
+            else:
+                return False
 
     if fails:
         print "failing matches are:",fails
