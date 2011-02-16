@@ -10,7 +10,7 @@ from sympy.physics.racahalgebra import (
         SixJSymbol, ThreeJSymbol, ClebschGordanCoefficient, refine_tjs2sjs,
         convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor,
         CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent,
-        _standardize_coeff, evaluate_sums, NineJSymbol
+        _standardize_coeff, evaluate_sums, NineJSymbol, _identify_NineJSymbol
         )
 from sympy.utilities.pytest import raises
 
@@ -144,6 +144,13 @@ def test_9jsymbol_canonicalization():
     assert njs.canonical_form() == NineJSymbol(a, b, c, g, h, f, d, e, i)*(-1)**(Add(*njs.args))
     njs = NineJSymbol(a, b, c, d, i, f, g, h, e)
     assert njs.canonical_form() == NineJSymbol(a, c, b, g, e, h, d, f, i)
+
+def test_9jsymbol_identification():
+    a,b,c,d,e,f,g,h,i = sorted(symbols('abcdefghi'))
+    A,B,C,D,E,F,G,H,I = sorted(symbols('ABCDEFGHI'))
+    njs = NineJSymbol(A, B, C, D, E, F, G, H, I)
+    expr = njs.get_ito_ThreeJSymbols([a, b, c, d, e, f, g, h, i])
+    assert _identify_NineJSymbol(expr.atoms(ThreeJSymbol)) == njs
 
 def test_ASigma():
     a,b,c = symbols('abc')

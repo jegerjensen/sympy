@@ -1935,6 +1935,33 @@ def _ask_odd(expr):
     return ask(expr,Q.odd)
 
 
+def refine_tjs2njs(expr, **kw_args):
+    """
+    Tries to rewrite six 3j-symbols to a 9j-symbol.
+
+    >>> from sympy.physics.racahalgebra import NineJSymbol, refine_tjs2njs
+    >>> from sympy import global_assumptions, Q, assume_all
+    >>> from sympy import symbols
+    >>> a,b,c,d,e,f,g,h,i = symbols('abcdefghi')
+    >>> A,B,C,D,E,F,G,H,I = symbols('ABCDEFGHI', nonnegative=True)
+    >>> global_assumptions.add(*assume_all([a,b,d,e], 'half_integer'))
+    >>> global_assumptions.add(*assume_all([A,B,D,E], 'half_integer'))
+    >>> global_assumptions.add(*assume_all([c,f,g,h,i], 'integer'))
+    >>> global_assumptions.add(*assume_all([C,F,G,H,I], 'integer'))
+
+    >>> expr = NineJSymbol(A, B, C, D, E, F, G, H, I).get_ito_ThreeJSymbols((a,b,c,d,e,f,g,h,i))
+    >>> refine_tjs2njs(expr)
+    NineJSymbol(A, B, C, D, E, F, G, H, I)
+
+    >>> global_assumptions.clear()
+    """
+
+    expr = convert_cgc2tjs(expr)
+    expr = combine_ASigmas(expr)
+    expr = canonicalize(expr)
+    expr = _process_tjs_permutations(expr, 6, **kw_args)
+    return refine_phases(expr, keep_local_cache=True)
+
 
 def refine_tjs2sjs(expr, **kw_args):
     """
@@ -1980,12 +2007,15 @@ def refine_tjs2sjs(expr, **kw_args):
 def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
     """Rewrites `number_to_rewrite' 3j-symbols into a 6j- or 9j- symbol.
     """
-    for permut in _iter_tjs_permutations(expr, 4, ThreeJSymbol):
+    for permut in _iter_tjs_permutations(expr, number_to_rewrite, ThreeJSymbol):
         summations, phases, factors, threejs, ignorables = permut
 
         # find 6j-symbol, expand as 3j-symbols and try to match with original
         try:
-            sjs = _identify_SixJSymbol(threejs, **kw_args)
+            if number_to_rewrite == 4:
+                Njs = _identify_SixJSymbol(threejs, **kw_args)
+            elif number_to_rewrite == 6:
+                Njs = _identify_NineJSymbol(threejs, **kw_args)
         except ThreeJSymbolsNotCompatibleWithSixJSymbol, e:
             if kw_args.get('verbose'):
                 print "Could not find 6j symbol for", threejs
@@ -1995,7 +2025,7 @@ def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
         # Determine projection symbols for expansion
         M_symbols = {}
         conflicts = []
-        for J in sjs.args:
+        for J in Njs.args:
             for tjs in threejs:
                 M = tjs.get_projection_symbol(J)
                 if M:
@@ -2009,10 +2039,11 @@ def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
         for tjs, J in conflicts:
             M = M_symbols[J]
             alt = tjs.get_projection_symbol(J)
-            raise ValueError("FIXME: conflicting Ms: %s, %s" %(M, alt))
+            raise ValueError("FIXME: conflicting projections: %s, %s" %(M, alt))
+            # FIXME: we could have continued with a Kronecker delta on the
+            # offending projection.
 
-
-        new_tjs_expr = sjs.get_ito_ThreeJSymbols(M_symbols, **kw_args)
+        new_tjs_expr = Njs.get_ito_ThreeJSymbols(M_symbols, **kw_args)
 
         # There is only one permutation here but we want to split new_tjs_expr:
         for permut2 in _iter_tjs_permutations(new_tjs_expr):
@@ -2051,7 +2082,7 @@ def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
 
 
         # make sure there is summation over all projections
-        M_symbols = [ M_symbols[key] for key in sjs.args ]
+        M_symbols = [ M_symbols[key] for key in Njs.args ]
         for m in [ m for m in M_symbols if not (m in summations.args)]:
             # ... {}{}{}{} ... => ...( sum_abcdef {}{}{}{}/C ) ...
             # C is a factor to compensate for the summations we introduce.
@@ -2061,7 +2092,7 @@ def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
             # rewritten to 6j, so we will fail at a later point.)
             #
             # This means that the factor C is just (2j + 1) for every new sum.
-            j = sjs.args[ M_symbols.index(m) ]
+            j = Njs.args[ M_symbols.index(m) ]
             factors = factors/(2*j + 1)
 
         # remove all projection summations
@@ -2075,7 +2106,7 @@ def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
         phases = refine(powsimp(phases/phases2))
         factors = factors/factors2
 
-        expr = Mul(summations, phases, sjs, factors, *ignorables)
+        expr = Mul(summations, phases, Njs, factors, *ignorables)
 
         # get rid of any projection symbols in the phase
         try:
@@ -2539,6 +2570,63 @@ def _identify_SixJSymbol(threejs, **kw_args):
 
 
     return  SixJSymbol(j1,j2,J12,j3,totJ,J23)
+
+def _identify_NineJSymbol(threejs, **kw_args):
+    """
+    Identify and construct the 9j-symbol available for the 3j-symbols.
+
+    ``threejs`` is an iterable containing 6 objects of type ThreeJSymbol.
+    """
+
+    def _find_connections(J, threejs):
+        conn = set([])
+        for tjs in threejs:
+            if J in tjs.magnitudes:
+                conn.update(tjs.magnitudes)
+        conn.remove(J)
+        return conn
+
+    keys_J = set([])
+    connections = dict([])
+    for tjs in threejs:
+        keys_J.update(tjs.magnitudes)
+    if len(keys_J) != 9:
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Number of J is %s"%len(keys_J))
+
+    # j1 and j9 are given by canonical form of 9j-symbol
+    j1 = sorted(keys_J)[0]
+    connections[j1] = _find_connections(j1, threejs)
+    j9 = sorted(keys_J - connections[j1]).pop()
+    connections[j9] = _find_connections(j9, threejs)
+
+    # j3 and j7 are connected with both j1 and j9
+    common19 = connections[j1] & connections[j9]
+    if len(common19) != 2:
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Unable to determine j3 and j6")
+    # canonical form requires that j3 < j7
+    j3, j7 = sorted(common19)
+
+    for j in keys_J:
+        if j not in connections:
+            connections[j] = _find_connections(j, threejs)
+
+    def connected_to_both(a, b):
+        for j, conn in connections.iteritems():
+            if a in conn and b in conn:
+                return j
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Unable to link %s and %s" %(a,b))
+
+    j2 = connected_to_both(j1, j3)
+    j4 = connected_to_both(j1, j7)
+    j6 = connected_to_both(j3, j9)
+    j8 = connected_to_both(j7, j9)
+    j5 = connected_to_both(j2, j8)
+
+    # We must check the final connection to be sure
+    if j5 != connected_to_both(j4, j6):
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("j5 misses conection with j4 and j6")
+
+    return  NineJSymbol(j1, j2, j3, j4, j5, j6, j7, j8, j9)
 
 def invert_clebsch_gordans(expr):
     """
