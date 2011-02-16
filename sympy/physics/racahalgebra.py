@@ -2641,7 +2641,7 @@ def extract_dummy2symbol_dict(expr):
     >>> from sympy import symbols
     >>> a,b = symbols('a b')
     >>> expr = a.as_dummy() + b.as_dummy() + b.as_dummy() + b
-    >>> extract_dummy2symbol_dict(expr)
+    >>> extract_dummy2symbol_dict(expr)                  # doctest: +SKIP
     {_a: a, _b: b__', _b: b__''}
 
     """
