@@ -1939,7 +1939,14 @@ def refine_tjs2sjs(expr, **kw_args):
 
     expr = convert_cgc2tjs(expr)
     expr = combine_ASigmas(expr)
+    expr = canonicalize(expr)
+    expr = _process_tjs_permutations(expr, 4, **kw_args)
+    return refine_phases(expr, keep_local_cache=True)
 
+
+def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
+    """Rewrites `number_to_rewrite' 3j-symbols into a 6j- or 9j- symbol.
+    """
     for permut in _iter_tjs_permutations(expr, 4, ThreeJSymbol):
         summations, phases, factors, threejs, ignorables = permut
 
@@ -2047,13 +2054,11 @@ def refine_tjs2sjs(expr, **kw_args):
                 print "result was ",expr
             if kw_args.get('let_pass'):
                 print "WARNING: Unable to remove all projection symbols from phase"
-                return expr
-            pass
+                break
     else:
         raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+    return expr
 
-
-    return refine_phases(expr, keep_local_cache=True)
 
 def canonicalize(expr):
     """
