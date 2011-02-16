@@ -1,16 +1,27 @@
 """rename this to test_assumptions.py when the old assumptions system is deleted"""
 from sympy.core import symbols
 from sympy.assumptions import Assume, global_assumptions, Predicate
-from sympy.assumptions.assume import eliminate_assume
+from sympy.assumptions.assume import eliminate_assume, assume_all
 from sympy.printing import pretty
 from sympy.assumptions.ask import Q
 from sympy.utilities.pytest import XFAIL
+from sympy.logic import Not
 
 def test_assume():
     x = symbols('x')
     assump = Assume(x, 'integer')
     assert assump.expr == x
     assert assump.key == Q.integer
+
+def test_assume_all():
+    x = symbols('x')
+    y = symbols('y')
+    assert assume_all([x, y], Q.integer) == [
+            Assume(x, Q.integer), Assume(y, Q.integer)
+            ]
+    assert assume_all([x, y], Q.integer, False) == [
+            Not(Assume(x, Q.integer)), Not(Assume(y, Q.integer))
+            ]
 
 def test_Predicate_wraps_Assume():
     x = symbols('x')

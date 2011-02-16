@@ -100,6 +100,22 @@ class Assume(Boolean):
     def __hash__(self):
         return super(Assume, self).__hash__()
 
+
+def assume_all(expr_list, predicate=None, value=True):
+    """
+    Apply an assumption to expressions in a list
+
+    >>> from sympy import assume_all, Q
+    >>> from sympy.abc import x, y
+    >>> assume_all([x, y], Q.integer)
+    [Assume(x, Q.integer), Assume(y, Q.integer)]
+    >>> assume_all([x, y], Q.integer, False)
+    [Not(Assume(x, Q.integer)), Not(Assume(y, Q.integer))]
+    """
+    helper = lambda x: Assume(x, predicate=predicate, value=value)
+    return map(helper, expr_list)
+
+
 def eliminate_assume(expr, symbol=None):
     """
     Convert an expression with assumptions to an equivalent with all assumptions
