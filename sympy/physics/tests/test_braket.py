@@ -1,4 +1,4 @@
-from sympy import symbols, C, S, global_assumptions, Q
+from sympy import symbols, C, S, global_assumptions, Q, assume_all
 
 from sympy.physics.braket import (
         SphericalTensorOperator, Dagger, BosonState, FermionState, Ket, Bra,
@@ -407,6 +407,8 @@ def test_MatrixElement_recoupling():
     a,b = Bra('a'), Bra('b')
     c,d = Ket('c'), Ket('d')
 
+    global_assumptions.add(*assume_all([k, q], 'half_integer'))
+
     shifted = ThreeTensorMatrixElement(Bra('ad',a,-Dagger(d)),Op,Ket('cb',c,-Dagger(b)))
     straight = ThreeTensorMatrixElement(Bra('ab',a,b),Op,Ket('cd',c,d))
 
@@ -418,10 +420,10 @@ def test_MatrixElement_recoupling():
     assert straight.get_related_direct_matrix() == DirectMatrixElement((a,b),Op,(c,d))
 
     # verify equations
-    assert shifted.as_other_coupling(straight, use_dummies=False) == (-1)**(J_ad + M_ab - J_ab - M_ad)*ASigma(J_ab, J_cd, M_ab, M_cd, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*straight
-    assert straight.as_other_coupling(shifted, use_dummies=False) == (-1)**(J_ab + M_ad - J_ad - M_ab)*ASigma(J_ad, J_cb, M_ad, M_cb, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*shifted
+    expected = (-1)**(J_ad + M_ab - J_ab - M_ad)*ASigma(J_ab, J_cd, M_ab, M_cd, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*straight
+    result = shifted.as_other_coupling(straight, use_dummies=False)
+    assert is_equivalent(result, expected, verbosity=1)
 
-    # relate reduced matrix elements
-    assert shifted.as_other_coupling(straight, wigner_eckardt=True, use_dummies=False) == (-1)**(J_ad + M_ab - J_ab - M_ad)*ASigma(J_ab, J_cd, M_ab, M_cd, M_cb, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*ClebschGordanCoefficient(J_cb, M_cb, k, q, J_ad, M_ad)*ClebschGordanCoefficient(J_cd, M_cd, k, q, J_ab, M_ab)*straight.get_related_redmat()
-    assert straight.as_other_coupling(shifted, wigner_eckardt=True, use_dummies=False) == (-1)**(-J_ad - M_ab + J_ab + M_ad)*ASigma(J_ad, J_cb, M_ad, M_cb, M_cd, m_a, m_b, m_c, m_d, q)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*ClebschGordanCoefficient(J_cb, M_cb, k, q, J_ad, M_ad)*ClebschGordanCoefficient(J_cd, M_cd, k, q, J_ab, M_ab)*shifted.get_related_redmat()
-
+    result = straight.as_other_coupling(shifted, use_dummies=False)
+    expected = (-1)**(J_ab + M_ad - J_ad - M_ab)*ASigma(J_ad, J_cb, M_ad, M_cb, m_a, m_b, m_c, m_d)*ClebschGordanCoefficient(j_a, -m_a, j_b, -m_b, J_ab, -M_ab)*ClebschGordanCoefficient(j_a, -m_a, j_d, m_d, J_ad, -M_ad)*ClebschGordanCoefficient(j_c, m_c, j_b, -m_b, J_cb, M_cb)*ClebschGordanCoefficient(j_c, m_c, j_d, m_d, J_cd, M_cd)*shifted
+    assert is_equivalent(result, expected, verbosity=1)
