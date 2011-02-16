@@ -10,7 +10,7 @@ from sympy.physics.racahalgebra import (
         SixJSymbol, ThreeJSymbol, ClebschGordanCoefficient, refine_tjs2sjs,
         convert_cgc2tjs, convert_tjs2cgc, ASigma, SphericalTensor,
         CompositeSphericalTensor, AtomicSphericalTensor, is_equivalent,
-        _standardize_coeff, evaluate_sums
+        _standardize_coeff, evaluate_sums, NineJSymbol
         )
 from sympy.utilities.pytest import raises
 
@@ -116,6 +116,34 @@ def test_cgc_methods():
 
     assert ClebschGordanCoefficient(A, a, B, b, C, c).get_as_ThreeJSymbol() == (-1)**(A + c - B)*ThreeJSymbol(A, B, C, a, b, -c)*sqrt(1 + 2*C)
 
+def test_9jsymbol():
+    a,b,c,d,e,f,g,h,i = symbols('abcdefghi')
+    njs = NineJSymbol(a, b, c, d, e, f, g, h, i)
+    assert njs.reflect_major_diagonal() == NineJSymbol(a, d, g, b, e, h, c, f, i)
+    assert njs.reflect_minor_diagonal() == NineJSymbol(i, f, c, h, e, b, g, d, a)
+    assert njs.permute_rows(0, 1) == NineJSymbol(d, e, f, a, b, c, g, h, i)*(-1)**(Add(*njs.args))
+    assert njs.permute_rows(0, 2) == NineJSymbol(g, h, i, d, e, f, a, b, c)*(-1)**(Add(*njs.args))
+    assert njs.permute_rows(1, 2) == NineJSymbol(a, b, c, g, h, i, d, e, f)*(-1)**(Add(*njs.args))
+    assert njs.permute_columns(0, 1) == NineJSymbol(b, a, c, e, d, f, h, g, i)*(-1)**(Add(*njs.args))
+    assert njs.permute_columns(0, 2) == NineJSymbol(c, b, a, f, e, d, i, h, g)*(-1)**(Add(*njs.args))
+    assert njs.permute_columns(1, 2) == NineJSymbol(a, c, b, d, f, e, g, i, h)*(-1)**(Add(*njs.args))
+    assert njs == njs.permute_rows(1, 1)
+    assert njs == njs.permute_columns(1, 1)
+
+def test_9jsymbol_canonicalization():
+    a,b,c,d,e,f,g,h,i = sorted(symbols('abcdefghi'))
+    njs = NineJSymbol(a, b, c, d, e, f, g, h, i)
+    assert njs.canonical_form() == NineJSymbol(a, b, c, d, e, f, g, h, i)
+    njs = NineJSymbol(d, e, f, a, b, c, g, h, i)
+    assert njs.canonical_form() == NineJSymbol(a, b, c, d, e, f, g, h, i)*(-1)**(Add(*njs.args))
+    njs = NineJSymbol(i, b, g, d, e, f, c, h, a)
+    assert njs.canonical_form() == NineJSymbol(a, h, c, f, e, d, g, b, i)
+    njs = NineJSymbol(a, b, c, d, e, f, g, i, h)
+    assert njs.canonical_form() == NineJSymbol(a, c, b, d, f, e, g, h, i)*(-1)**(Add(*njs.args))
+    njs = NineJSymbol(a, b, c, d, e, i, g, h, f)
+    assert njs.canonical_form() == NineJSymbol(a, b, c, g, h, f, d, e, i)*(-1)**(Add(*njs.args))
+    njs = NineJSymbol(a, b, c, d, i, f, g, h, e)
+    assert njs.canonical_form() == NineJSymbol(a, c, b, g, e, h, d, f, i)
 
 def test_ASigma():
     a,b,c = symbols('abc')

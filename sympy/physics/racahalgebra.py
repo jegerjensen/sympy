@@ -27,6 +27,7 @@ __all__ = [
         'ThreeJSymbol',
         'ClebschGordanCoefficient',
         'SixJSymbol',
+        'NineJSymbol',
         'SphericalTensor',
         'refine_tjs2sjs',
         'refine_phases',
@@ -654,6 +655,133 @@ class SixJSymbol(AngularMomentumSymbol):
 
         return res
 
+class NineJSymbol(AngularMomentumSymbol):
+    """
+    class to represent a 9j-symbol
+    """
+    nargs = 9
+    is_commutative=True
+
+    @classmethod
+    def eval(cls, j1, j2, j3, j4, j5, j6, j7, j8, j9):
+        pass
+
+    def canonical_form(self):
+        """
+        Rewrites this 9j-symbol to the canonical form.
+
+        We define the canonical form of the 9j-symbol depending on the order of
+        the elements when they are sorted according to SymPy.
+
+        The canonicalization proceeds through the following steps
+
+           1. The `smallest' element is placed in the top left corner
+
+           2. The 4 elements in the lower right corner are arranged such that
+              the `largest' of them is in the lower right corner
+
+           3. If the element in the upper right corner is `larger' than the
+              element in the lower left corner, we invoke a reflection over the
+              main diagonal.
+        """
+        expr = self._place_largest()
+        njs = expr.atoms(NineJSymbol).pop()
+        expr = expr.subs(njs, njs._place_smallest())
+        njs = expr.atoms(NineJSymbol).pop()
+        j = njs.args
+        if j[2] == sorted([j[2], j[6]]).pop():
+            expr = expr.subs(njs, njs.reflect_major_diagonal())
+        return expr
+
+    def _place_smallest(self):
+        args = list(self.args)
+        lower_square = [args[4], args[5], args[7], args[8]]
+        j8 = sorted(lower_square).pop()
+        pos = args.index(j8)
+        col = self.col_of_arg_number(pos)
+        row = self.row_of_arg_number(pos)
+        result1 = self.permute_rows(2, row)
+        njs = result1.atoms(NineJSymbol).pop()
+        result2 = njs.permute_columns(2, col)
+        if (col*row == 1):
+            # the phase cancels if it appears twice
+            return result2.atoms(NineJSymbol).pop()
+        else:
+            return result1.subs(njs, result2)
+
+    def _place_largest(self):
+        j1 = sorted(self.args)[0]
+        args = list(self.args)
+        pos = args.index(j1)
+        col = self.col_of_arg_number(pos)
+        row = self.row_of_arg_number(pos)
+        result1 = self.permute_rows(0, row)
+        njs = result1.atoms(NineJSymbol).pop()
+        result2 = njs.permute_columns(0, col)
+        if (col and row):
+            # the phase cancels if it appears twice
+            return result2.atoms(NineJSymbol).pop()
+        else:
+            return result1.subs(njs, result2)
+
+    @classmethod
+    def row_of_arg_number(cls, arg_number):
+        """Returns the row corresponding to argument number <arg_number>
+        """
+        if 0 <= arg_number < 3:
+            return 0
+        if 3 <= arg_number < 6:
+            return 1
+        if 6 <= arg_number < 9:
+            return 2
+
+    @classmethod
+    def col_of_arg_number(cls, arg_number):
+        """Returns the column corresponding to argument number <arg_number>
+        """
+        if arg_number in [0, 3, 6]:
+            return 0
+        if arg_number in [1, 4, 7]:
+            return 1
+        if arg_number in [2, 5, 8]:
+            return 2
+
+    def reflect_major_diagonal(self):
+        """Returns an equivalent 9j-symbol, reflected across the main diagonal"""
+        j1, j2, j3, j4, j5, j6, j7, j8, j9 = self.args
+        return NineJSymbol(j1, j4, j7, j2, j5, j8, j3, j6, j9)
+
+    def reflect_minor_diagonal(self):
+        """Returns an equivalent 9j-symbol, reflected across the secondary diagonal"""
+        j1, j2, j3, j4, j5, j6, j7, j8, j9 = self.args
+        return NineJSymbol(j9, j6, j3, j8, j5, j2, j7, j4, j1)
+
+    def permute_rows(self, row1, row2):
+        """Rewrites self by permuting row1 and row2"""
+        assert 0 <= row1 <= 2
+        assert 0 <= row2 <= 2
+        if row1 == row2:
+            return self
+        phase = (-1)**(Add(*self.args))
+        r0 = self.args[0:3]
+        r1 = self.args[3:6]
+        r2 = self.args[6:9]
+        if row1 > row2:
+            row1, row2 = row2, row1
+        if (row1, row2) == (0, 1):
+            args = r1 + r0 + r2
+        elif (row1, row2) == (0, 2):
+            args = r2 + r1 + r0
+        elif (row1, row2) == (1, 2):
+            args = r0 + r2 + r1
+        return phase*NineJSymbol(*args)
+
+    def permute_columns(self, col1, col2):
+        """Rewrites self by permuting col1 and col2"""
+        reflected = self.reflect_major_diagonal()
+        permuted = reflected.permute_rows(col1, col2)
+        njs = permuted.atoms(NineJSymbol).pop()
+        return permuted.subs(njs, njs.reflect_major_diagonal())
 
 class ClebschGordanCoefficient(AngularMomentumSymbol):
     """
