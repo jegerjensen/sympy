@@ -783,6 +783,38 @@ class NineJSymbol(AngularMomentumSymbol):
         njs = permuted.atoms(NineJSymbol).pop()
         return permuted.subs(njs, njs.reflect_major_diagonal())
 
+    def _latex(self, p, exp=None):
+        """
+        >>> from sympy.physics.racahalgebra import NineJSymbol
+        >>> from sympy import symbols, latex
+        >>> a,b,c,d,e,f,g,h,i = symbols('abcdefghi')
+        >>> print latex(NineJSymbol(a,b,c,d,e,f,g,h,i))
+        %
+        \\left(
+          \\begin{array}{ccc}
+           a & b & c \\\\
+           d & e & f \\\\
+           g & h & i
+          \\end{array}
+        \\right)
+        """
+
+        row1 = " & ".join([p._print(J) for J in self.args[0:3]])
+        row2 = " & ".join([p._print(J) for J in self.args[3:6]])
+        row3 = " & ".join([p._print(J) for J in self.args[6:9]])
+        template = """%%
+\\left(
+  \\begin{array}{ccc}
+    %s \\\\
+    %s \\\\
+    %s
+  \\end{array}
+\\right)"""
+        result = template % (row1, row2, row3)
+        if exp:
+            result += "^{%s}" % exp
+        return result
+
 class ClebschGordanCoefficient(AngularMomentumSymbol):
     """
     Class to represent a Clebsch-Gordan coefficient.
