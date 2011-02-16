@@ -815,6 +815,39 @@ class NineJSymbol(AngularMomentumSymbol):
             result += "^{%s}" % exp
         return result
 
+    def get_ito_ThreeJSymbols(self, projection_labels):
+        """Returns the 3j symbol expression for this 9j-symbol
+
+        >>> from sympy.physics.racahalgebra import NineJSymbol
+        >>> from sympy import global_assumptions, Q, assume_all
+        >>> from sympy import symbols
+        >>> a,b,c,d,e,f,g,h,i = symbols('abcdefghi')
+        >>> A,B,C,D,E,F,G,H,I = symbols('ABCDEFGHI', nonnegative=True)
+        >>> global_assumptions.add(*assume_all([a,b,d,e], 'half_integer'))
+        >>> global_assumptions.add(*assume_all([A,B,D,E], 'half_integer'))
+        >>> global_assumptions.add(*assume_all([c,f,g,h,i], 'integer'))
+        >>> global_assumptions.add(*assume_all([C,F,G,H,I], 'integer'))
+
+        >>> NineJSymbol(A,B,C,D,E,F,G,H,I).get_ito_ThreeJSymbols([a,b,c,d,e,f,g,h,i])
+        Sum(a, b, c, d, e, f, g, h, i)*ThreeJSymbol(A, B, C, a, b, c)*ThreeJSymbol(A, D, G, a, d, g)*ThreeJSymbol(B, E, H, b, e, h)*ThreeJSymbol(C, F, I, c, f, i)*ThreeJSymbol(D, E, F, d, e, f)*ThreeJSymbol(G, H, I, g, h, i)
+
+        >>> global_assumptions.clear()
+        """
+        j1, j2, J12, j3, j4, J34, J13, J24, J = self.args
+        if isinstance(projection_labels, dict):
+            d = projection_labels
+            projection_labels = [ d[key] for key in self.args ]
+        m1, m2, M12, m3, m4, M34, M13, M24, M = projection_labels
+
+        return  (ThreeJSymbol(j1, j2, J12, m1, m2, M12)*
+                ThreeJSymbol(j3, j4, J34, m3, m4, M34)*
+                ThreeJSymbol(j1, j3, J13, m1, m3, M13)*
+                ThreeJSymbol(j2, j4, J24, m2, m4, M24)*
+                ThreeJSymbol(J12, J34, J, M12, M34, M)*
+                ThreeJSymbol(J13, J24, J, M13, M24, M)*
+                ASigma(*projection_labels))
+
+
 class ClebschGordanCoefficient(AngularMomentumSymbol):
     """
     Class to represent a Clebsch-Gordan coefficient.
