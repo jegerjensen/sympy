@@ -703,6 +703,21 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
         return (Pow(S.NegativeOne,j1 - j2 + M)*sqrt(2*J + 1)
                 *ThreeJSymbol(j1, j2, J, m1, m2, -M))
 
+    def canonical_form(self):
+        """
+        Rewrites self to a canonical form
+
+        We define the canonical form similarily to the tjs
+        """
+        projs = self.projections
+        if projs[0] == S.Zero:
+            projs = projs[1:]
+        c, t = projs[0].as_coeff_terms()
+        if c.is_negative:
+            return self.invert_projections()
+        else:
+            return self
+
     def invert_projections(self):
         """
         Returns the C-G coefficient with all projections inverted.
@@ -1880,10 +1895,26 @@ def refine_tjs2sjs(expr, **kw_args):
 
     return refine_phases(expr, keep_local_cache=True)
 
+def canonicalize(expr):
+    """
+    Driver routine to rewrite an expression to canonical form
+
+    The canonicalization starts at the deepest level of the expression tree.
+    """
+
+    if not expr.is_Atom:
+        expr = expr.func(*[canonicalize(arg) for arg in expr.args])
+    try:
+        return expr.canonical_form()
+    except AttributeError:
+        return expr
+
 def is_equivalent(expr1, expr2, verbosity=0):
     """
     Tries hard to verify that expr1 == expr2.
     """
+    expr1 = canonicalize(expr1)
+    expr2 = canonicalize(expr2)
 
     for permut in _iter_tjs_permutations(expr1):
         summations1, phases1, factors1, njs1, ignorables1 = permut
