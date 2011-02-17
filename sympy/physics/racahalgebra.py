@@ -2593,38 +2593,37 @@ def _identify_NineJSymbol(threejs, **kw_args):
     if len(keys_J) != 9:
         raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Number of J is %s"%len(keys_J))
 
+    for j in keys_J:
+        connections[j] = _find_connections(j, threejs)
+
     # j1 and j9 are given by canonical form of 9j-symbol
     j1 = sorted(keys_J)[0]
-    connections[j1] = _find_connections(j1, threejs)
     j9 = sorted(keys_J - connections[j1]).pop()
-    connections[j9] = _find_connections(j9, threejs)
 
     # j3 and j7 are connected with both j1 and j9
     common19 = connections[j1] & connections[j9]
     if len(common19) != 2:
-        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Unable to determine j3 and j6")
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol(
+                "Unable to determine j3 and j6 from %s" %common19)
     # canonical form requires that j3 < j7
     j3, j7 = sorted(common19)
 
-    for j in keys_J:
-        if j not in connections:
-            connections[j] = _find_connections(j, threejs)
+    # the element in the middle, j5, is disconnected from all corners
+    j5 = (keys_J - connections[j1] - connections[j3]
+            - connections[j7] - connections[j9])
+    if len(j5) != 1:
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol(
+                "Unable to determine j5, got %s" %j5)
+    j5 = j5.pop()
 
-    def connected_to_both(a, b):
-        for j, conn in connections.iteritems():
-            if a in conn and b in conn:
-                return j
-        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Unable to link %s and %s" %(a,b))
-
-    j2 = connected_to_both(j1, j3)
-    j4 = connected_to_both(j1, j7)
-    j6 = connected_to_both(j3, j9)
-    j8 = connected_to_both(j7, j9)
-    j5 = connected_to_both(j2, j8)
-
-    # We must check the final connection to be sure
-    if j5 != connected_to_both(j4, j6):
-        raise ThreeJSymbolsNotCompatibleWithSixJSymbol("j5 misses conection with j4 and j6")
+    try:
+        j2 = (connections[j1] & connections[j3] & connections[j5]).pop()
+        j4 = (connections[j1] & connections[j7] & connections[j5]).pop()
+        j6 = (connections[j3] & connections[j9] & connections[j5]).pop()
+        j8 = (connections[j7] & connections[j9] & connections[j5]).pop()
+    except KeyError, e:
+        raise ThreeJSymbolsNotCompatibleWithSixJSymbol(
+                "Unable to determine j2, j4, j6 or j8")
 
     return  NineJSymbol(j1, j2, j3, j4, j5, j6, j7, j8, j9)
 
