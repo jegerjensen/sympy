@@ -2475,7 +2475,7 @@ def _iter_tjs_permutations(expr, how_many=None, which_objects=AngularMomentumSym
     else:
         raise ValueError("Expected a Mul")
 
-    if how_many and len(threejs)<how_many:
+    if how_many and len(threejs) < how_many:
         raise ThreeJSymbolsNotCompatibleWithSixJSymbol("Too few 3js!")
 
     summations = combine_ASigmas(Mul(*summations))
@@ -2484,7 +2484,11 @@ def _iter_tjs_permutations(expr, how_many=None, which_objects=AngularMomentumSym
 
     if how_many:
         for tjs in combinations(threejs, how_many):
-            yield tuple([summations, phases, factors, tjs, ignorables])
+            other_threejs = threejs[:]
+            for symbol in tjs:
+                other_threejs.remove(symbol)
+            yield tuple([summations, phases, factors, tjs,
+                ignorables + other_threejs])
     else:
         yield tuple([summations, phases, factors, threejs, ignorables])
 
