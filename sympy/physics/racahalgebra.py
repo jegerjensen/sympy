@@ -2224,7 +2224,8 @@ def _get_projection_inversion_dict(projection_dict):
     def _recurse_into_projections(projlist, will_invert=set([]), must_keep=set([])):
 
         if will_invert & must_keep:
-            raise ThreeJSymbolsNotCompatibleWithSixJSymbol
+            raise ThreeJSymbolsNotCompatibleWithSixJSymbol(
+                    "Problem with projections: %s" %(will_invert & must_keep))
 
         if not projlist:
             # break recursion here
