@@ -2538,7 +2538,7 @@ def _identify_SixJSymbol(threejs, **kw_args):
         # check that sjs is actually possible
         if not maxJ in connections[minJ]:
             raise ThreeJSymbolsNotCompatibleWithSixJSymbol(
-                    "connections not satisfied for s%"%maxJ)
+                    "connections not satisfied for %s"%maxJ)
 
     # Two elements in a column of the sjs never appear in the same 3j-symbol
     j2 = keys_J - connections[totJ]  # j2 and totJ are in same column
