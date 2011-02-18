@@ -1666,6 +1666,51 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
             phase = _simplify_Add_modulo2(phase)
             return expr.subs(orig_phase_pow, Pow(S.NegativeOne, phase))
 
+    known_identities = _get_identies(expr, forbidden, mandatory, **kw_args)
+
+    #
+    # What we really want to do, is to express the forbidden, f, in terms of the
+    # mandatory, m, so that:
+    #
+    #  (-1)**(f + m0 + x0) ==> (-1)**(m + x1)
+    #
+    # where x1 contains no forbidden symbols.
+
+    # separate f and m0 from x0
+    x0 = []; fm0 = []
+    for arg in phase.args:
+        if arg.atoms() & (forbidden|mandatory):
+            fm0.append(arg)
+        else:
+            x0.append(arg)
+
+    phase = Add(*fm0)
+
+    __all_phases_seen_in_search.clear()
+    try:
+        better_phase = _brutal_search_for_simple_phase(
+                phase, known_identities, forbidden, mandatory)
+        better_phase = _simplify_Add_modulo2(better_phase+Add(*x0), mandatory)
+    except UnableToComplyWithForbiddenAndMandatorySymbols:
+        if kw_args.get('strict'):
+            raise
+        else:
+            tmpset = set()
+            for p in __all_phases_seen_in_search:
+                tmpset.add(_simplify_Add_modulo2(p+Add(*x0), mandatory))
+            __all_phases_seen_in_search.clear()
+            __all_phases_seen_in_search.update(tmpset)
+            better_phase = _determine_best_phase(forbidden, mandatory)
+
+    if orig_phase_pow is S.One:
+        return expr*Pow(-1,better_phase)
+    else:
+        return expr.subs(orig_phase_pow, Pow(-1,better_phase))
+
+
+def _get_identies(expr, forbidden, mandatory, **kw_args):
+    """Extract identity operations from angular momentum symbols"""
+
     # determine what can be done and setup identities as sympy expressions
     projections = set([])
     triags = set([])
@@ -1714,45 +1759,7 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
                 # known_identities[symbol].append(identity)
                 known_identities[identity]=0
 
-    #
-    # What we really want to do, is to express the forbidden, f, in terms of the
-    # mandatory, m, so that:
-    #
-    #  (-1)**(f + m0 + x0) ==> (-1)**(m + x1)
-    #
-    # where x1 contains no forbidden symbols.
-
-    # separate f and m0 from x0
-    x0 = []; fm0 = []
-    for arg in phase.args:
-        if arg.atoms() & (forbidden|mandatory):
-            fm0.append(arg)
-        else:
-            x0.append(arg)
-
-    phase = Add(*fm0)
-
-    __all_phases_seen_in_search.clear()
-    try:
-        better_phase = _brutal_search_for_simple_phase(
-                phase, known_identities, forbidden, mandatory)
-        better_phase = _simplify_Add_modulo2(better_phase+Add(*x0), mandatory)
-    except UnableToComplyWithForbiddenAndMandatorySymbols:
-        if kw_args.get('strict'):
-            raise
-        else:
-            tmpset = set()
-            for p in __all_phases_seen_in_search:
-                tmpset.add(_simplify_Add_modulo2(p+Add(*x0), mandatory))
-            __all_phases_seen_in_search.clear()
-            __all_phases_seen_in_search.update(tmpset)
-            better_phase = _determine_best_phase(forbidden, mandatory)
-
-    if orig_phase_pow is S.One:
-        return expr*Pow(-1,better_phase)
-    else:
-        return expr.subs(orig_phase_pow, Pow(-1,better_phase))
-
+    return known_identities
 
 
 def _determine_best_phase(forbidden, mandatory):
