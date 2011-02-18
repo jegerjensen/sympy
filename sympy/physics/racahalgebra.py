@@ -138,6 +138,29 @@ def initialize_racah():
             else:
                 return _result
 
+        @staticmethod
+        def Mul(expr, assumptions):
+            """
+            odd * half_integer               -> half_integer
+            even * half_integer              -> ~half_integer
+            half_integer * half_integer      -> ~half_integer
+            """
+            _result = False
+            for arg in expr.args:
+                if ask(arg, Q.odd, assumptions):
+                    pass
+                elif ask(arg, Q.even, assumptions):
+                    return False
+                elif ask(arg, Q.half_integer, assumptions):
+                    if _result:
+                        return False
+                    else:
+                        _result = True
+                else:
+                    return
+            return _result
+
+
     class ExtendedIntegerHandler(CommonHandler):
         """
         Here we determine if Integer taking into account half-integer symbols.

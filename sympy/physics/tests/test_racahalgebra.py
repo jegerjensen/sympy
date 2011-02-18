@@ -27,6 +27,13 @@ def test_half_integer_ask_handler():
     assert ask(2*x,Q.odd, Assume(x,'half_integer')) == True
     assert ask(y + x, Q.integer, Assume(x,'half_integer')
                                & Assume(y,'half_integer')) == True
+    assert ask(-x, 'half_integer', Assume(x,'half_integer')) == True
+    assert ask(-y*x, 'half_integer', Assume(x,'half_integer')
+                                & Assume(y, Q.odd)) == True
+    assert ask(-y*x, 'half_integer', Assume(x,'half_integer')
+                                & Assume(y, Q.even)) == False
+    assert ask(-2*y*x, 'half_integer', Assume(x,'half_integer')
+                                & Assume(y, 'half_integer')) == False
 
 
 def test_evaluate_sums():
