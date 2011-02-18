@@ -1661,7 +1661,8 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     if forbidden & mandatory: raise UnableToComplyWithForbiddenAndMandatorySymbols
 
     # fetch the phase
-    expr = powsimp(expr)
+    expr = refine(expr)
+    expr = powsimp(expr, combine='exp')
     phase = S.Zero
     for orig_phase_pow in expr.atoms(Pow):
         if orig_phase_pow.base == S.NegativeOne:

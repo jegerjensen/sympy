@@ -312,7 +312,7 @@ def test_refine_tjs2sjs():
     T1_23 = SphericalTensor('T1_23',J, M, t1, T23)
 
     expr_tjs = convert_cgc2tjs(T1_23.as_other_coupling(T12_3, use_dummies=False))
-    expr_heyde = (ASigma(J12)*(-1)**(j1+j2+j3+J)*((2*J12+1)*(2*J23+1))**(Rational(1,2))
+    expr_heyde = (ASigma(J12)*(-1)**(j1+j2+j3+J)*(2*J12+1)**Rational(1,2)*(2*J23+1)**Rational(1,2)
             * SixJSymbol(j1, j2, J12, j3, J, J23)*T12_3)
 
     expr = refine_tjs2sjs(expr_tjs, definition='brink_satchler')
