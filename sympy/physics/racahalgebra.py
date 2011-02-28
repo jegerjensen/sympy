@@ -1666,10 +1666,12 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     phase = S.Zero
     for orig_phase_pow in expr.atoms(Pow):
         if orig_phase_pow.base == S.NegativeOne:
+            if phase != S.Zero:
+                raise ValueError("UnableToCombinePhasesInExpression %s"%expr)
             phase = orig_phase_pow.exp
-            break
+            orig_phase = orig_phase_pow
     if phase is S.Zero:
-        orig_phase_pow = S.One
+        orig_phase = S.One
         pow_atoms = set([])
     else:
         pow_atoms = phase.atoms(Symbol)
@@ -1684,11 +1686,11 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
     to_remove = forbidden & pow_atoms
     to_insert = mandatory - pow_atoms
     if not (to_remove or to_insert):
-        if orig_phase_pow is S.One:
+        if orig_phase is S.One:
             return expr
         else:
             phase = _simplify_Add_modulo2(phase)
-            return expr.subs(orig_phase_pow, Pow(S.NegativeOne, phase))
+            return expr.subs(orig_phase, Pow(S.NegativeOne, phase))
 
     known_identities = _get_identies(expr, forbidden, mandatory, **kw_args)
 
@@ -1726,10 +1728,10 @@ def refine_phases(expr, forbidden=[], mandatory=[], assumptions=True, **kw_args)
             __all_phases_seen_in_search.update(tmpset)
             better_phase = _determine_best_phase(forbidden, mandatory)
 
-    if orig_phase_pow is S.One:
+    if orig_phase is S.One:
         return expr*Pow(-1,better_phase)
     else:
-        return expr.subs(orig_phase_pow, Pow(-1,better_phase))
+        return expr.subs(orig_phase, Pow(-1,better_phase))
 
 
 def _get_identies(expr, forbidden, mandatory, **kw_args):
