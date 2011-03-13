@@ -18,15 +18,15 @@ from sympy.core import C
 class IndexConformanceException(Exception):
     pass
 
-def _remove_repeated(inds):
+def _split_free_bound(inds):
     """Removes repeated objects from sequences
 
     Returns a set of the unique objects and a tuple of all that have been
     removed.
 
-    >>> from sympy.tensor.index_methods import _remove_repeated
+    >>> from sympy.tensor.index_methods import _split_free_bound
     >>> l1 = [1, 2, 3, 2]
-    >>> _remove_repeated(l1)
+    >>> _split_free_bound(l1)
     (set([1, 3]), (2,))
 
     """
@@ -60,7 +60,7 @@ def _get_indices_Mul(expr, return_dummies=False):
 
     inds = map(list, inds)
     inds = reduce(lambda x, y: x + y, inds)
-    inds, dummies = _remove_repeated(inds)
+    inds, dummies = _split_free_bound(inds)
 
     symmetry = {}
     for s in syms:
@@ -221,7 +221,7 @@ def get_indices(expr):
     # break recursion
     if isinstance(expr, Indexed):
         c = expr.indices
-        inds, dummies = _remove_repeated(c)
+        inds, dummies = _split_free_bound(c)
         return inds, {}
     elif expr is None:
         return set(), {}
@@ -354,7 +354,7 @@ def get_contraction_structure(expr):
     # We call ourself recursively to inspect sub expressions.
 
     if isinstance(expr, Indexed):
-        junk, key = _remove_repeated(expr.indices)
+        junk, key = _split_free_bound(expr.indices)
         return {key or None: set([expr])}
     elif expr.is_Atom:
         return {None: set([expr])}
