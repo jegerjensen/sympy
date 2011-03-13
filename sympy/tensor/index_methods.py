@@ -19,25 +19,34 @@ class IndexConformanceException(Exception):
     pass
 
 def _split_free_bound(inds):
-    """Removes repeated objects from sequences
+    """Splits indices into uncontracted (free) and contracted (bound)
 
-    Returns a set of the unique objects and a tuple of all that have been
-    removed.
+    Returns a set of the free indices and a sorted tuple of all contracted
+    indices.
 
     >>> from sympy.tensor.index_methods import _split_free_bound
-    >>> l1 = [1, 2, 3, 2]
+    >>> from sympy.tensor.indexed import Idx
+    >>> l1 = map(Idx, 'ijik')
     >>> _split_free_bound(l1)
-    (set([1, 3]), (2,))
+    (set([j, k]), (i,))
+
+    This method invokes the contracts_with method on all indices.  If it is not
+    defined for an index, the index is considered free/uncontracted.  Indices
+    of type Symbol will never be implicitly contracted.
 
     """
-    sum_index = {}
-    for i in inds:
-        if i in sum_index:
-            sum_index[i] += 1
-        else:
-            sum_index[i] = 0
-    inds = filter(lambda x: not sum_index[x], inds)
-    return set(inds), tuple([ i for i in sum_index if sum_index[i] ])
+
+    bound = set()
+    for n, ind in enumerate(inds):
+        for other in inds[n+1:]:
+            try:
+                if ind.contracts_with(other):
+                    bound.add(ind)
+                    bound.add(other)
+            except AttributeError:
+                pass
+
+    return set(inds)-bound, tuple(sorted(bound))
 
 def _get_indices_Mul(expr, return_dummies=False):
     """Determine the outer indices of a Mul object.
@@ -178,7 +187,7 @@ def get_indices(expr):
     >>> from sympy import symbols
     >>> from sympy.tensor import IndexedBase, Idx
     >>> x, y, A = map(IndexedBase, ['x', 'y', 'A'])
-    >>> i, j, a, z = symbols('i j a z', integer=True)
+    >>> i, j = map(Idx, 'ij')
 
     The indices of the total expression is determined, Repeated indices imply a
     summation, for instance the trace of a matrix A:

@@ -415,3 +415,22 @@ class Idx(Expr):
 
     def _sympystr(self, p):
         return p.doprint(self.label)
+
+    def contracts_with(self, other):
+        """Tests if this Idx allows contraction with the other
+
+        >>> from sympy.tensor import IndexedBase, Idx
+        >>> from sympy import symbols, oo
+        >>> Idx('i').contracts_with(Idx('i'))
+        True
+        >>> Idx('i').contracts_with(Idx('j'))
+        False
+
+        Two indices with different range cannot be contracted.
+
+        >>> m, n = symbols('mn', integer=True)
+        >>> Idx('i', n).contracts_with(Idx('i', m))
+        False
+        """
+
+        return self.args == other.args
