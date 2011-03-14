@@ -434,3 +434,79 @@ class Idx(Expr):
         """
 
         return isinstance(other, Idx) and self.args == other.args
+
+class VarIdx(Idx):
+    """Base class for an index with a given variance.
+
+    This base class can be used as a factory for objects of CoVarIdx and
+    ContraVarIdx type.  The factory functionality provides a convenient
+    shorthand for working with indices of alternating variance:
+
+    >>> from sympy.tensor import IndexedBase, VarIdx
+    >>> A = IndexedBase('A')
+    >>> i, j = map(VarIdx, 'ij')
+    >>> A[i.up, i.down]
+    A[^i, _i]
+
+    >>> (i.up).contracts_with(i.down)
+    True
+    >>> (i.up).contracts_with(i.up)
+    False
+    >>> (i.up).contracts_with(j.down)
+    False
+
+    """
+
+    @property
+    def up(self):
+        return ContraVarIdx(*self.args)
+
+    @property
+    def down(self):
+        return CoVarIdx(*self.args)
+
+    def contracts_with(self, other):
+        raise IndexException(
+            "Base class VarIdx has undefined contraction properties.\n"
+            "Create co- and contravariant indices with VarIdx.down / VarIdx.up.")
+
+class CoVarIdx(VarIdx):
+    """Represents an index with a covariant transformation properties.
+
+    See the docstring of VarIdx for the recommended usage of this class.
+
+    There are a number of ways to create an Idx object.  See the docstring of Idx
+    for the optional range parameter.
+
+    """
+
+    def contracts_with(self, other):
+        if isinstance(other, ContraVarIdx):
+            return Idx.contracts_with(self, other)
+        else:
+            return False
+
+    def _sympystr(self, p):
+        ind = VarIdx._sympystr(self, p)
+        return "_%s" %ind
+
+
+class ContraVarIdx(VarIdx):
+    """Represents an index with a contravariant transformation properties.
+
+    See the docstring of VarIdx for the recommended usage of this class.
+
+    There are a number of ways to create an Idx object.  See the docstring of Idx
+    for the optional range parameter.
+
+    """
+
+    def contracts_with(self, other):
+        if isinstance(other, CoVarIdx):
+            return Idx.contracts_with(self, other)
+        else:
+            return False
+
+    def _sympystr(self, p):
+        ind = VarIdx._sympystr(self, p)
+        return "^%s" %ind
