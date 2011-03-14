@@ -185,7 +185,7 @@ def get_indices(expr):
 
     >>> from sympy.tensor.index_methods import get_indices
     >>> from sympy import symbols
-    >>> from sympy.tensor import IndexedBase, Idx
+    >>> from sympy.tensor import IndexedBase, Idx, VarIdx
     >>> x, y, A = map(IndexedBase, ['x', 'y', 'A'])
     >>> i, j = map(Idx, 'ij')
 
@@ -194,6 +194,15 @@ def get_indices(expr):
 
     >>> get_indices(A[i, i])
     (set(), {})
+
+    Indices with defined variance are only contracted implicitly if the same label
+    is present as both a covariant index and a contravariant index.
+
+    >>> a, b = map(VarIdx, 'ab')
+    >>> get_indices(A[a.up, a.down])
+    (set(), {})
+    >>> get_indices(A[a.up, b.down]*x[b.up])
+    (set([^a]), {})
 
     In the case of many terms, the terms are required to have identical
     outer indices.  Else an IndexConformanceException is raised.
