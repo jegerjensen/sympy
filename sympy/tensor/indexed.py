@@ -433,4 +433,4 @@ class Idx(Expr):
         False
         """
 
-        return self.args == other.args
+        return isinstance(other, Idx) and self.args == other.args
