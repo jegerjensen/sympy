@@ -20,13 +20,24 @@ class AskIntegerHandler(CommonHandler):
     @staticmethod
     def Add(expr, assumptions):
         """
-        Integer + Integer       -> Integer
-        Integer + !Integer      -> !Integer
-        !Integer + !Integer -> ?
+        Integer + Integer           -> Integer
+        Integer + !Integer          -> !Integer
+        !Integer + !Integer         -> ?
+        half_integer + half_integer -> Integer
         """
         if expr.is_number:
             return AskIntegerHandler._number(expr, assumptions)
-        return test_closed_group(expr, assumptions, 'integer')
+        _result = test_closed_group(expr, assumptions, 'integer')
+        if _result is None:
+            _result = True
+            for arg in expr.args:
+                if ask(arg, Q.integer, assumptions):
+                    pass
+                elif ask(arg, Q.half_integer, assumptions):
+                    _result = not _result
+                else:
+                    return None
+        return _result
 
     @staticmethod
     def Mul(expr, assumptions):
@@ -35,6 +46,8 @@ class AskIntegerHandler(CommonHandler):
         Integer*Irrational   -> !Integer
         Odd/Even             -> !Integer
         Integer*Rational     -> ?
+        Odd*half_integer     -> !Integer
+        even*half_integer     -> Integer
         """
         if expr.is_number:
             return AskIntegerHandler._number(expr, assumptions)
@@ -46,6 +59,8 @@ class AskIntegerHandler(CommonHandler):
                         return ask(2*expr, Q.even, assumptions)
                     if ~(arg.q & 1):
                         return None
+                elif ask(arg, Q.half_integer, assumptions):
+                    return ask(expr/arg, Q.even, assumptions)
                 elif ask(arg, Q.irrational, assumptions):
                     if _output:
                         _output = False
@@ -437,6 +452,54 @@ class AskAlgebraicHandler(CommonHandler):
     @staticmethod
     def AlgebraicNumber(expr, assumptions):
         return True
+
+class AskHalfIntegerHandler(CommonHandler):
+    """Handler for key 'half_integer'
+
+    A half integer is a rational number on the form odd/2.
+    """
+
+    @staticmethod
+    def Add(expr, assumptions):
+        """
+        We only consider sums of the form 'half_integer + integer'
+        For other constellations we are inconclusive.
+
+        half_integer + integer      -> half_integer
+        half_integer + half_integer -> integer
+        else                        -> None
+        """
+        _result = False
+        for arg in expr.args:
+            if ask(arg, Q.integer, assumptions):
+                pass
+            elif ask(arg, 'half_integer', assumptions):
+                _result = not _result
+            else: break
+        else:
+            return _result
+
+    @staticmethod
+    def Mul(expr, assumptions):
+        """
+        odd * half_integer               -> half_integer
+        even * half_integer              -> ~half_integer
+        half_integer * half_integer      -> ~half_integer
+        """
+        _result = False
+        for arg in expr.args:
+            if ask(arg, Q.odd, assumptions):
+                pass
+            elif ask(arg, Q.even, assumptions):
+                return False
+            elif ask(arg, Q.half_integer, assumptions):
+                if _result:
+                    return False
+                else:
+                    _result = True
+            else:
+                return
+        return _result
 
 #### Helper methods
 

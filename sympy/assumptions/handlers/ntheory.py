@@ -108,10 +108,12 @@ class AskEvenHandler(CommonHandler):
     @staticmethod
     def Mul(expr, assumptions):
         """
-        Even * Integer -> Even
-        Even * Odd     -> Even
-        Integer * Odd  -> ?
-        Odd * Odd      -> Odd
+        Even * Integer             -> Even
+        Even * Odd                 -> Even
+        Integer * Odd              -> ?
+        Odd * Odd                  -> Odd
+        Odd * 2 * half_integer     -> Odd
+        Even * 2 * half_integer    -> Even
         """
         if expr.is_number:
             return AskEvenHandler._number(expr, assumptions)
@@ -129,6 +131,8 @@ class AskEvenHandler(CommonHandler):
                 if irrational:
                     break
                 irrational = True
+            elif ask(arg, Q.half_integer, assumptions):
+                return ask(expr/(2*arg), Q.even, assumptions)
             else: break
         else:
             if irrational: return False

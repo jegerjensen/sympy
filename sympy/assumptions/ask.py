@@ -15,6 +15,7 @@ class Q:
     composite = Predicate('composite')
     even = Predicate('even')
     extended_real = Predicate('extended_real')
+    half_integer = Predicate('half_integer')
     imaginary = Predicate('imaginary')
     infinitesimal = Predicate('infinitesimal')
     infinity = Predicate('infinity')
@@ -213,6 +214,7 @@ _handlers_dict = {
     'composite'      : ['sympy.assumptions.handlers.ntheory.AskCompositeHandler'],
     'even'           : ['sympy.assumptions.handlers.ntheory.AskEvenHandler'],
     'extended_real'  : ['sympy.assumptions.handlers.sets.AskExtendedRealHandler'],
+    'half_integer'   : ['sympy.assumptions.handlers.sets.AskHalfIntegerHandler'],
     'imaginary'      : ['sympy.assumptions.handlers.sets.AskImaginaryHandler'],
     'infinitesimal'  : ['sympy.assumptions.handlers.calculus.AskInfinitesimalHandler'],
     'integer'        : ['sympy.assumptions.handlers.sets.AskIntegerHandler'],
@@ -239,14 +241,15 @@ known_facts = And(
     Equivalent(Q.extended_real, Q.real | Q.infinity),
     Equivalent(Q.odd, Q.integer & ~Q.even),
     Equivalent(Q.prime, Q.integer & Q.positive & ~Q.composite),
-    Implies   (Q.integer, Q.rational),
+    Implies   (Q.integer, Q.rational & ~Q.half_integer),
     Implies   (Q.imaginary, Q.complex & ~Q.real),
     Equivalent(Q.negative, Q.nonzero & ~Q.positive),
     Equivalent(Q.positive, Q.nonzero & ~Q.negative),
     Equivalent(Q.rational, Q.real & ~Q.irrational),
     Equivalent(Q.real, Q.rational | Q.irrational),
     Implies   (Q.nonzero, Q.real),
-    Equivalent(Q.nonzero, Q.positive | Q.negative)
+    Equivalent(Q.nonzero, Q.positive | Q.negative),
+    Implies   (Q.half_integer, ~Q.integer),
 )
 
 ################################################################################
@@ -271,6 +274,7 @@ known_facts_cnf = And(
     Or(Not(Q.real), Q.extended_real),
     Or(Not(Q.composite), Not(Q.prime)),
     Or(Not(Q.negative), Q.nonzero),
+    Or(Not(Q.half_integer), Not(Q.integer)),
     Or(Not(Q.negative), Not(Q.positive)),
     Or(Not(Q.prime), Q.integer),
     Or(Not(Q.even), Not(Q.odd)),
@@ -296,6 +300,7 @@ known_facts_dict = {
     Q.extended_real: set([Q.extended_real]),
     Q.nonzero: set([Q.nonzero, Q.complex, Q.extended_real, Q.real]),
     Q.integer: set([Q.real, Q.rational, Q.complex, Q.extended_real, Q.integer]),
+    Q.half_integer: set([Q.half_integer]),
     Q.irrational: set([Q.real, Q.irrational, Q.complex, Q.extended_real]),
     Q.commutative: set([Q.commutative]),
     Q.infinity: set([Q.extended_real, Q.infinity]),
