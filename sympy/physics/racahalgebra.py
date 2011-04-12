@@ -300,7 +300,7 @@ class SixJSymbol(AngularMomentumSymbol):
             maxcol = maxind %3
             return SixJSymbol(*SixJSymbol._swap_col(1,maxcol,args))
 
-        minind = args.index(min((j1, J12, j3, J23)))
+        minind = args.index(min((j1, J12, j3, J23), key=sortkey))
 
         # get minJ in correct column
         if minind != 0 and minind != 3:
