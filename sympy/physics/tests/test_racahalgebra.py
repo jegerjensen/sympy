@@ -45,6 +45,8 @@ def test_evaluate_sums():
     assert evaluate_sums(ASigma(i,j,k)*fn*Dij(i,l)*Dij(k,m)) == ASigma(j)*f(l,j,m,l,m,n)
     assert evaluate_sums(ASigma(i,j,k)*fn*Dij(i,k)*Dij(k,m)) == ASigma(j)*f(m,j,m,l,m,n)
     assert evaluate_sums(ASigma(i,j,k)*fn*Dij(i,m)*Dij(k,i)) == ASigma(j)*f(m,j,m,l,m,n)
+    assert (evaluate_sums(ASigma(k)*f(i,j)*Dij(i,j), all_deltas=True) == ASigma(k)*f(i,i)*Dij(i,j)
+            or evaluate_sums(ASigma(k)*f(i,j)*Dij(i,j), all_deltas=True) == ASigma(k)*f(i,i)*Dij(i,j))
 
 
 def test_tjs_methods():
