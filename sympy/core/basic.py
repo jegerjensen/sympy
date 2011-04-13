@@ -328,6 +328,8 @@ class Basic(AssumeMeths):
         # now both objects are from SymPy, so we can proceed to usual comparison
         return Basic._compare_pretty(a, b)
 
+    def _pretty_key_(self):
+        return " ".join([ a._pretty_key_() for a in self.args ])
 
     def __eq__(self, other):
         """a == b  -> Compare two symbolic trees and see whether they are equal
@@ -1035,5 +1037,8 @@ class Atom(Basic):
 
     def doit(self, **hints):
         return self
+
+    def _pretty_key_(self):
+        return str(self)
 
 from sympy.core.singleton import S
