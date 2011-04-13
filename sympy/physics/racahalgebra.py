@@ -114,13 +114,13 @@ class ThreeJSymbol(AngularMomentumSymbol):
             return (-1)**(j2-m2)*(2*j2 + 1)**(S.NegativeOne/2)*Dij(j2, J)*Dij(m2, -M)*Dij(m1, S.Zero)
 
         if m1 is S.Zero:
-            coeff, term = m2.as_coeff_terms()
+            coeff, term = m2.as_coeff_mul()
             if coeff.is_negative:
                 phase=pow(S.NegativeOne,j1+j2+J)
                 expr = ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
                 return cls._determine_phase(phase, expr)
 
-        coeff, term = m1.as_coeff_terms()
+        coeff, term = m1.as_coeff_mul()
         if coeff.is_negative:
             phase=pow(S.NegativeOne,j1+j2+J)
             expr = ThreeJSymbol(j1, j2, J, -m1, -m2, -M)
@@ -206,7 +206,7 @@ class ThreeJSymbol(AngularMomentumSymbol):
                 if isinstance(M, Symbol):
                     return M
                 elif isinstance(M, Mul):
-                    sign,M = M.as_coeff_terms()
+                    sign,M = M.as_coeff_mul()
                     if len(M) == 1 and isinstance(M[0], Symbol):
                         return M[0]
         return None
@@ -715,7 +715,7 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
         projs = self.projections
         if projs[0] == S.Zero:
             projs = projs[1:]
-        c, t = projs[0].as_coeff_terms()
+        c, t = projs[0].as_coeff_mul()
         if c.is_negative:
             return self.invert_projections()
         else:
@@ -782,7 +782,7 @@ class ClebschGordanCoefficient(AngularMomentumSymbol):
                 if isinstance(M, Symbol):
                     return M
                 elif isinstance(M, Mul):
-                    sign,M = M.as_coeff_terms()
+                    sign,M = M.as_coeff_mul()
                     if len(M) == 1 and isinstance(M[0], Symbol):
                         return M[0]
         return None
@@ -1281,7 +1281,7 @@ class ASigma(Expr):
         indices = map(sympify, indices)
         unsigned = []
         for i in indices:
-            c,t = i.as_coeff_terms()
+            c,t = i.as_coeff_mul()
             if len(t)==1:
                 unsigned.append(t[0])
             elif len(t)>1:
@@ -1723,7 +1723,7 @@ def _standardize_coeff(expr, skip_obvious = False):
     that will only happen for half_integer with odd coeff
     we standardise on +/- 1
     """
-    c,t = expr.as_coeff_terms()
+    c,t = expr.as_coeff_mul()
     if _ask_half_integer(Mul(*t)):
         if c >= 3:
             c = -(c%4 - 2)
@@ -1896,7 +1896,7 @@ def _process_tjs_permutations(expr, number_to_rewrite, **kw_args):
             factors2 = factors2.subs(proj_inversions)
             for tjs in threejs2:
                 compatible_tjs = tjs.subs(proj_inversions)
-                coeff, junk = compatible_tjs.as_coeff_terms(AngularMomentumSymbol)
+                coeff, junk = compatible_tjs.as_coeff_mul(AngularMomentumSymbol)
                 phases2 *= coeff
 
 
@@ -2470,7 +2470,7 @@ def invert_clebsch_gordans(expr):
     Sum(a, b)*(A, a, B, b|C, c)/a
 
     """
-    coeff,cgcs = expr.as_coeff_terms(ClebschGordanCoefficient)
+    coeff,cgcs = expr.as_coeff_mul(ClebschGordanCoefficient)
     sums = coeff.atoms(ASigma)
     if len(sums) == 0 or len(cgcs) == 0:
         return expr
@@ -2688,7 +2688,7 @@ def apply_deltas(expr, only_deltas=[], **kw_args):
     >>> apply_deltas(f(c)*f(a)*Dij(a,-c), remove_all=[a])
     f(c)*f(-c)
     """
-    expr, summations = expr.as_coeff_terms(ASigma)
+    expr, summations = expr.as_coeff_mul(ASigma)
     only_deltas = set(only_deltas)
     deltas = expr.atoms(Dij)
     if only_deltas:
@@ -2697,8 +2697,8 @@ def apply_deltas(expr, only_deltas=[], **kw_args):
         for d in deltas:
             if d.has(s):
                 i, j = d.args
-                ci, i = i.as_coeff_terms(); i = Mul(*i)
-                cj, j = j.as_coeff_terms(); j = Mul(*j)
+                ci, i = i.as_coeff_mul(); i = Mul(*i)
+                cj, j = j.as_coeff_mul(); j = Mul(*j)
                 if s == i:
                     expr = expr.subs(i, cj*j/ci)
                 elif s == j:
@@ -2717,8 +2717,8 @@ def apply_deltas(expr, only_deltas=[], **kw_args):
     expr = expr.subs(d2dum)
     for d in deltas:
         i, j = d.args
-        ci, i = i.as_coeff_terms(); i = Mul(*i)
-        cj, j = j.as_coeff_terms(); j = Mul(*j)
+        ci, i = i.as_coeff_mul(); i = Mul(*i)
+        cj, j = j.as_coeff_mul(); j = Mul(*j)
         if sortkey(i) > sortkey(j):
             expr = expr.subs(i, cj*j/ci)
         else:
@@ -2757,7 +2757,7 @@ def evaluate_sums(expr, **kw_args):
     """
 
     def get_coeff_index(index):
-        c,t = index.as_coeff_terms()
+        c,t = index.as_coeff_mul()
         if t:
             i = t[0]
         else:
@@ -2766,7 +2766,7 @@ def evaluate_sums(expr, **kw_args):
 
 
     expr = combine_ASigmas(expr)
-    expr, summations = expr.as_coeff_terms(ASigma)
+    expr, summations = expr.as_coeff_mul(ASigma)
     if not summations:
         return expr
     assert len(summations) == 1
@@ -2781,7 +2781,7 @@ def evaluate_sums(expr, **kw_args):
         except ValueError:
             pass
 
-    expr, deltas = expr.as_coeff_terms(Dij)
+    expr, deltas = expr.as_coeff_mul(Dij)
 
     # expr is now stripped of both summations and deltas
 
@@ -2932,11 +2932,11 @@ def apply_orthogonality(expr, summations, **kw_args):
         if key2 in subsdict: continue
         coeff = S.One
         if isinstance(njs1, ClebschGordanCoefficient):
-            c1, njs1 = njs1.get_as_ThreeJSymbol().as_coeff_terms(ThreeJSymbol)
+            c1, njs1 = njs1.get_as_ThreeJSymbol().as_coeff_mul(ThreeJSymbol)
             njs1 = njs1[0]
             coeff *= c1
         if isinstance(njs2, ClebschGordanCoefficient):
-            c2, njs2 = njs2.get_as_ThreeJSymbol().as_coeff_terms(ThreeJSymbol)
+            c2, njs2 = njs2.get_as_ThreeJSymbol().as_coeff_mul(ThreeJSymbol)
             njs2 = njs2[0]
             coeff *= c2
 
@@ -3071,7 +3071,7 @@ def apply_identity_tjs(expr):
                 J0 = Js[zero]
                 new_tjs = sqrt(2*Js[i]+1)/sqrt(2*J0+1)*Dij(J0, 0)
 
-                junk, m = Ms[i].as_coeff_terms()
+                junk, m = Ms[i].as_coeff_mul()
 
                 try:
                    new_expr = remove_summation_indices(expr, m)

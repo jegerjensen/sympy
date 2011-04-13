@@ -201,7 +201,7 @@ class QuantumState(Expr):
                 symbol = Symbol(symbol)
         elif symbol:
             symbol = sympify(symbol)
-            c, t = symbol.as_coeff_terms()
+            c, t = symbol.as_coeff_mul()
             if c.is_negative:
                 if isinstance(t[0], QuantumState):
                     return t[0].get_antiparticle()
@@ -238,13 +238,13 @@ class QuantumState(Expr):
 
     @property
     def label(self):
-        c,t = self.symbol.as_coeff_terms()
+        c,t = self.symbol.as_coeff_mul()
         return t[0]
 
     @property
     def is_hole(self):
         if self.symbol is blank_symbol: return None
-        c,t = self.symbol.as_coeff_terms()
+        c,t = self.symbol.as_coeff_mul()
         return c is S.NegativeOne
 
     @property
@@ -375,7 +375,7 @@ class DirectQuantumState(QuantumState):
                     arg = SphFermBra(arg)
                 elif cls.is_dual is False:
                     arg = SphFermKet(arg)
-            c, t = arg.as_coeff_terms()
+            c, t = arg.as_coeff_mul()
             if isinstance(t[0], QuantumState):
                 if not t[0].is_dual is None:
                     if cls.is_dual != t[0].is_dual:
@@ -438,9 +438,9 @@ class SphericalQuantumState(QuantumState):
                 state1 = cls(state1)
             if isinstance(state2, str):
                 state2 = cls(state2)
-            c,t = state1.as_coeff_terms()
+            c,t = state1.as_coeff_mul()
             if c.is_negative: state1 = t[0].get_antiparticle()
-            c,t = state2.as_coeff_terms()
+            c,t = state2.as_coeff_mul()
             if c.is_negative: state2 = t[0].get_antiparticle()
 
             obj = QuantumState.__new__(cls, symbol, state1, state2, **kw_args)
@@ -1064,15 +1064,15 @@ class MatrixElement(Expr):
         elif isinstance(right,(tuple,list)): right = FermKet(*right)
         elif isinstance(right, str): right = SphFermKet(right)
         if isinstance(left, Mul):
-            c,t = left.as_coeff_terms()
+            c,t = left.as_coeff_mul()
             coeff *= c
             left = t[0]
         if isinstance(right, Mul):
-            c,t = right.as_coeff_terms()
+            c,t = right.as_coeff_mul()
             coeff *= c
             right = t[0]
         if isinstance(operator, Mul):
-            c,t = operator.as_coeff_terms(QuantumOperator)
+            c,t = operator.as_coeff_mul(QuantumOperator)
             coeff *= c
             operator = t[0]
 
@@ -1212,7 +1212,7 @@ class MatrixElement(Expr):
         others_direct = other.get_related_direct_matrix(only_particle_states=True)
 
         # if other_direct matrix comes with a sign, the substitution would fail
-        c,t = others_direct.as_coeff_terms(MatrixElement)
+        c,t = others_direct.as_coeff_mul(MatrixElement)
         if len(t) != 1: raise Error
 
         if not self_as_direct.has(t[0]):
@@ -1689,7 +1689,7 @@ class DirectMatrixElement(MatrixElement):
         left = FermBra(*left)
         right = FermKet(*right)
         matrix = type(self)(left, self.operator, right)
-        c,t = matrix.as_coeff_terms()
+        c,t = matrix.as_coeff_mul()
         return (-1)**(sign)*c,t[0]
 
 
@@ -1938,7 +1938,7 @@ class ThreeTensorMatrixElement(MatrixElement):
 
         if kw_args.get('only_particle_states'):
             m = DirectMatrixElement(bra, self.operator, ket)
-            c,t = m.as_coeff_terms(DirectMatrixElement)
+            c,t = m.as_coeff_mul(DirectMatrixElement)
             return c*t[0].as_only_particles()
 
         return DirectMatrixElement(bra, self.operator, ket)
@@ -1977,7 +1977,7 @@ def rewrite_coupling(expr, other, **kw_args):
             expr = rewrite_coupling(expr, o, **kw_args)
         return expr
 
-    junk, t = other.as_coeff_terms(MatrixElement)
+    junk, t = other.as_coeff_mul(MatrixElement)
     assert len(t) == 1;
     other = t[0]
     matels = expr.atoms(MatrixElement)
