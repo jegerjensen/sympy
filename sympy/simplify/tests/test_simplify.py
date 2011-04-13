@@ -271,6 +271,8 @@ def test_powsimp():
     p = symbols('p', positive=True)
     assert powsimp((1/x)**log(2)/x) == (1/x)**(1 + log(2))
     assert powsimp((1/p)**log(2)/p) == p**(-1 - log(2))
+    # this can only be simplified if the exponent is even, i.e. x integer
+    assert powsimp((-1)**(2*x)) == (-1)**(2*x)
 
 def test_powsimp_nc():
     x, y, z = symbols('xyz')
