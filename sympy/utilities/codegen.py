@@ -953,3 +953,89 @@ def codegen(name_expr, language, prefix, project="project", to_files=False, head
 
     # Write the code.
     return code_gen.write(routines, prefix, to_files, header, empty)
+
+class ExprSplitter(object):
+    """Split expressions into appropriate chunks
+
+    For really large expressions, the output from codegen may lead to very long
+    compilation times.  The ExprSplitter lets you split the expression into
+    bitesize chunks with appropriate names for the corresponding subroutines.
+
+    The method ``spawn_routines'' provides a convenient interface that works
+    well with the ``codegen'' utility.
+
+    For fine grained control you may want to specialize the logic of the
+    ExprSplitter in a subclass.
+    """
+
+    def __init__(self, prefix, counter=0):
+        if not isinstance(prefix, basestring):
+            raise TypeError("Expected a string argument")
+        self.prefix = prefix
+        self._counter = counter
+
+    def split(self, expr):
+        """Splits expr into smaller chunks
+
+        Separates the terms in an Add so that all terms in a group has the same
+        set of symbols.
+
+        If expr is of class Equality, the right hand side is split and all the
+        subroutine expressions are Equalities that add to the lhs.
+        """
+        from sympy.core import Add, Equality
+        if isinstance(expr, Equality):
+            traverser = Add.make_args(expr.rhs)
+        else:
+            traverser = Add.make_args(expr)
+
+        terms = {}
+        for term in traverser:
+            key = frozenset(term.atoms(Symbol))
+            if key in terms:
+                terms[key].append(term)
+            else:
+                terms[key] = [term]
+        result = set()
+        for key in sorted(terms.keys()):
+            part = Add(*terms[key])
+            if isinstance(expr, Equality):
+                part = Equality(expr.lhs, expr.lhs + part)
+            result.add(part)
+        return result
+
+
+    def nameit(self, term):
+        """Generates a name for a routine that calculates the term
+
+        The routine name is prefixed with self.prefix and a counter is added
+        """
+        try:
+            return "%s_%s" % (self.prefix, str(self._counter))
+        finally:
+            self._counter += 1
+
+    def spawn_routines(self, expr):
+        """Creates several name_expr pairs from an expression
+
+        This method creates pairs of name_expr for use with codegen().  The given
+        expression is split into several subroutines, and each part is given a
+        unique name.
+
+        >>> from sympy.utilities.codegen import ExprSplitter
+        >>> from sympy.abc import x,y
+        >>> my_splitter = ExprSplitter('myprefix')
+        >>> my_splitter.spawn_routines(x + x**y + x**2 + 1)
+        [('myprefix_0', 1), ('myprefix_1', x + x**2), ('myprefix_2', x**y)]
+
+        If expr is of class Equality, the right hand side is split and all the
+        subroutine expressions are Equalities that add to the lhs.  Note that
+        the lhs expression must be initialized somewhere else in the C or
+        Fortran code.
+
+        >>> from sympy import Eq
+        >>> my_splitter.spawn_routines(Eq(x, x**y+1))
+        [('myprefix_3', x == 1 + x), ('myprefix_4', x == x + x**y)]
+
+        """
+        return [ (self.nameit(p), p) for p in self.split(expr) ]
